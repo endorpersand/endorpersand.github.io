@@ -1,63 +1,105 @@
-"use strict";
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
-let radio = [...document.querySelectorAll('input[type=radio]')];
-let celem = [...document.querySelectorAll('input[type=color]')];
-let colors = celem.map(x => x.value);
-let rgb = colors.map(x => [x.slice(1, 3), x.slice(3, 5), x.slice(5, 7)].map(y => parseInt(y, 16)));
-let selectINTP = 'lin';
-radio.forEach(x => x.addEventListener('change', (e) => {
-    selectINTP = e.target.value;
+let ipol = 'lin';
+
+document.querySelectorAll('input[type=color]').forEach(x => x.addEventListener('change', update))
+document.querySelectorAll('input[type=radio]').forEach(x => x.addEventListener('change', e => {
+    ipol = e.target.value;
     update();
 }));
-celem.forEach((x, i) => x.addEventListener('change', (e) => {
-    colors[i] = e.target.value;
-    rgb = colors.map(x => [x.slice(1, 3), x.slice(3, 5), x.slice(5, 7)].map(y => parseInt(y, 16)));
+document.querySelector('#coloradd').addEventListener('click', () => {
+    let div = colorDiv();
+    document.querySelector('#colors').insertBefore(div, document.querySelector('#coloradd'));
+
+    let buts = document.querySelectorAll('.colorrm');
+    if (buts.length > 2) {
+        for (let b of buts) b.disabled = false;
+    }
     update();
-}));
+})
+
+document.querySelectorAll('.colorrm').forEach(e => e.addEventListener('click', () => {
+    document.querySelector('#colors').removeChild(e.parentElement);
+    let buts = document.querySelectorAll('.colorrm');
+    if (buts.length < 3) {
+        for (let b of buts) b.disabled = true;
+    }
+    update();
+}))
 update();
+
+function getColors() {
+    return [...document.querySelectorAll('input[type=color]')].map(x => x.value);
+}
+
+function rgb(hex) {
+    return [hex.slice(1,3), hex.slice(3,5), hex.slice(5,7)].map(x => parseInt(x, 16));
+}
+
+function colorDiv(hex = '#000000') {
+    let div = document.createElement('div');
+
+    let clr = document.createElement('input');
+    clr.type = 'color';
+    clr.value = hex;
+    clr.addEventListener('change', update);
+
+    let button = document.createElement('button');
+    button.classList.add('colorrm');
+    button.textContent = 'x';
+    button.addEventListener('click', () => {
+        document.querySelector('#colors').removeChild(button.parentElement);
+        let buts = document.querySelectorAll('.colorrm');
+        if (buts.length < 3) {
+            for (let b of buts) b.disabled = true;
+        }
+        update();
+    });
+        
+    div.appendChild(clr);
+    div.appendChild(button);
+    return div;
+}
+
 function update() {
-    let offcanvas = new OffscreenCanvas(canvas.width, 1);
-    let offctx = offcanvas.getContext('2d');
-    let grad = offctx.createImageData(canvas.width, 1);
-    let buf = grad.data.buffer;
-    let arr32 = new Uint32Array(buf);
-    switch (selectINTP) {
+    let clrs = getColors();
+    let lind = clrs.length - 1;
+    switch (ipol) {
         case 'lin':
-            /*
-            for (let i = 0; i < offcanvas.width; i++) {
-                let frac = i / offcanvas.width;
-                let calcRGB = (index: RGB): number => frac * rgb[1][index] + (1 - frac) * (rgb[0][index]);
-                arr32[i] =
-                                   255 << 24 | // alpha
-                    calcRGB( RGB.blue) << 16 | // blue
-                    calcRGB(RGB.green) <<  8 | // green
-                    calcRGB(  RGB.red);        // red
-            }
-            offctx.putImageData(grad, 0, 0);
-            let gradPat = <CanvasPattern>ctx.createPattern(offcanvas, 'repeat-y')
-            ctx.fillStyle = gradPat
-            break;
-            */
-            let lg = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            lg.addColorStop(0, colors[0]);
-            lg.addColorStop(1, colors[1]);
-            ctx.fillStyle = lg;
+            let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            for (var [i, c] of clrs.entries()) grad.addColorStop(i / lind, c);
+            ctx.fillStyle = grad;
             break;
         case 'rms':
-            for (let i = 0; i < offcanvas.width; i++) {
-                let frac = i / offcanvas.width;
-                let calcRGB = (index) => Math.sqrt(frac * (rgb[1][index] ** 2) + (1 - frac) * (rgb[0][index]) ** 2);
-                arr32[i] =
-                    255 << 24 | // alpha
-                        calcRGB(2 /* blue */) << 16 | // blue
-                        calcRGB(1 /* green */) << 8 | // green
-                        calcRGB(0 /* red */); // red
+            let ocanvas;
+            if (typeof OffscreenCanvas !== 'undefined') {
+                ocanvas = new OffscreenCanvas(canvas.width, 1);
+            } else {
+                ocanvas = document.createElement('canvas');
+                [ocanvas.width, ocanvas.height] = [canvas.width, 1];
             }
-            offctx.putImageData(grad, 0, 0);
-            let gradPat = ctx.createPattern(offcanvas, 'repeat-y');
-            ctx.fillStyle = gradPat;
+            let octx = ocanvas.getContext('2d');
+
+            let dat = octx.createImageData(ocanvas.width, 1);
+            let arr32 = new Uint32Array(dat.data.buffer);
+            let arrlind = arr32.length - 1;
+            for (var i = 0; i < arr32.length; i++) {
+                let pos = (i / arrlind) * lind;
+                let [j, prog] = [Math.floor(pos), pos % 1];
+                let bet = [clrs[j], clrs[j + 1] ?? '#000000'].map(x => rgb(x));
+                let fn = (a, b) => Math.sqrt((a ** 2) * (1 - prog) + (b ** 2) * prog);
+                let c = Array.from(Array(3), (_, i) => fn(bet[0][i], bet[1][i]));
+                arr32[i] = 0xFF << 24
+                         | c[2] << 16
+                         | c[1] <<  8
+                         | c[0] <<  0;
+            }
+            octx.putImageData(dat, 0, 0);
+            let pat = ctx.createPattern(ocanvas, 'repeat-y');
+            ctx.fillStyle = pat;
             break;
+
     }
+
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
