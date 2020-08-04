@@ -3,10 +3,24 @@
     <head>
         <title>SNAKE</title>
         <meta charset='utf-8'>
+        <style>
+            body {
+                background-color: #222;
+                color: #FFF;
+                display: grid;
+                gap: 10px;
+            }
+            canvas {
+                border: 3px white solid;
+                margin: 0 auto;
+            }
+        </style>
     </head>
     <body>
-        <canvas id='canvas' width='1400' height='700'></canvas>
-        <div id='score'>Score: </div>
+        <canvas id='canvas' width=1400 height=700></canvas>
+        <div>
+            <div id='score'>Score: </div>
+        </div>
         <script src='snake/snake.js'></script>
     </body>
 </html>

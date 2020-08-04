@@ -30,36 +30,36 @@ drawApple();
 let int = setInterval(update, tpu);
 
 document.onkeydown = e => {
-    switch (e.key) {
-        case 'w':
+    switch (e.code) {
+        case 'KeyW':
         case 'ArrowUp':
             if (facing != 's' && facing != 'n') {
                 facing = 'n';
                 update();
             }
             break;
-        case 'a':
+        case 'KeyA':
         case 'ArrowLeft':
             if (facing != 'e' && facing != 'w') {
                 facing = 'w';
                 update();
             }
             break;
-        case 's':
+        case 'KeyS':
         case 'ArrowDown':
             if (facing != 's' && facing != 'n') {
                 facing = 's';
                 update();
             }
             break;
-        case 'd':
+        case 'KeyD':
         case 'ArrowRight':
             if (facing != 'e' && facing != 'w') {
                 facing = 'e';
                 update();
             }
             break;
-        case 'r':
+        case 'KeyR':
             die()
             break;
     }
@@ -157,5 +157,5 @@ function die() {
     let button = document.createElement('button');
     button.textContent = 'Restart';
     button.onclick = () => location.reload();
-    document.body.appendChild(button);
+    document.querySelector('#score').parentElement.appendChild(button);
 }
