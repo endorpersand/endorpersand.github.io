@@ -25,12 +25,19 @@
             filter: brightness(150%);
         }
         a {
+            position: relative;
             text-decoration: none;
             color: #111;
         }
         h2 {
             font-size: 150%;
             text-decoration: underline;
+        }
+        .colhex {
+            position: absolute;
+            bottom: 5;
+            right: 5;
+            color: #00000040;
         }
     </style>
 </head>
@@ -56,12 +63,17 @@
         let wrapper = document.querySelector('.wrapper');
         let squares = document.querySelectorAll('.wrapper a');
         let cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
-        let rows = 3; // add more placeholder project boxes by changing this
+        let rows = 7; // add more placeholder project boxes by changing this
         let cornerPos = [[0, 0], [0, cols - 1], [rows - 1, 0], [rows - 1, cols - 1]];
         
         if (squares.length > cols * rows) rows = Math.ceil(squares.length / cols);
         for (var i = squares.length; i < (cols * rows); i++) {
             createPlaceholderSquare();
+        }
+        for (var s of squares) {
+            let span = document.createElement('span');
+            span.classList.add('colhex');
+            s.appendChild(span);
         }
         regenColors();
         
@@ -106,6 +118,7 @@
 
             }
             s.style.backgroundColor = rgb(clr);
+            s.querySelector('.colhex').textContent = hex(clr);
             });
         }
 
@@ -116,6 +129,10 @@
         function rgb(arr) {
             // converts rgb array => rgb(#, #, #) notation in css
             return `rgb(${arr.join(',')})`
+        }
+        function hex(arr) {
+            // converts rgb array => hex notation
+            return `#${arr.map(x => Math.round(x).toString(16)).join('')}`
         }
         function calcPos(i) {
             // takes an index in the array, maps it to its [row, col] value
