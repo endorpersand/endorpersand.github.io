@@ -1,11 +1,139 @@
 <head>
     <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fira Sans', sans-serif;
+            background-color: #111;
+            color: white;
+        }
+        .wrapper {
+            --cols: 3;
+            display: grid;
+            grid-template-columns: repeat(var(--cols), 1fr);
+            grid-auto-rows: minmax(200px, auto);
+            gap: 10px;
+            width: 100%;
+        }
+        .wrapper a {
+            text-align: center;
+            transition: filter 0.25s ease-in-out;
+            background-color: #777;
+            filter: none;
+        }
+        .wrapper a:hover {
+            filter: brightness(150%);
+        }
+        a {
+            text-decoration: none;
+            color: #111;
+        }
+        h2 {
+            font-size: 150%;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <p>Hi</p>
-    <div>
-        <a href=complexgrapher.html>complexgrapher</a><br>
-        <a href=gradient.html>gradient</a><br>
-        <a href=snake.html>snake</a>
+    <span>Hi</span>
+    <h2>Projects</h2>
+    <div class="wrapper">
+        <a href="complexgrapher.html">
+            <div>Complex Grapher</div>
+            <div>A complex function grapher with domain coloring.</div>
+        </a>
+        <a href="gradient.html">
+            <div>Gradient</div>
+            <div>Gradient visualizer for linear and RMS interpolated gradients.</div>
+        </a>
+        <a href="snake.html">
+            <div>Snake</div>
+            <div style="font-size: 50px;">🐍</div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
+        <a onclick="regenColors()">
+            <div></div>
+        </a>
     </div>
+    <script>
+        let squares = document.querySelectorAll('.wrapper a');
+        let cols = +getComputedStyle(document.querySelector('.wrapper')).getPropertyValue('--cols');
+        let rows = Math.ceil(squares.length / cols);
+        let cornerPos = [[0, 0], [0, cols - 1], [rows - 1, 0], [rows - 1, cols - 1]];
+        regenColors();
+        
+        function regenColors() {
+            let cornerClrs = Array.from(Array(4), () => randRGB(0x50))
+            squares.forEach((s, i) => {
+                let pos = calcPos(i);
+                let clr = [0x77, 0x77, 0x77];
+            a: {
+                // if corner
+                for (let i = 0; i < 4; i++) {
+                    if (manhattan(cornerPos[i], pos) == 0) {
+                        clr = cornerClrs[i];
+                        break a;
+                    }
+                }
+                // find all corners on the same row or col as pos
+                // if none, this must be an inner square, so all corners are part of its color calc
+                // then find manhattan for each corner and interpolate
+                let enumCorn = cornerPos.map((x, i) => [i, x]);
+                let corners = enumCorn.filter(c => c[1][0] == pos[0] || c[1][1] == pos[1]);
+                if (corners.length === 0) corners = enumCorn;
+
+                let clrs = corners.map(x => cornerClrs[x[0]]);
+                let dist = corners.map(x => manhattan(x[1], pos));
+                clr = interpolate(clrs, dist);
+
+            }
+            s.style.backgroundColor = rgb(clr);
+            });
+        }
+
+        function randRGB(min = 0, max = 255) {
+            // [min, max)
+            return Array.from(Array(3), () => (Math.floor(Math.random() * (max - min)) + min));
+        }
+        function rgb(arr) {
+            // converts rgb array => rgb(#, #, #) notation in css
+            return `rgb(${arr.join(',')})`
+        }
+        function calcPos(i) {
+            // takes an index in the array, maps it to its [row, col] value
+            return [Math.floor(i / cols), i % cols];
+        }
+        function manhattan(p1, p2) {
+            return Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])
+        }
+        function interpolate(clrs, dist) {
+            console.log(clrs)
+            // does weighted RMS interpolation between two colors
+            let distsum = dist.reduce((acc, cv) => acc + cv, 0);
+            let channels = [];
+            for (var i = 0; i < 3; i++) { // iterate through all channels (R, G, B)
+                let colorvals = clrs.map(x => x[i]) // get channel values
+                let sum = colorvals.map((x,i) => (x ** 2) * (distsum - dist[i])) // square each channel value, multiply by weight
+                                   .reduce((acc, cv) => acc + cv, 0) // sum
+
+                channels.push( Math.sqrt(sum / (distsum * (colorvals.length - 1))) );
+            }
+            console.log(channels)
+            return channels;
+        }
+    </script>
 </body>
