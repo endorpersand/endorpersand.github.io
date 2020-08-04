@@ -39,43 +39,47 @@
     <h2>Projects</h2>
     <div class="wrapper">
         <a href="complexgrapher.html">
-            <div>Complex Grapher</div>
-            <div>A complex function grapher with domain coloring.</div>
+            <div class='title'>Complex Grapher</div>
+            <div class='desc'>A complex function grapher with domain coloring.</div>
         </a>
         <a href="gradient.html">
-            <div>Gradient</div>
-            <div>Gradient visualizer for linear and RMS interpolated gradients.</div>
+            <div class='title'>Gradient</div>
+            <div class='desc'>Gradient visualizer for linear and RMS interpolated gradients.</div>
         </a>
         <a href="snake.html">
-            <div>Snake</div>
-            <div style="font-size: 50px;">🐍</div>
+            <div class='title'>Snake</div>
+            <div class='desc' style="font-size: 50px;">🐍</div>
         </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
-        <a onclick="regenColors()">
-            <div></div>
-        </a>
+        <!-- placeholder project boxes -->
     </div>
     <script>
+        let wrapper = document.querySelector('.wrapper');
         let squares = document.querySelectorAll('.wrapper a');
-        let cols = +getComputedStyle(document.querySelector('.wrapper')).getPropertyValue('--cols');
-        let rows = Math.ceil(squares.length / cols);
+        let cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
+        let rows = 3; // add more placeholder project boxes by changing this
         let cornerPos = [[0, 0], [0, cols - 1], [rows - 1, 0], [rows - 1, cols - 1]];
+        
+        if (squares.length > cols * rows) rows = Math.ceil(squares.length / cols);
+        for (var i = squares.length; i < (cols * rows); i++) {
+            createPlaceholderSquare();
+        }
         regenColors();
         
+        function createPlaceholderSquare() {
+            let a = document.createElement('a');
+            let title = document.createElement('div');
+            let desc = document.createElement('div');
+
+            title.classList.add('title');
+            desc.classList.add('desc');
+
+            a.appendChild(title);
+            a.appendChild(desc);
+            a.onclick = regenColors;
+
+            wrapper.appendChild(a);
+            squares = document.querySelectorAll('.wrapper a');
+        }
         function regenColors() {
             let cornerClrs = Array.from(Array(4), () => randRGB(0x50))
             squares.forEach((s, i) => {
@@ -121,7 +125,6 @@
             return Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])
         }
         function interpolate(clrs, dist) {
-            console.log(clrs)
             // does weighted RMS interpolation between two colors
             let distsum = dist.reduce((acc, cv) => acc + cv, 0);
             let channels = [];
@@ -132,7 +135,6 @@
 
                 channels.push( Math.sqrt(sum / (distsum * (colorvals.length - 1))) );
             }
-            console.log(channels)
             return channels;
         }
     </script>
