@@ -1,28 +1,25 @@
-var canvas = document.querySelector('canvas'),
-    input = document.querySelector('input'),
-    funcForm = document.querySelector('#funcForm'),
+var canvas      = document.querySelector('canvas'),
+    funcForm    = document.querySelector('#funcForm'),
+    input       = funcForm.querySelector('input'),
     graphButton = document.querySelector('#graphButton'),
-    zcoord = document.querySelector('#zcoord'),
-    zoomIn = document.querySelector('#zoomIn'),
-    zoomR = document.querySelector('#zoomR'),
-    zoomOut = document.querySelector('#zoomOut'),
-    zoomInput = document.querySelector('#zoomInput'),
-    zoomForm = document.querySelector('#zoomForm'),
-    scaleInput = document.querySelector('#scaleInput'),
-    scaleForm = document.querySelector('#scaleForm'),
-    warning = document.querySelector('#warning'),
-    range = document.querySelectorAll('.range');
+    zcoord      = document.querySelector('#zcoord'),
+    zoomButtons = document.querySelectorAll('button.zoom'),
+    zoomForm    = document.querySelector('#zoomForm'),
+    zoomInput   = zoomForm.querySelector('input'),
+    scaleForm   = document.querySelector('#scaleForm'),
+    scaleInput  = scaleForm.querySelector('input'),
+    warning     = document.querySelector('#warning'),
+    domain      = document.querySelectorAll('.domain');
 var ctx = canvas.getContext('2d', {alpha: false});
 var scale = 1; // increase = zoom in, decrease = zoom out
 var f = (z => z);
 var d = (z => z);
 var mod = (x, y) => ((x % y) + y) % y;
-var ranged = [math.complex('-2-2i'), math.complex('2+2i')];
+var domaind = [math.complex('-2-2i'), math.complex('2+2i')];
 var canvasHover = e => {
     zcoord.classList.remove('error');
     zcoord.textContent = `z = ${convPlanes(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)}`;
 };
-canvas.width = canvas.height = scaleInput.value * 2 + 1;
 
 canvas.addEventListener('mousemove', canvasHover);
 canvas.addEventListener('click', e => {
@@ -36,7 +33,7 @@ graphButton.addEventListener('click', () => {
     zcoord.onload = () => console.log('a');
     zoomInput.value = scale;
     if (canvas.width !== scaleInput.value * 2 + 1) canvas.width = canvas.height = scaleInput.value * 2 + 1;
-    [range[0].textContent, range[1].textContent] = ranged.map(x=>x.div(scale));
+    [domain[0].textContent, domain[1].textContent] = domaind.map(x=>x.div(scale));
     zcoord.textContent = 'Graphing...'
     canvas.removeEventListener('mousemove', canvasHover);
     new Promise((resolve) => loadGraph(input.value, resolve))
@@ -52,22 +49,24 @@ graphButton.addEventListener('click', () => {
         });
 });
 
-zoomIn.addEventListener('click', () => {
+zoomButtons[0].addEventListener('click', () => {
     scale *= 2;
     graphButton.click();
 })
-zoomR.addEventListener('click', () => {
+zoomButtons[1].addEventListener('click', () => {
     if (scale !== 1) {
         scale = 1;
         graphButton.click();
     }
 })
-zoomOut.addEventListener('click', () => {
-    scale *= .5;
+zoomButtons[2].addEventListener('click', () => {
+    scale /= 2;
     graphButton.click();
 })
 zoomInput.addEventListener('input', () => {
     zoomInput.value = zoomInput.value.replace(/[^0-9.]/g, '');
+    if (isNaN(scaleInput.value)) zoomInput.value = 1;
+
     if ([...zoomInput.value].filter(x => x === '.').length > 1) {
         var ziArray = zoomInput.value.split('.');
         zoomInput.value = ziArray[0] + '.' + ziArray.slice(1).join('');
@@ -81,8 +80,8 @@ zoomForm.addEventListener('submit', e => {
     }
 })
 scaleInput.addEventListener('input', () => {
-    scaleInput.value = scaleInput.value.replace(/[^0-9]/g, '');
-    warning.style.display = scaleInput.value > 200 ? 'inline' : 'none';
+    if (isNaN(scaleInput.value)) scaleInput.value = 250;
+    warning.style.display = scaleInput.value > 250 ? 'inline' : 'none';
 });
 scaleForm.addEventListener('submit', e => {
     e.preventDefault();
