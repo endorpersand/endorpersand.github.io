@@ -1,2 +1,5 @@
 old_projdump/
 **/.DS_Store
+**/node_modules
+**/dist
+**/.parcel-cache

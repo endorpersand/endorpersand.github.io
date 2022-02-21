@@ -1,0 +1,16 @@
+{
+    "files": [
+        "src/"
+    ],
+    "scripts": {
+        "start": "parcel serve src/index.html",
+        "build": "cross-env NODE_ENV=production parcel build src/index.html --public-url .",
+        "deploy": "gh-pages -d dist"
+    },
+    "dependencies": {
+        "cross-env": "^7.0.3",
+        "gh-pages": "^3.2.3",
+        "parcel": "^2.3.2",
+        "typescript": "^4.5.5"
+    }
+}
