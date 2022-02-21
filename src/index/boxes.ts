@@ -123,3 +123,5 @@ function interpolate(clrs: RGB[], dist: number[]) {
     }
     return channels as RGB;
 }
+
+export {}; // recognize as module
