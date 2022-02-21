@@ -8,8 +8,10 @@
         "deploy": "gh-pages -d dist"
     },
     "dependencies": {
+        "complex.js": "^2.0.15",
         "cross-env": "^7.0.3",
         "gh-pages": "^3.2.3",
+        "mathjs": "^10.1.1",
         "parcel": "^2.3.2",
         "typescript": "^4.5.5"
     }
