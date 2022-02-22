@@ -86,9 +86,9 @@ function updateResultTex() {
             taytay = taylor(tex.expr, findN(), +centerX.value, +centerY.value);
         } catch (e) {
             console.log(e);
-            if (e instanceof Error && e.message.startsWith("Undefined symbol")) {
+            if (e instanceof Error && e.message.startsWith("Undefined ")) {
                 let msg = e.message;
-                let sym = msg.slice("Undefined symbol ".length);
+                let sym = msg.slice("Undefined symbol ".length); // can also be "Undefined function", but not that big of a deal
                 if (sym.includes("x") || sym.includes("y")) {
                     msg += " (try adding * here?)"
                 }
