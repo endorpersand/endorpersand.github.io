@@ -99,6 +99,9 @@ function displayTaylor(ti: TaylorInformation): string {
             else if (c == -1) coeff = "-";
             else coeff = stringify(c) + " * ";
 
+            if (expr.type === "OperatorNode" && (expr.op === "+" || expr.op === "-") && coeff !== "") {
+                return coeff + `(${es})`;
+            }
             return coeff + es;
         }
     }).filter(x => x != "0");
