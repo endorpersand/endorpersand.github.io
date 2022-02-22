@@ -23,11 +23,11 @@ let centerDiv = document.querySelector("#centerDiv")!      as HTMLDivElement,
 
 let tex: MaybeTex = {valid: false, expr: ""};
 
-updateFuncTex();
-updateResultTex();
 funcInput.addEventListener("input", updateFuncTex);
 document.querySelectorAll("input[name=approx]").forEach(i => i.addEventListener("change", radioUpdate));
 computeButton.addEventListener("click", updateResultTex);
+updateFuncTex();
+updateResultTex();
 
 function verifyExpression(expr: string, replEq = "="): MaybeTex {
     let fexpr = "f(x, y) = " + expr;
@@ -52,7 +52,9 @@ function findN() {
 }
 
 function updateTex() {
-    MathJax.typeset();
+    if ("typeset" in MathJax) {
+        MathJax.typeset();
+    }
 }
 
 function updateFuncTex() {
