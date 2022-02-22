@@ -31,11 +31,20 @@ computeButton.addEventListener("click", updateResultTex);
 updateFuncTex();
 updateResultTex();
 
-function verifyExpression(expr: string, replEq = "="): MaybeTex {
+function texHandler(node: math.MathNode, options?: object) {
+    if (node.type === "OperatorNode" && node.op === "*") {
+        let [x, y] = node.args;
+        return `${x.toTex(options)}${y.toTex(options)}`;
+    }
+}
+function verifyExpression(expr: string, replEq = "=", explicitMul = true): MaybeTex {
     let fexpr = "f(x, y) = " + expr;
     let tex;
+
+    let options = explicitMul ? {} : {handler: texHandler};
+
     try {
-        tex = math.parse(fexpr).toTex().replace(":=", replEq);
+        tex = math.parse(fexpr).toTex(options).replace(":=", replEq);
     } catch {
         return {valid: false, expr}
     }
@@ -97,7 +106,7 @@ function updateResultTex() {
                 return;
             }
         }
-        let rTex = verifyExpression(taytay, "\\approx");
+        let rTex = verifyExpression(taytay, "\\approx", false);
         if (rTex.valid) {
             resultTex.innerHTML = `$$${rTex.tex}$$`;
             succ = true;
@@ -110,10 +119,6 @@ function updateResultTex() {
 }
 
 function radioUpdate() {
-    if (approxNRadio.checked) {
-        approxNInput.disabled = false;
-    } else {
-        approxNInput.disabled = true;
-    }
+    approxNInput.disabled = !approxNRadio.checked;
     grayResult();
 }

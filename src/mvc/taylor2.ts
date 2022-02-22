@@ -63,21 +63,13 @@ function taylorComponents(expr: string, n = 2, a = 0, b = 0): TaylorInformation 
             let e = order[j].evaluate({x: a, y: b});
             let f = math.factorial(i);
 
-            let fullCoeff: number | math.Fraction = math.fraction(math.multiply(c, e), f) as math.Fraction;
+            let ee = math.fraction(e);
+            let fullCoeff: number | math.Fraction = math.multiply(math.fraction(c, f), ee) as math.Fraction;
             approxComponents.push([fullCoeff, i - j, j]);
         }
     }
 
     return [a, b, approxComponents];
-}
-
-function buildTerm(variable: string, shift: number, exp: number) {
-    if (exp != 0) {
-        let p = math.simplify(`${variable} - ${shift}`).toString();
-        if (p.length != variable.length) p = `(${p})`;
-
-        return math.simplify(`a ^ ${exp}`).toString().replace("a", p);
-    }
 }
 
 function stringify(v: number | math.Fraction) {
@@ -90,40 +82,26 @@ function stringify(v: number | math.Fraction) {
 function displayTaylor(ti: TaylorInformation): string {
     let [a, b, tc] = ti;
     let taylorStringComponents = tc.map(([c, xe, ye]) => {
-        let segs: string[] = [];
-        if (c == 0) return;
-        
-        let unitCoeff = c == 1 || c == -1;
-        if (!unitCoeff) {
-            segs.push(stringify(c));
+        let segs: {h?: math.MathNode, k?: math.MathNode} = {};
+        if (c == 0) return "0";
+
+        segs.h = math.parse(`(x - ${a}) ^ ${xe}`);
+        segs.k = math.parse(`(y - ${b}) ^ ${ye}`);
+
+        let expr = math.simplify("h * k", segs);
+
+        let es = expr.toString();
+        if (es === "1") {
+            return stringify(c);
+        } else {
+            let coeff;
+            if (c == 1) coeff = "";
+            else if (c == -1) coeff = "-";
+            else coeff = stringify(c) + " * ";
+
+            return coeff + es;
         }
-        let xt = buildTerm("x", a, xe);
-        let yt = buildTerm("y", b, ye);
-        if (typeof xt === "string") {
-            segs.push(xt);
-        }
-        if (typeof yt === "string") {
-            if (xt?.length == 1) segs.push("*");
-            segs.push(yt);
-        }
-    
-        if (unitCoeff) {
-            // if coeff is 1 or -1, then the sign should be displayed in the first term
-            // if this term is actually a x^0y^0 term, display -1 or 1
-    
-            let first;
-            if (segs.length == 0) {
-                first = "1";
-            } else {
-                first = segs[0];
-            }
-    
-            if (c == -1) first = "-" + first;
-    
-            segs[0] = first;
-        }
-        return segs.join("");
-    }).filter(x => typeof x != "undefined") as string[];
+    }).filter(x => x != "0");
 
     if (taylorStringComponents.length == 0) return "0";
 
