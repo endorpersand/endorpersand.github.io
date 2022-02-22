@@ -82,7 +82,7 @@ function buildTerm(variable: string, shift: number, exp: number) {
 
 function stringify(v: number | math.Fraction) {
     if (math.isInteger(v)) {
-        v = math.round(v);
+        v = math.number(v) as number;
     }
     return math.format(v);
 }
