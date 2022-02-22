@@ -23,6 +23,8 @@ let centerDiv = document.querySelector("#centerDiv")!      as HTMLDivElement,
 
 let tex: MaybeTex = {valid: false, expr: ""};
 
+centerX.addEventListener("input", grayResult);
+centerY.addEventListener("input", grayResult);
 funcInput.addEventListener("input", updateFuncTex);
 document.querySelectorAll("input[name=approx]").forEach(i => i.addEventListener("change", radioUpdate));
 computeButton.addEventListener("click", updateResultTex);
@@ -47,8 +49,12 @@ function findN() {
         .filter(e => e.checked)
         .map(e => e.value)[0];
     
-    if (v != "") return +v;
+    if (+v != 0) return +v;
     return +approxNInput.value;
+}
+
+function grayResult() {
+    resultTex.classList.add("notCurrentFunc");
 }
 
 function updateTex() {
@@ -59,13 +65,14 @@ function updateTex() {
 
 function updateFuncTex() {
     tex = verifyExpression(funcInput.value);
-    resultTex.classList.add("notCurrentFunc");
 
     if (tex.valid) {
         funcTex.innerHTML = `$$${tex.tex}$$`;
     } else {
         funcTex.innerHTML = `$$\\color{red}{?}$$`
     }
+
+    grayResult();
     updateTex();
 }
 
@@ -108,4 +115,5 @@ function radioUpdate() {
     } else {
         approxNInput.disabled = true;
     }
+    grayResult();
 }

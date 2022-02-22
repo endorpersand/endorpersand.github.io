@@ -37,7 +37,7 @@
             <input size="2" placeholder="b" value="0">)
         </div><br>
         <div id="func">$f(x, y) =$ <input value="x * sin(y)"></div>
-        <div id="funcTex">$$2^2 - 2$$</div>
+        <div id="funcTex">$$f(x,y) = xy$$</div>
         <div>
             <b>Type of approximation:</b><br>
             <input type='radio' name='approx' id='app1' value='1'>
@@ -46,12 +46,12 @@
             <label for='app2'>Quadratic (n = 2)</label><br>
             <input type='radio' name='approx' id='app3' value='3'>
             <label for='app3'>Cubic (n = 3)</label><br>
-            <input type='radio' name='approx' id='appn' value=''>
+            <input type='radio' name='approx' id='appn' value='0'>
             <label for='appn'>n = </label>
             <input size="2" value='4' id="appninput" disabled>
         </div><br>
         <button class="bigbutton" id="compute">Compute</button>
-        <div id="resultTex">$$2^2 - 2$$</div>
+        <div id="resultTex">$$f(x,y) = xy$$</div>
         <script type="module" src='taylor2/display.ts'></script>
     </body>
 </html>
