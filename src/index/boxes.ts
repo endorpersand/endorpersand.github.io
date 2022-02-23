@@ -48,7 +48,7 @@ function setColors(cornerClrs: [RGB, RGB, RGB, RGB]) {
         let normPos = [pr / (rows - 1), pc / (cols - 1)] as [number, number];
         let clr = interpolate(cornerClrs, normPos);
 
-        s.style.backgroundColor = rgb(clr);
+        s.style.backgroundColor = hex(clr);
 
         let hexText = s.querySelector('.colhex')!;
         hexText.textContent = hex(clr);
@@ -62,10 +62,6 @@ function randRGB(min = 0, max = 256): RGB {
     // [min, max)
     return Array.from({length: 3}, () => randInt(min, max)) as RGB;
 }
-function rgb(arr: RGB) {
-    // converts rgb array => rgb(#, #, #) notation in css
-    return `rgb(${arr.join(',')})`
-}
 function hex(arr: RGB) {
     // converts rgb array => hex notation
     return `#${arr.map(x => Math.round(x).toString(16).padStart(2, "0")).join('')}`
@@ -75,9 +71,11 @@ function asCoord(i: number): Coord {
     return [Math.floor(i / cols), i % cols];
 }
 
-function zip<T, U>(t: T[], u: U[]): [T, U][] {
-    return t.map((t, i) => [t, u[i]]);
+function zip<A extends any[]>(...v: {[I in keyof A]: A[I][]}): A[] {
+    let length = v[0].length;
+    return Array.from({length}, (_, i) => v.map(a => a[i]) as A);
 }
+
 function lerp<T extends number[]>(pts: [T, T], dist: number): T {
     let [p, q] = pts;
     let length = p.length;
