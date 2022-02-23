@@ -89,7 +89,7 @@ function bilerp<T extends number[]>(pts: [T, T, T, T], dist: [number, number]): 
     type ArrPair = [T, T];
     let [px, py] = dist;
     let [top, bottom] = [pts.slice(0, 2) as ArrPair, pts.slice(2, 4) as ArrPair]
-    return lerp([lerp(top, px), lerp(bottom, px)], py);
+    return lerp([lerp(bottom, px), lerp(top, px)], py);
 }
 
 function calcWeights(dist: [number, number]) {
