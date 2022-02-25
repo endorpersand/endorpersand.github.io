@@ -18,8 +18,8 @@ let ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 
 type ComplexFunction = (z: complex.Complex) => complex.Complex | number;
-let f: ComplexFunction = (z => z);
-let d: ComplexFunction = (z => z);
+let f: ComplexFunction = (z => z); // fn used to compute colors
+let d: ComplexFunction = (z => z); // actual values of the function
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [complex.Complex, complex.Complex];
 
@@ -106,30 +106,21 @@ funcForm.addEventListener('submit', e => {
     graphButton.click();
 })
 
-function loadGraph(fstr: string) {
-    //let bfunc = (fz, inv, pow = 1/2) => inv ? 1 - 2 * Math.atan(math.abs(fz)) / Math.PI : 2 * Math.atan(math.abs(fz)) / Math.PI // arctangent calculation
-    
+function loadGraph(fstr: string) {    
     let inverse = false; // signifies if to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
     let node = math.simplify(fstr);
-    let constant = 1;
-    //d = math.compile('f(z)='+node).eval();
-    //while (node.fn == 'unaryMinus' || node.fn == 'divide') {
-    //	if (node.fn == 'unaryMinus') {
-    //		constant *= -1;
-    //		node = node.args[0];
-    //	}
-    //	if (node.fn == 'divide') {
-    //		if (isNaN(node.args[0])) break;
-    //	}
-    //}
-    //f = math.compile('f(z)='+math.simplify(`(${node})/${constant}`))
-    if (isOperator(node) && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
-        d = math.compile('f(z)='+node).evaluate();
-        [constant, node] = [+node.args[0], node.args[1]]
-        f = math.compile(`f(z)=(${node})/${constant}`).evaluate();
+    let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
+
+    if (node.type == "OperatorNode" && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
+        fnode.expr = node;
+        d = fnode.evaluate();
+        
+        node.args.reverse();
+        f = fnode.evaluate();
         inverse = true;
     } else {
-        d = f = math.compile('f(z)=' + node).evaluate();
+        fnode.expr = node;
+        d = f = fnode.evaluate();
     }
 
     let imageData = ctx.createImageData(canvas.width, canvas.height);
@@ -139,14 +130,14 @@ function loadGraph(fstr: string) {
             let fz = forceComplex(f( convPlanes(i, j) ));
             // if (typeof fz !== 'number' && fz.type !== 'Complex') throw new TypeError('Input value is not a number');
             if (!Number.isFinite(fz.re) || !Number.isFinite(fz.im)) {
-                let infColor = +!inverse * 0xFF;
-                arr32[canvas.width * j + i] = (0xFF << 24) | (infColor << 16) | (infColor << 8) | infColor;
+                let infColor = +!inverse * 0xFFFFFF;
+                arr32[canvas.width * j + i] = (0xFF << 24) | infColor;
                 continue;
             }
             // get color
             let hue, brightness, c, x, m, r, g, b;
             hue = mod((inverse ? -1 : 1) * fz.arg() * 3 / Math.PI, 6); // hue [0,6)
-            brightness = brightnessFromMag(fz, inverse);
+            brightness = bfunc(fz, inverse);
             c = 1 - Math.abs(2 * brightness - 1);
             x = c * (1 - Math.abs(mod(hue, 2) - 1));
             m = brightness - c / 2;
@@ -181,17 +172,19 @@ function forceComplex(z: number | complex.Complex) {
     return math.complex(z as any) as unknown as complex.Complex;
 }
 
-function brightnessFromMag(fz: complex.Complex, inv: boolean, pow = 1/2) {
-    let mag = fz.abs();
-    let b = 1 / (mag ** pow + 1);
-    if (inv) {
-        return b;
-    }
-    return 1 - b;
-}
+function bfunc(z: complex.Complex, inv: boolean) {
+    // bfunc needs to match the identities:
+    // b(1/x) = 1 - b(x)
+    // b(0) = 0
 
-function isOperator(n: math.MathNode): n is math.OperatorNode {
-    return "fn" in n;
+    // the current impl uses b(x) = 1 - 1/(x^n + 1)
+    // another possible impl: b(x) = 2 * atan(x) / pi
+
+    let x = z.abs();
+    let n = 1/2;
+    let b = 1 / (x ** n + 1);
+
+    return inv ? b : 1 - b;
 }
 
 function mod(x: number, y: number) {
