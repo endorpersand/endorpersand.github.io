@@ -37,7 +37,6 @@ input.addEventListener('input', () => {
 })
 graphButton.addEventListener('click', () => {
     zcoord.classList.remove('error');
-    zcoord.onload = () => console.log('a');
     zoomInput.value = scale.toString();
 
     let size = +scaleInput.value * 2 + 1;
@@ -45,7 +44,9 @@ graphButton.addEventListener('click', () => {
     [domain[0].textContent, domain[1].textContent] = domaind.map(x => x.div(scale).toString());
     zcoord.textContent = 'Graphing...'
     canvas.removeEventListener('mousemove', canvasHover);
-    new Promise((resolve, reject) => loadGraph(input.value, resolve))
+
+    waitUntilNextFrame()
+        .then(() => loadGraph(input.value))
         .then(() => {
             zcoord.textContent = 'Done.';
             setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
@@ -105,7 +106,7 @@ funcForm.addEventListener('submit', e => {
     graphButton.click();
 })
 
-function loadGraph(fstr: string, resolve: (v?: unknown) => void) {
+function loadGraph(fstr: string) {
     //let bfunc = (fz, inv, pow = 1/2) => inv ? 1 - 2 * Math.atan(math.abs(fz)) / Math.PI : 2 * Math.atan(math.abs(fz)) / Math.PI // arctangent calculation
     
     let inverse = false; // signifies if to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
@@ -165,8 +166,6 @@ function loadGraph(fstr: string, resolve: (v?: unknown) => void) {
             }
     }
     ctx.putImageData(imageData, 0, 0);
-
-    resolve();
 }
 
 function convPlanes(x: number, y: number) {
@@ -197,6 +196,17 @@ function isOperator(n: math.MathNode): n is math.OperatorNode {
 
 function mod(x: number, y: number) {
     return ((x % y) + y) % y;
+}
+
+function waitUntilNextFrame() {
+    return new Promise((resolve, reject) => {
+        // this runs before the next repaint
+        requestAnimationFrame(() => {
+
+            // this runs before the next next repaint (so, after the next repaint)
+            requestAnimationFrame(resolve);
+        });
+    })
 }
 
 graphButton.click();
