@@ -3,9 +3,7 @@ import { Complex, CanvasData, Evaluator } from "./types";
 const math = create(all);
 
 onmessage = function (e) {
-    let [fstr, width, height, scale] = e.data;
-    let cd: CanvasData = {width, height, scale};
-    
+    let [fstr, cd]: [string, CanvasData] = e.data;
     let ev = buildEvaluator(fstr);
     postMessage(computeBuffer(ev, cd));
 }

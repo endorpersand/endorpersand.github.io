@@ -144,7 +144,12 @@ function startWorker(fstr: string) {
         markDone();
     }
     w.onerror = onComputeError;
-    w.postMessage([fstr, canvas.width, canvas.height, scale]);
+    let msg: [string, CanvasData] = [fstr, {
+        width: canvas.width,
+        height: canvas.height,
+        scale
+    }];
+    w.postMessage(msg);
     return w;
 }
 
