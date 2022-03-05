@@ -18,6 +18,7 @@ const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let worker: Worker | undefined = undefined;
 let d: ComplexFunction = (z => z); // actual values of the function
+let workStart: number;
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
 
@@ -56,6 +57,7 @@ graphButton.addEventListener('click', () => {
             worker = undefined;
         }
         worker = startWorker(fstr);
+        workStart = performance.now();
     } catch (e) {
         onComputeError(e as any);
         throw e;
@@ -144,7 +146,8 @@ function startWorker(fstr: string) {
 }
 
 function markDone() {
-    zcoord.textContent = "Done.";
+    let t = Math.trunc(performance.now() - workStart);
+    zcoord.textContent = `Done in ${t}ms.`;
     reenableHover();
 }
 
