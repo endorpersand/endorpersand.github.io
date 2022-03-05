@@ -17,9 +17,10 @@ const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement
 const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let d: ComplexFunction = (z => z); // actual values of the function
-
+let inProcess = 0;
 let worker: Worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
 worker.onmessage = function (e) {
+    if (--inProcess != 0) return;
     let [arr, t]: [Uint8ClampedArray, number] = e.data;
     let dat = new ImageData(arr, canvas.width, canvas.height);
     ctx.putImageData(dat, 0, 0);
@@ -59,6 +60,7 @@ graphButton.addEventListener('click', () => {
     try {
         d = math.evaluate(`f(z) = ${fstr}`);
         startWorker(worker, fstr);
+        inProcess++;
     } catch (e) {
         onComputeError(e as any);
         throw e;
