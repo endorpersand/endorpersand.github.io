@@ -3,10 +3,11 @@ import { Complex, CanvasData, Evaluator } from "../types";
 const math = create(all);
 
 onmessage = function (e) {
+    let start = this.performance.now();
     let [fstr, cd]: [string, CanvasData] = e.data;
     let ev = buildEvaluator(fstr);
     let buf = computeBuffer(ev, cd);
-    postMessage(new Uint8ClampedArray(buf), [buf] as any);
+    postMessage([new Uint8ClampedArray(buf), Math.trunc(this.performance.now() - start)], [buf] as any);
 }
 
 function buildEvaluator(fstr: string): Evaluator {

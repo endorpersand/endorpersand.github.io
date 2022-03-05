@@ -20,14 +20,12 @@ let d: ComplexFunction = (z => z); // actual values of the function
 
 let worker: Worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
 worker.onmessage = function (e) {
-    let arr: Uint8ClampedArray = e.data;
+    let [arr, t]: [Uint8ClampedArray, number] = e.data;
     let dat = new ImageData(arr, canvas.width, canvas.height);
     ctx.putImageData(dat, 0, 0);
-    markDone();
+    markDone(t);
 }
 worker.onerror = onComputeError;
-
-let workStart: number;
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
 
@@ -61,7 +59,6 @@ graphButton.addEventListener('click', () => {
     try {
         d = math.evaluate(`f(z) = ${fstr}`);
         startWorker(worker, fstr);
-        workStart = performance.now();
     } catch (e) {
         onComputeError(e as any);
         throw e;
@@ -140,8 +137,7 @@ function startWorker(w: Worker, fstr: string) {
     w.postMessage(msg);
 }
 
-function markDone() {
-    let t = Math.trunc(performance.now() - workStart);
+function markDone(t: number) {
     zcoord.textContent = `Done in ${t}ms.`;
     reenableHover();
 }
