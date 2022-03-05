@@ -16,8 +16,17 @@ const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement
       domain      = document.querySelectorAll('.domain');
 const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
-let worker: Worker | undefined = undefined;
 let d: ComplexFunction = (z => z); // actual values of the function
+
+let worker: Worker = new Worker(new URL("./compute", import.meta.url), {type: "module"});
+worker.onmessage = function (e) {
+    let arr: Uint8ClampedArray = e.data;
+    let dat = new ImageData(arr, canvas.width, canvas.height);
+    ctx.putImageData(dat, 0, 0);
+    markDone();
+}
+worker.onerror = onComputeError;
+
 let workStart: number;
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
@@ -51,12 +60,7 @@ graphButton.addEventListener('click', () => {
     let fstr = input.value;
     try {
         d = math.evaluate(`f(z) = ${fstr}`);
-
-        if (typeof worker !== "undefined") {
-            worker.terminate();
-            worker = undefined;
-        }
-        worker = startWorker(fstr);
+        startWorker(worker, fstr);
         workStart = performance.now();
     } catch (e) {
         onComputeError(e as any);
@@ -127,22 +131,13 @@ function convPlanes(x: number, y: number) {
     return math.complex(cmx, cmy) as unknown as Complex;
 }
 
-function startWorker(fstr: string) {
-    let w = new Worker(new URL("./compute", import.meta.url), {type: "module"});
-    w.onmessage = function (e) {
-        let arr: Uint8ClampedArray = e.data;
-        let dat = new ImageData(arr, canvas.width, canvas.height);
-        ctx.putImageData(dat, 0, 0);
-        markDone();
-    }
-    w.onerror = onComputeError;
+function startWorker(w: Worker, fstr: string) {
     let msg: [string, CanvasData] = [fstr, {
         width: canvas.width,
         height: canvas.height,
         scale
     }];
     w.postMessage(msg);
-    return w;
 }
 
 function markDone() {
