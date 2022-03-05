@@ -2,19 +2,19 @@ import { create, all } from "mathjs";
 import { Complex, ComplexFunction, CanvasData } from "./types";
 const math = create(all);
 
-let canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
-    funcForm    = document.querySelector('#funcForm')!    as HTMLFormElement,
-    input       = funcForm.querySelector('input')!        as HTMLInputElement,
-    graphButton = document.querySelector('#graphButton')! as HTMLButtonElement,
-    zcoord      = document.querySelector('#zcoord')!      as HTMLDivElement,
-    zoomButtons = document.querySelectorAll('button.zoom'),
-    zoomForm    = document.querySelector('#zoomForm')!    as HTMLFormElement,
-    zoomInput   = zoomForm.querySelector('input')!        as HTMLInputElement,
-    scaleForm   = document.querySelector('#scaleForm')!   as HTMLFormElement,
-    scaleInput  = scaleForm.querySelector('input')!       as HTMLInputElement,
-    warning     = document.querySelector('#warning')!     as HTMLDivElement,
-    domain      = document.querySelectorAll('.domain');
-let ctx = canvas.getContext('2d', {alpha: false})!;
+const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
+      funcForm    = document.querySelector('#funcForm')!    as HTMLFormElement,
+      input       = funcForm.querySelector('input')!        as HTMLInputElement,
+      graphButton = document.querySelector('#graphButton')! as HTMLButtonElement,
+      zcoord      = document.querySelector('#zcoord')!      as HTMLDivElement,
+      zoomButtons = document.querySelectorAll('button.zoom'),
+      zoomForm    = document.querySelector('#zoomForm')!    as HTMLFormElement,
+      zoomInput   = zoomForm.querySelector('input')!        as HTMLInputElement,
+      scaleForm   = document.querySelector('#scaleForm')!   as HTMLFormElement,
+      scaleInput  = scaleForm.querySelector('input')!       as HTMLInputElement,
+      warning     = document.querySelector('#warning')!     as HTMLDivElement,
+      domain      = document.querySelectorAll('.domain');
+const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let worker: Worker | undefined = undefined;
 let d: ComplexFunction = (z => z); // actual values of the function
@@ -60,16 +60,6 @@ graphButton.addEventListener('click', () => {
         onComputeError(e as any);
         throw e;
     }
-    // new Promise(() => {})
-    //     .then(() => {
-    //         zcoord.textContent = 'Done.';
-    //         setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
-    //     })
-    //     .catch(e => {
-    //         zcoord.classList.add('error');
-    //         zcoord.textContent = e;
-    //         throw e;
-    //     });
 });
 
 zoomButtons[0].addEventListener('click', () => {
