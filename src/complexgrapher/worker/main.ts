@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { Complex, CanvasData, Evaluator } from "./types";
+import { Complex, CanvasData, Evaluator } from "../types";
 const math = create(all);
 
 onmessage = function (e) {

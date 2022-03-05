@@ -18,7 +18,7 @@ const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let d: ComplexFunction = (z => z); // actual values of the function
 
-let worker: Worker = new Worker(new URL("./compute", import.meta.url), {type: "module"});
+let worker: Worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
 worker.onmessage = function (e) {
     let arr: Uint8ClampedArray = e.data;
     let dat = new ImageData(arr, canvas.width, canvas.height);
