@@ -59,9 +59,7 @@ graphButton.addEventListener('click', () => {
         }
         worker = startWorker(fstr);
     } catch (e) {
-        zcoord.classList.add('error');
-        zcoord.textContent = String(e);
-        setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
+        onComputeError(e as any);
         throw e;
     }
     // new Promise(() => {})
@@ -147,11 +145,27 @@ function startWorker(fstr: string) {
         ctx.putImageData(dat, 0, 0);
         markDone();
     }
+    w.onerror = onComputeError;
     w.postMessage([fstr, canvas.width, canvas.height, scale]);
     return w;
 }
 
 function markDone() {
+    zcoord.textContent = "Done.";
+    reenableHover();
+}
+
+function onComputeError(e: Error | ErrorEvent) {
+    let err = e instanceof ErrorEvent ? e.message : e;
+
+    canvas.removeEventListener('mousemove', canvasHover);
+    zcoord.classList.add('error');
+    zcoord.textContent = String(err);
+    reenableHover();
+}
+
+function reenableHover() {
     setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
 }
+
 graphButton.click();
