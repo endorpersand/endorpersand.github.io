@@ -18,7 +18,12 @@ let ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 
 type ComplexFunction = (z: complex.Complex) => complex.Complex | number;
-let f: ComplexFunction = (z => z); // fn used to compute colors
+// defines info to calculate the mapped complex value used in defining the color of the point
+interface Evaluator {
+    f: ComplexFunction,
+    // signifies whether or not to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
+    inverse: boolean
+}
 let d: ComplexFunction = (z => z); // actual values of the function
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [complex.Complex, complex.Complex];
@@ -30,7 +35,11 @@ function canvasHover(e: MouseEvent) {
 
 canvas.addEventListener('mousemove', canvasHover);
 canvas.addEventListener('click', e => {
-    console.log(`z = ${convPlanes(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)},\nf(z) = ${d(convPlanes(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop))}`);
+    let cx = e.pageX - canvas.offsetLeft;
+    let cy = e.pageY - canvas.offsetTop;
+
+    let z = convPlanes(cx, cy);
+    console.log(`z = ${z},\nf(z) = ${d(z)}`);
 })
 input.addEventListener('input', () => {
     input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, ''); //removes invalid characters
@@ -106,22 +115,24 @@ funcForm.addEventListener('submit', e => {
     graphButton.click();
 })
 
-function loadGraph(fstr: string) {    
-    let inverse = false; // signifies if to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
+function buildEvaluator(fstr: string): Evaluator {
     let node = math.simplify(fstr);
     let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
 
+    fnode.expr = node;
+    d = fnode.evaluate();
+
     if (node.type == "OperatorNode" && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
-        fnode.expr = node;
-        d = fnode.evaluate();
-        
         node.args.reverse();
-        f = fnode.evaluate();
-        inverse = true;
+        return { f: fnode.evaluate(), inverse: true };
     } else {
-        fnode.expr = node;
-        d = f = fnode.evaluate();
+        return { f: d, inverse: false };
     }
+
+}
+
+function loadGraph(fstr: string) {
+    let {f, inverse} = buildEvaluator(fstr);
 
     let imageData = ctx.createImageData(canvas.width, canvas.height);
     let arr32 = new Uint32Array(imageData.data.buffer);
@@ -161,10 +172,10 @@ function loadGraph(fstr: string) {
 
 function convPlanes(x: number, y: number) {
     //converts xy pixel plane to complex plane
-
-    let cx =  (x - (canvas.width + 1) / 2) / ((canvas.width - 1) / 4 * scale),
-        cy = -(y - (canvas.width + 1) / 2) / ((canvas.height - 1) / 4 * scale);
-    return math.complex(cx, cy) as unknown as complex.Complex;
+    let [cx, cy] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
+    let cmx =  (x - cx) / (cx / 2) / scale,
+        cmy = -(y - cy) / (cy / 2) / scale;
+    return math.complex(cmx, cmy) as unknown as complex.Complex;
 }
 
 function forceComplex(z: number | complex.Complex) {
