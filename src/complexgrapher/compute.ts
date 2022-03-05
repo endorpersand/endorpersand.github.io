@@ -5,7 +5,8 @@ const math = create(all);
 onmessage = function (e) {
     let [fstr, cd]: [string, CanvasData] = e.data;
     let ev = buildEvaluator(fstr);
-    postMessage(computeBuffer(ev, cd));
+    let buf = computeBuffer(ev, cd);
+    postMessage(new Uint8ClampedArray(buf), [buf] as any);
 }
 
 function buildEvaluator(fstr: string): Evaluator {

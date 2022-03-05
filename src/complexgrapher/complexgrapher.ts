@@ -128,8 +128,8 @@ function convPlanes(x: number, y: number) {
 function startWorker(fstr: string) {
     let w = new Worker(new URL("./compute", import.meta.url), {type: "module"});
     w.onmessage = function (e) {
-        let buf: ArrayBuffer = e.data;
-        let dat = new ImageData(new Uint8ClampedArray(buf), canvas.width, canvas.height);
+        let arr: Uint8ClampedArray = e.data;
+        let dat = new ImageData(arr, canvas.width, canvas.height);
         ctx.putImageData(dat, 0, 0);
         markDone();
     }
