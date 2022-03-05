@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import complex from "complex.js";
+import { Complex, CanvasData, Evaluator } from "./types";
 const math = create(all);
 
 onmessage = function (e) {
@@ -8,19 +8,6 @@ onmessage = function (e) {
     
     let ev = buildEvaluator(fstr);
     postMessage(computeBuffer(ev, cd));
-}
-
-type ComplexFunction = (z: complex.Complex) => complex.Complex | number;
-interface CanvasData {
-    width: number,
-    height: number,
-    scale: number
-}
-
-interface Evaluator {
-    f: ComplexFunction,
-    // signifies whether or not to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
-    inverse: boolean
 }
 
 function buildEvaluator(fstr: string): Evaluator {
@@ -94,15 +81,15 @@ function convPlanes(x: number, y: number, cd: CanvasData) {
     let [rx, ry] = [(width - 1) / 2, (height - 1) / 2];
     let cmx =  (x - rx) / (rx / 2) / scale,
         cmy = -(y - ry) / (ry / 2) / scale;
-    return math.complex(cmx, cmy) as unknown as complex.Complex;
+    return math.complex(cmx, cmy) as unknown as Complex;
 }
 
-function forceComplex(z: number | complex.Complex) {
+function forceComplex(z: number | Complex) {
     // z as any is ok here
-    return math.complex(z as any) as unknown as complex.Complex;
+    return math.complex(z as any) as unknown as Complex;
 }
 
-function bfunc(z: complex.Complex, inv: boolean) {
+function bfunc(z: Complex, inv: boolean) {
     // bfunc needs to match the identities:
     // b(1/x) = 1 - b(x)
     // b(0) = 0

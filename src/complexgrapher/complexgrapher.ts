@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import complex from "complex.js";
+import { Complex, ComplexFunction, CanvasData } from "./types";
 const math = create(all);
 
 let canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
@@ -17,11 +17,9 @@ let canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
 let ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let worker: Worker | undefined = undefined;
-
-type ComplexFunction = (z: complex.Complex) => complex.Complex | number;
 let d: ComplexFunction = (z => z); // actual values of the function
 
-var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [complex.Complex, complex.Complex];
+var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
 
 function canvasHover(e: MouseEvent) {
     zcoord.classList.remove('error');
@@ -134,7 +132,7 @@ function convPlanes(x: number, y: number) {
     let [rx, ry] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
     let cmx =  (x - rx) / (rx / 2) / scale,
         cmy = -(y - ry) / (ry / 2) / scale;
-    return math.complex(cmx, cmy) as unknown as complex.Complex;
+    return math.complex(cmx, cmy) as unknown as Complex;
 }
 
 function startWorker(fstr: string) {
