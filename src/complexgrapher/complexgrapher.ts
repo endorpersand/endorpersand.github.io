@@ -16,14 +16,9 @@ let canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
     domain      = document.querySelectorAll('.domain');
 let ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
+let worker: Worker | undefined = undefined;
 
 type ComplexFunction = (z: complex.Complex) => complex.Complex | number;
-// defines info to calculate the mapped complex value used in defining the color of the point
-interface Evaluator {
-    f: ComplexFunction,
-    // signifies whether or not to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
-    inverse: boolean
-}
 let d: ComplexFunction = (z => z); // actual values of the function
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [complex.Complex, complex.Complex];
@@ -54,18 +49,31 @@ graphButton.addEventListener('click', () => {
     zcoord.textContent = 'Graphing...'
     canvas.removeEventListener('mousemove', canvasHover);
 
-    waitUntilNextFrame()
-        .then(() => loadGraph(input.value))
-        .then(() => {
-            zcoord.textContent = 'Done.';
-            setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
-        })
-        .catch(e => {
-            zcoord.classList.add('error');
-            zcoord.textContent = e;
-            setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
-            throw e;
-        });
+    let fstr = input.value;
+    try {
+        d = math.evaluate(`f(z) = ${fstr}`);
+
+        if (typeof worker !== "undefined") {
+            worker.terminate();
+            worker = undefined;
+        }
+        worker = startWorker(fstr);
+    } catch (e) {
+        zcoord.classList.add('error');
+        zcoord.textContent = String(e);
+        setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
+        throw e;
+    }
+    // new Promise(() => {})
+    //     .then(() => {
+    //         zcoord.textContent = 'Done.';
+    //         setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
+    //     })
+    //     .catch(e => {
+    //         zcoord.classList.add('error');
+    //         zcoord.textContent = e;
+    //         throw e;
+    //     });
 });
 
 zoomButtons[0].addEventListener('click', () => {
@@ -115,102 +123,35 @@ funcForm.addEventListener('submit', e => {
     graphButton.click();
 })
 
-function buildEvaluator(fstr: string): Evaluator {
-    let node = math.simplify(fstr);
-    let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
-
-    fnode.expr = node;
-    d = fnode.evaluate();
-
-    if (node.type == "OperatorNode" && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
-        node.args.reverse();
-        return { f: fnode.evaluate(), inverse: true };
-    } else {
-        return { f: d, inverse: false };
-    }
-
-}
-
-function loadGraph(fstr: string) {
-    let {f, inverse} = buildEvaluator(fstr);
-
-    let imageData = ctx.createImageData(canvas.width, canvas.height);
-    let arr32 = new Uint32Array(imageData.data.buffer);
-    for (var i = 0; i < canvas.width; i++) {
-        for (var j = 0; j < canvas.height; j++) {
-            let fz = forceComplex(f( convPlanes(i, j) ));
-            // if (typeof fz !== 'number' && fz.type !== 'Complex') throw new TypeError('Input value is not a number');
-            if (!Number.isFinite(fz.re) || !Number.isFinite(fz.im)) {
-                let infColor = +!inverse * 0xFFFFFF;
-                arr32[canvas.width * j + i] = (0xFF << 24) | infColor;
-                continue;
-            }
-            // get color
-            let hue, brightness, c, x, m, r, g, b;
-            hue = mod((inverse ? -1 : 1) * fz.arg() * 3 / Math.PI, 6); // hue [0,6)
-            brightness = bfunc(fz, inverse);
-            c = 1 - Math.abs(2 * brightness - 1);
-            x = c * (1 - Math.abs(mod(hue, 2) - 1));
-            m = brightness - c / 2;
-            if (0 <= hue && hue < 1) [r, g, b] = [c, x, 0];
-            else if (1 <= hue && hue < 2) [r, g, b] = [x, c, 0];
-            else if (2 <= hue && hue < 3) [r, g, b] = [0, c, x];
-            else if (3 <= hue && hue < 4) [r, g, b] = [0, x, c];
-            else if (4 <= hue && hue < 5) [r, g, b] = [x, 0, c];
-            else if (5 <= hue && hue < 6) [r, g, b] = [c, 0, x];
-            else [r, g, b] = [c, 0, x]; // should never happen?
-            //
-            arr32[canvas.width * j + i] = 
-                (           255  << 24) | // alpha
-                (((b + m) * 255) << 16) |
-                (((g + m) * 255) <<  8) |
-                 ((r + m) * 255)
-            }
-    }
-    ctx.putImageData(imageData, 0, 0);
-}
-
 function convPlanes(x: number, y: number) {
     //converts xy pixel plane to complex plane
-    let [cx, cy] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
-    let cmx =  (x - cx) / (cx / 2) / scale,
-        cmy = -(y - cy) / (cy / 2) / scale;
+
+    // let cmx =  (row - rx) / (rx / 2) / scale,
+    //     cmy = -(col - ry) / (ry / 2) / scale;
+
+    // row - rx: distance from center, in canvas pixels
+    // / (rx / 2): normalizes that so the edge is 2
+    // / scale: scale mult.
+
+    let [rx, ry] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
+    let cmx =  (x - rx) / (rx / 2) / scale,
+        cmy = -(y - ry) / (ry / 2) / scale;
     return math.complex(cmx, cmy) as unknown as complex.Complex;
 }
 
-function forceComplex(z: number | complex.Complex) {
-    // z as any is ok here
-    return math.complex(z as any) as unknown as complex.Complex;
+function startWorker(fstr: string) {
+    let w = new Worker(new URL("./compute", import.meta.url), {type: "module"});
+    w.onmessage = function (e) {
+        let buf: ArrayBuffer = e.data;
+        let dat = new ImageData(new Uint8ClampedArray(buf), canvas.width, canvas.height);
+        ctx.putImageData(dat, 0, 0);
+        markDone();
+    }
+    w.postMessage([fstr, canvas.width, canvas.height, scale]);
+    return w;
 }
 
-function bfunc(z: complex.Complex, inv: boolean) {
-    // bfunc needs to match the identities:
-    // b(1/x) = 1 - b(x)
-    // b(0) = 0
-
-    // the current impl uses b(x) = 1 - 1/(x^n + 1)
-    // another possible impl: b(x) = 2 * atan(x) / pi
-
-    let x = z.abs();
-    let n = 1/2;
-    let b = 1 / (x ** n + 1);
-
-    return inv ? b : 1 - b;
+function markDone() {
+    setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
 }
-
-function mod(x: number, y: number) {
-    return ((x % y) + y) % y;
-}
-
-function waitUntilNextFrame() {
-    return new Promise((resolve, reject) => {
-        // this runs before the next repaint
-        requestAnimationFrame(() => {
-
-            // this runs before the next next repaint (so, after the next repaint)
-            requestAnimationFrame(resolve);
-        });
-    })
-}
-
 graphButton.click();

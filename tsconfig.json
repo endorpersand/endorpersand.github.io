@@ -6,7 +6,8 @@
         "DOM",
         "DOM.Iterable"
       ],
-      "module": "commonjs",
+      "module": "es2020",
+      "moduleResolution": "node",
       "strict": true,
       "esModuleInterop": true,
       "skipLibCheck": true,
