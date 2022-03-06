@@ -1,7 +1,7 @@
 import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData } from "../types";
 
-const CHUNK_SIZE = 501;
-const N_WORKERS = 4;
+const CHUNK_SIZE = 50;
+const N_WORKERS = 10;
 
 let free = Array.from({length: N_WORKERS}, () => {
     let w = new Worker(new URL("./chunkloader", import.meta.url), {type: "module"});
@@ -9,13 +9,18 @@ let free = Array.from({length: N_WORKERS}, () => {
     w.onmessage = function (e) {
         let out: LoaderOut = e.data;
 
+        let ticket = labor.get(w);
+        if (typeof ticket === "undefined") return;
+        let [sym, start] = ticket;
         // load chunk
-        let msg: MainOut = {action: "loadChunk", ...out};
-        self.postMessage(msg, [out.buf] as any);
+        if (currentTask == sym) {
+            let msg: MainOut = {action: "loadChunk", ...out};
+            self.postMessage(msg, [out.buf] as any);
+        }
 
         if (workQueue.length == 0) {
             // no more work to do, free the worker
-            let start = freeWorker(w);
+            freeWorker(w);
 
             // if all chunks finished, send done
             if (typeof start !== "undefined" && labor.size == 0) {
@@ -32,9 +37,10 @@ let free = Array.from({length: N_WORKERS}, () => {
     return w;
 });
 
-type Ticket = [LoaderIn, number];
-let labor: Map<Worker, number> = new Map();
+type Ticket = [LoaderIn, Symbol, number];
+let labor: Map<Worker, [Symbol, number]> = new Map();
 let workQueue: Ticket[] = [];
+let currentTask: Symbol;
 
 onmessage = function (e) {
     let start = this.performance.now();
@@ -44,6 +50,8 @@ onmessage = function (e) {
 
 function initQueue(start: number, fstr: string, cd: CanvasData) {
     let {width, height} = cd;
+    workQueue.length = 0;
+    currentTask = Symbol("task");
 
     for (let i = 0; i < width; i += CHUNK_SIZE) {
         for (let j = 0; j < height; j += CHUNK_SIZE) {
@@ -56,7 +64,7 @@ function initQueue(start: number, fstr: string, cd: CanvasData) {
                 chunk: {
                     width: cw, height: ch, offx: i, offy: j
                 }
-            }, start];
+            }, currentTask, start];
             
             let w = free.pop();
             if (typeof w === "undefined") {
@@ -69,15 +77,13 @@ function initQueue(start: number, fstr: string, cd: CanvasData) {
 }
 
 function freeWorker(w: Worker) {
-    let time = labor.get(w);
     labor.delete(w);
     free.push(w);
-    return time;
 }
 
-function assignWorkToWorker(w: Worker, [job, start]: Ticket) {
+function assignWorkToWorker(w: Worker, [job, sym, start]: Ticket) {
     w.postMessage(job);
-    labor.set(w, start);
+    labor.set(w, [sym, start]);
 }
 
 function clamp(v: number, min: number, max: number) {
