@@ -1,7 +1,7 @@
 import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData } from "../types";
 
 const CHUNK_SIZE = 50;
-const N_WORKERS = 10;
+const N_WORKERS = 1;
 
 let free = Array.from({length: N_WORKERS}, () => {
     let w = new Worker(new URL("./chunkloader", import.meta.url), {type: "module"});
@@ -18,7 +18,11 @@ let free = Array.from({length: N_WORKERS}, () => {
             self.postMessage(msg, [out.buf] as any);
         }
 
-        if (workQueue.length == 0) {
+        let t = workQueue.next();
+        if (!t.done) {
+            // reassign
+            assignWorkToWorker(w, t.value);
+        } else {
             // no more work to do, free the worker
             freeWorker(w);
 
@@ -27,10 +31,6 @@ let free = Array.from({length: N_WORKERS}, () => {
                 let done: MainOut = { action: "done", time: Math.trunc(performance.now() - start) };
                 self.postMessage(done);
             }
-        } else {
-            // reassign
-            let msg = workQueue.pop()!;
-            assignWorkToWorker(w, msg);
         }
     }
 
@@ -39,18 +39,29 @@ let free = Array.from({length: N_WORKERS}, () => {
 
 type Ticket = [LoaderIn, Symbol, number];
 let labor: Map<Worker, [Symbol, number]> = new Map();
-let workQueue: Ticket[] = [];
+let workQueue: Generator<Ticket>;
 let currentTask: Symbol;
 
 onmessage = function (e) {
     let start = this.performance.now();
     let {fstr, cd}: MainIn = e.data;
-    initQueue(start, fstr, cd);
+    workQueue = queue(start, fstr, cd);
+
+    let fit = free[Symbol.iterator]();
+    for (let w of fit) {
+        let t = workQueue.next();
+
+        if (!t.done) {
+            assignWorkToWorker(w, t.value);
+        } else {
+            break;
+        }
+    }
+    free = [...fit];
 }
 
-function initQueue(start: number, fstr: string, cd: CanvasData) {
+function* queue(start: number, fstr: string, cd: CanvasData): Generator<Ticket> {
     let {width, height} = cd;
-    workQueue.length = 0;
     currentTask = Symbol("task");
 
     for (let i = 0; i < width; i += CHUNK_SIZE) {
@@ -58,20 +69,12 @@ function initQueue(start: number, fstr: string, cd: CanvasData) {
             let cw = clamp(0, CHUNK_SIZE, width - i);
             let ch = clamp(0, CHUNK_SIZE, height - j);
 
-            let ticket: Ticket = [{
-                fstr,
-                cd,
+            yield [{
+                fstr, cd,
                 chunk: {
                     width: cw, height: ch, offx: i, offy: j
                 }
             }, currentTask, start];
-            
-            let w = free.pop();
-            if (typeof w === "undefined") {
-                workQueue.push(ticket);
-            } else {
-                assignWorkToWorker(w, ticket);
-            }
         }
     }
 }
