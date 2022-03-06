@@ -1,7 +1,7 @@
 import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData, PartialEvaluator } from "../types";
 
 const CHUNK_SIZE = 50;
-const N_WORKERS = 1;
+const N_WORKERS = 4;
 
 let free = Array.from({length: N_WORKERS}, () => {
     let w = new Worker(new URL("./chunkloader", import.meta.url), {type: "module"});
@@ -34,6 +34,9 @@ let free = Array.from({length: N_WORKERS}, () => {
         }
     }
 
+    w.onerror = function (e) {
+        freeWorker(w);
+    }
     return w;
 });
 

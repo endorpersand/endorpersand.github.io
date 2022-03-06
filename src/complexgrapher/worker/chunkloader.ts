@@ -36,7 +36,8 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
                 continue;
             }
 
-            arr32[k] = polarToColor(fz.abs(), fz.arg(), inverse);
+            let { r, phi } = fz.toPolar();
+            arr32[k] = polarToColor(r, phi, inverse);
         }
     }
     return buf;
@@ -62,7 +63,7 @@ function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
 
 function forceComplex(z: number | Complex) {
     // z as any is ok here
-    return math.complex(z as any) as unknown as Complex;
+    return math.complex(z as any);
 }
 
 function polarToColor(rad: number, theta: number, inverse: boolean) {
