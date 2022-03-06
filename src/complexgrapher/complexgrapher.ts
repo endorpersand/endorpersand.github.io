@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { Complex, ComplexFunction, CanvasData } from "./types";
+import { Complex, ComplexFunction, MainIn, MainOut } from "./types";
 const math = create(all);
 
 const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
@@ -17,14 +17,17 @@ const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement
 const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let d: ComplexFunction = (z => z); // actual values of the function
-let inProcess = 0;
+
 let worker: Worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
 worker.onmessage = function (e) {
-    if (--inProcess != 0) return;
-    let [arr, t]: [Uint8ClampedArray, number] = e.data;
-    let dat = new ImageData(arr, canvas.width, canvas.height);
-    ctx.putImageData(dat, 0, 0);
-    markDone(t);
+    let msg: MainOut = e.data;
+
+    if (msg.action === "loadChunk") {
+        let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
+        ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+    } else if (msg.action === "done") {
+        markDone(msg.time);
+    }
 }
 worker.onerror = onComputeError;
 
@@ -60,7 +63,6 @@ graphButton.addEventListener('click', () => {
     try {
         d = math.evaluate(`f(z) = ${fstr}`);
         startWorker(worker, fstr);
-        inProcess++;
     } catch (e) {
         onComputeError(e as any);
         throw e;
@@ -131,11 +133,12 @@ function convPlanes(x: number, y: number) {
 }
 
 function startWorker(w: Worker, fstr: string) {
-    let msg: [string, CanvasData] = [fstr, {
+    let msg: MainIn = {fstr, 
+        cd: {
         width: canvas.width,
         height: canvas.height,
         scale
-    }];
+    }};
     w.postMessage(msg);
 }
 
