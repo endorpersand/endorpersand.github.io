@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { Complex, ComplexFunction, MainIn, MainOut } from "./types";
+import { Complex, ComplexFunction, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
 const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
@@ -133,13 +133,29 @@ function convPlanes(x: number, y: number) {
 }
 
 function startWorker(w: Worker, fstr: string) {
-    let msg: MainIn = {fstr, 
+    let msg: MainIn = {
+        pev: partialEvaluate(fstr), 
         cd: {
         width: canvas.width,
         height: canvas.height,
         scale
     }};
     w.postMessage(msg);
+}
+
+function partialEvaluate(fstr: string): PartialEvaluator {
+    let node = math.simplify(fstr);
+    let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
+
+    let inverse = false;
+    if (node.type == "OperatorNode" && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
+        node.args.reverse();
+        node = math.simplify(node);
+        inverse = true;
+    }
+
+    fnode.expr = node;
+    return { fstr: fnode.toString(), inverse };
 }
 
 function markDone(t: number) {

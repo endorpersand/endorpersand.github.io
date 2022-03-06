@@ -14,6 +14,13 @@ export interface ChunkData {
     offy: number
 }
 
+// like an evaluator, but the fstr is not evaluated into a function.
+// this can be passed across postMessage
+export interface PartialEvaluator {
+    fstr: string,
+    inverse: boolean
+}
+
 export interface Evaluator {
     f: ComplexFunction,
     // signifies whether or not to use the reciprocal optimization (bfunc(1/fz) = 1 - bfunc(fz))
@@ -23,7 +30,7 @@ export interface Evaluator {
 export type ComplexFunction = (z: Complex) => Complex | number;
 
 export type MainIn = {
-    fstr: string,
+    pev: PartialEvaluator,
     cd: CanvasData
 };
 export type MainOut = {
@@ -35,7 +42,7 @@ export type MainOut = {
     time: number
 };
 export type LoaderIn = {
-    fstr: string
+    pev: PartialEvaluator
     cd: CanvasData,
     chunk: ChunkData,
 };

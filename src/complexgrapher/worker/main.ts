@@ -1,4 +1,4 @@
-import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData } from "../types";
+import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData, PartialEvaluator } from "../types";
 
 const CHUNK_SIZE = 50;
 const N_WORKERS = 1;
@@ -44,8 +44,8 @@ let currentTask: Symbol;
 
 onmessage = function (e) {
     let start = this.performance.now();
-    let {fstr, cd}: MainIn = e.data;
-    workQueue = queue(start, fstr, cd);
+    let {pev, cd}: MainIn = e.data;
+    workQueue = queue(start, pev, cd);
 
     let fit = free[Symbol.iterator]();
     for (let w of fit) {
@@ -60,7 +60,7 @@ onmessage = function (e) {
     free = [...fit];
 }
 
-function* queue(start: number, fstr: string, cd: CanvasData): Generator<Ticket> {
+function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator<Ticket> {
     let {width, height} = cd;
     currentTask = Symbol("task");
 
@@ -70,7 +70,7 @@ function* queue(start: number, fstr: string, cd: CanvasData): Generator<Ticket> 
             let ch = clamp(0, CHUNK_SIZE, height - j);
 
             yield [{
-                fstr, cd,
+                pev, cd,
                 chunk: {
                     width: cw, height: ch, offx: i, offy: j
                 }
