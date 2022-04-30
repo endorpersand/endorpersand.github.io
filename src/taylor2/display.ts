@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import taylor from '../mvc/taylor2';
+import taylor from './calc';
 
 declare var MathJax: any;
 const math = create(all);
