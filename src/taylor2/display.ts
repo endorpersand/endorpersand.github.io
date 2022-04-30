@@ -38,18 +38,14 @@ function texHandler(node: math.MathNode, options?: object) {
     }
 }
 function verifyExpression(expr: string, replEq = "=", explicitMul = true): MaybeTex {
-    let fexpr = "f(x, y) = " + expr;
-    let tex;
-
     let options = explicitMul ? {} : {handler: texHandler};
 
     try {
-        tex = math.parse(fexpr).toTex(options).replace(":=", replEq);
+        let tex = "f(x, y) = " + math.parse(expr).toTex(options);
+        return {valid: true, expr, tex};
     } catch {
-        return {valid: false, expr}
+        return {valid: false, expr};
     }
-
-    return {valid: true, expr, tex};
 }
 
 function findN() {

@@ -3,9 +3,15 @@
     <head>
         <link href="site.css" rel="stylesheet">
         <style>
-            #resultTex {
-                text-align: center;
+            
+            .tex {
+                flex: 1;
+                text-align: right;
+                overflow-x: auto;
+                overflow-y: hidden;
+                margin-left: 20px;
             }
+
             .notCurrentFunc {
                 color: #AAA;
             }
@@ -16,6 +22,31 @@
                 font-size: 15px;
             }
 
+            .box {
+                border: solid #AAA;
+                padding: 15px;
+                margin: 5px;
+            }
+
+            .flex-row {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+            }
+
+            .vert-center {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            #input-wrapper {
+                min-height: 60px;
+            }
+
+            .pad {
+                margin-top: 10px;
+            }
         </style>
         <script>
             MathJax = {
@@ -25,6 +56,9 @@
               },
               svg: {
                 fontCache: 'global'
+              },
+              chtml: {
+                  displayAlign: "right"
               }
             };
         </script>
@@ -32,26 +66,42 @@
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     </head>
     <body>
-        <div id="centerDiv">Center:
-            (<input size="2" placeholder="a" value="0">,
-            <input size="2" placeholder="b" value="0">)
-        </div><br>
-        <div id="func">$f(x, y) =$ <input value="x * sin(y)"></div>
-        <div id="funcTex">$$f(x,y) = xy$$</div>
-        <div>
-            <b>Type of approximation:</b><br>
-            <input type='radio' name='approx' id='app1' value='1'>
-            <label for='app1'>Linearization (n = 1)</label><br>
-            <input type='radio' name='approx' id='app2' value='2' checked>
-            <label for='app2'>Quadratic (n = 2)</label><br>
-            <input type='radio' name='approx' id='app3' value='3'>
-            <label for='app3'>Cubic (n = 3)</label><br>
-            <input type='radio' name='approx' id='appn' value='0'>
-            <label for='appn'>n = </label>
-            <input size="2" value='4' id="appninput" disabled>
-        </div><br>
-        <button class="bigbutton" id="compute">Compute</button>
-        <div id="resultTex">$$f(x,y) = xy$$</div>
+        <div class="flex-row box" id="input-wrapper">
+            <div class="vert-center">
+                <div id="func">$f(x, y) =$ <input value="x * sin(y)"></div>
+                <div id="centerDiv">Center:
+                    (<input size="2" placeholder="a" value="0">,
+                    <input size="2" placeholder="b" value="0">)
+                </div>
+            </div>
+            <div class="vert-center tex" id="funcTex">$$f(x,y) = xy$$</div>
+        </div>
+        <div class="flex-row box">
+            <div class="vert-center">
+                <div>
+                    <b>Type of approximation:</b>
+                </div>
+                <div>
+                    <input type='radio' name='approx' id='app1' value='1'>
+                    <label for='app1'>Linearization (n = 1)</label>
+                </div>
+                <div>
+                    <input type='radio' name='approx' id='app2' value='2' checked>
+                    <label for='app2'>Quadratic (n = 2)</label>
+                </div>
+                <div>
+                    <input type='radio' name='approx' id='app3' value='3'>
+                    <label for='app3'>Cubic (n = 3)</label>
+                </div>
+                <div>
+                    <input type='radio' name='approx' id='appn' value='0'>
+                    <label for='appn'>n = </label>
+                    <input size="2" value='4' id="appninput" disabled>
+                </div>
+                <button class="bigbutton pad" id="compute">Compute</button>
+            </div>
+            <div class="vert-center tex" id="resultTex">$$f(x,y) = xy$$</div>
+        </div>
         <script type="module" src='taylor2/display.ts'></script>
     </body>
 </html>
