@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import taylor from './calc';
+import { TaylorMessage } from "./calc";
 
 declare var MathJax: any;
 const math = create(all);
@@ -22,6 +22,7 @@ let centerDiv = document.querySelector("#centerDiv")!      as HTMLDivElement,
     computeButton = document.querySelector("#compute")!    as HTMLButtonElement;
 
 let tex: MaybeTex = {valid: false, expr: ""};
+let swiftie = new Worker(new URL("./calc", import.meta.url), {type: "module"});
 
 centerX.addEventListener("input", grayResult);
 centerY.addEventListener("input", grayResult);
@@ -82,38 +83,41 @@ function updateFuncTex() {
 }
 
 function updateResultTex() {
-    let succ = false;
     if (tex.valid) {
-        let taytay: string = "";
-        resultTex.classList.remove("err");
+        let dat: TaylorMessage = [tex.expr, findN(), +centerX.value, +centerY.value];
+        swiftie.postMessage(dat);
         resultTex.classList.remove("notCurrentFunc");
-        try {
-            taytay = taylor(tex.expr, findN(), +centerX.value, +centerY.value);
-        } catch (e) {
-            console.log(e);
-            if (e instanceof Error && e.message.startsWith("Undefined ")) {
-                let msg = e.message;
-                let sym = msg.slice("Undefined symbol ".length); // can also be "Undefined function", but not that big of a deal
-                if (sym.includes("x") || sym.includes("y")) {
-                    msg += " (try adding * here?)"
-                }
-                resultTex.innerHTML = msg;
-                resultTex.classList.add("err");
-                return;
-            }
-        }
-        let rTex = verifyExpression(taytay, "\\approx", false);
-        if (rTex.valid) {
-            resultTex.innerHTML = `$$${rTex.tex}$$`;
-            succ = true;
-        }
+        resultTex.innerHTML = "Working...";
+    } else {
+        invalidResult();
     }
-    if (!succ) {
-        resultTex.innerHTML = `$$\\color{red}{?}$$`
-    }
+}
+
+function invalidResult() {
+    resultTex.innerHTML = `$$\\color{red}{?}$$`;
     updateTex();
 }
 
+swiftie.onmessage = function(e) {
+    resultTex.classList.remove("err");
+    let rtex = verifyExpression(e.data, "\\approx", false);
+    if (rtex.valid) {
+        resultTex.textContent = `$$${rtex.tex}$$`;
+        updateTex();
+    } else {
+        invalidResult();
+    }
+}
+swiftie.onerror = function(e) {
+    let msg = e.message;
+    let index = msg.indexOf("Undefined ");
+    let sym = msg.slice(index + "Undefined symbol ".length); // can also be "Undefined function", but not that big of a deal
+    if (sym.includes("x") || sym.includes("y")) {
+        msg += " (try adding * here?)"
+    }
+    resultTex.textContent = msg;
+    resultTex.classList.add("err");
+}
 function radioUpdate() {
     approxNInput.disabled = !approxNRadio.checked;
     grayResult();
