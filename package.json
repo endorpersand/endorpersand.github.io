@@ -8,13 +8,13 @@
         "deploy": "gh-pages -d dist"
     },
     "dependencies": {
-        "complex.js": "^2.0.15",
+        "complex.js": "^2.1.1",
         "cross-env": "^7.0.3",
         "gh-pages": "^3.2.3",
         "katex": "^0.15.6",
-        "mathjs": "^10.1.1",
-        "parcel": "2.3.2",
-        "typescript": "^4.5.5"
+        "mathjs": "^10.6.0",
+        "parcel": "2.6.0",
+        "typescript": "^4.7.2"
     },
     "browserslist": [
         "> 1%",
