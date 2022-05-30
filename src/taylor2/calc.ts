@@ -5,7 +5,7 @@ const math = create(all);
 const X = math.parse("x") as math.SymbolNode;
 const Y = math.parse("y") as math.SymbolNode;
 
-type TaylorTerm = [number | math.Fraction, number, number]; // coeff, x exp, y exp
+type TaylorTerm = [boolean, math.MathNode, number, number]; // coeff sign: true if +, abs coeff, x exp, y exp
 type TaylorMessage = [string, number, number, number]; // expr, n, a, b
 
 onmessage = function(e) {
@@ -42,67 +42,102 @@ function taylorTerms(expr: string, n = 2, a = 0, b = 0): TaylorTerm[] {
         let pascal = pascal_row(i);
         for (var j = 0; j <= i; j++) {
             let p = pascal[j];
-            let e = order[j].evaluate({x: a, y: b});
+            let e = math.simplify(order[j], 
+                [...math.simplify.rules,
+                    "sin(pi / 2) -> 1",
+                    "sin(pi) -> 0",
+                    "sin(3 * pi / 2) -> -1",
+                    "sin(2 * pi) -> 0",
+
+                    "cos(pi / 2) -> 0",
+                    "cos(pi) -> -1",
+                    "cos(3 * pi / 2) -> 0",
+                    "cos(2 * pi) -> 1",
+                    n => n.transform(node => {
+                        if (node.type == "OperatorNode" && node.op == "*" && !node.implicit) node.implicit = true;
+                        return node;
+                    })
+                ],
+                {x: a, y: b}
+            );
             let f = math.factorial(i);
 
-            let ee = math.fraction(e);
-            let coeff: number | math.Fraction = math.multiply(math.fraction(p, f), ee) as math.Fraction;
-            // coeff = (pascal) * (derivative) / factorial
-            approxComponents.push([coeff, i - j, j]);
+            approxComponents.push([...coeff(p, e, f), i - j, j]);
         }
     }
 
     return approxComponents;
 }
 
-function stringify(v: number | math.Fraction) {
-    if (math.isInteger(v)) {
-        v = math.number(v) as number;
-    }
-    return math.format(v);
+const op = {
+    div(args: math.MathNode[])  { return new math.OperatorNode("/", "divide", args)         },
+    imul(args: math.MathNode[]) { return new math.OperatorNode("*", "multiply", args, true) },
+    neg(arg: math.MathNode)     { return new math.OperatorNode("-", "unaryMinus", [arg])    },
+    add(args: math.MathNode[])  { return new math.OperatorNode("+", "add", args)            },
+    sub(args: math.MathNode[])  { return new math.OperatorNode("-", "subtract", args)       },
 }
 
-function displayTaylor(a: number, b: number, tc: TaylorTerm[]): string {
-    let taylorStringComponents = tc.map(([c, xe, ye]) => {
-        let segs: {h?: math.MathNode, k?: math.MathNode} = {};
-        if (c == 0) return "0";
+function coeff(pascal: number, deriv: math.MathNode, fact: number): [boolean, math.MathNode] {
+    // coeff = (pascal) * (derivative) / factorial
+    
+    let sign = Math.sign(pascal) * Math.sign(fact) >= 0;
+    pascal   = Math.abs(pascal);
+    fact     = Math.abs(fact);
 
-        segs.h = math.parse(`(x - ${a}) ^ ${xe}`);
-        segs.k = math.parse(`(y - ${b}) ^ ${ye}`);
+    let pf = op.div([new math.ConstantNode(pascal), new math.ConstantNode(fact)]);
 
-        let expr = math.simplify("h * k", segs);
-
-        let es = expr.toString();
-        if (es === "1") {
-            return stringify(c);
-        } else {
-            let coeff;
-            if (c == 1) coeff = "";
-            else if (c == -1) coeff = "-";
-            else coeff = stringify(c) + " * ";
-
-            if (expr.type === "OperatorNode" && (expr.op === "+" || expr.op === "-") && coeff !== "") {
-                return coeff + `(${es})`;
-            }
-            return coeff + es;
+    let prod = math.simplify(op.imul([pf, deriv]), [
+        ...math.simplify.rules, n => n.transform(node => node.type == "FunctionNode" ? new math.ConstantNode(node.evaluate()) : node)
+    ]);
+    prod = prod.transform(n => {
+        if (n.type == "OperatorNode" && n.fn == "unaryMinus") {
+            sign = !sign;
+            return n.args[0];
         }
-    }).filter(x => x != "0");
-
-    if (taylorStringComponents.length == 0) return "0";
-
-    return taylorStringComponents.reduce((acc, cv) => {
-        let nextTermNeg = cv.startsWith("-");
-
-        if (nextTermNeg) {
-            return `${acc} - ${cv.slice(1)}`;
-        } else {
-            return `${acc} + ${cv}`;
-        }
+        return n;
     });
+
+    return [sign, math.simplify(prod)];
+}
+function signed(s: boolean, n: math.MathNode) {
+    return s ? n : op.neg(n)
+}
+
+function displayTaylor(a: number, b: number, tc: TaylorTerm[]): math.MathNode {
+    let taylorStringComponents = tc.map(([s, c, xe, ye]) => {
+        c = math.simplify(c);
+        if (c.type == "ConstantNode" && c.value == 0) return;
+        
+        let args = [];
+
+        if (xe != 0) args.push(math.simplify(`(x - ${a}) ^ ${xe}`));
+        if (ye != 0) args.push(math.simplify(`(y - ${b}) ^ ${ye}`));
+
+        let expr;
+        if (args.length == 0) {
+            return [s, c];
+        } else if (args.length == 1) {
+            expr = args[0];
+        } else {
+            expr = math.simplify(op.imul(args));
+        }
+        
+        if (c.type != "ConstantNode" || c.value != 1) {
+            expr = op.imul([c, expr]);
+        }
+
+        return [s, expr];
+    }).filter(x => typeof x !== "undefined") as [boolean, math.MathNode][];
+
+    if (taylorStringComponents.length == 0) return new math.ConstantNode(0);
+
+    let first = taylorStringComponents[0];
+    return taylorStringComponents.slice(1)
+        .reduce((acc, [s, n]) => s ? op.add([acc, n]) : op.sub([acc, n]), signed(...first))
 }
 
 function taylor(expr: string, n = 2, a = 0, b = 0): string {
-    return displayTaylor(a, b, taylorTerms(expr, n, a, b));
+    return displayTaylor(a, b, taylorTerms(expr, n, a, b)).toTex();
 }
 
 export default taylor;

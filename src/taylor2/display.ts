@@ -97,14 +97,10 @@ function invalidResult() {
 
 swiftie.onmessage = function(e) {
     resultTex.classList.remove("err");
-    let rtex = verifyExpression(e.data, "\\approx", false);
-    if (rtex.valid) {
-        katex.render(rtex.tex, resultTex, {
-            throwOnError: false
-        });
-    } else {
-        invalidResult();
-    }
+
+    katex.render(`f(x,y) \\approx ${(e.data as string).replaceAll("~", "")}`, resultTex, {
+        throwOnError: false
+    });
 }
 swiftie.onerror = function(e) {
     let msg = e.message;
