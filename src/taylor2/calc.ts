@@ -29,14 +29,10 @@ function taylorTerms(expr: string, n = 2, a = 0, b = 0): TaylorTerm[] {
         if (order.length == 0) {
             order = [exprNode];
         } else {
-            let first_order = order[0]
-            let new_order = [math.derivative(first_order, X)];
-            
-            for (let e of order) {
-                new_order.push(math.derivative(e, Y));
-            }
-
-            order = new_order;
+            order = [
+                math.derivative(order[0], X),
+                ...order.map(e => math.derivative(e, Y))
+            ];
         }
 
         let pascal = pascal_row(i);
