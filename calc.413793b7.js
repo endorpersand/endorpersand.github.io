@@ -538,7 +538,7 @@ function pascal_row(n) {
 }
 function taylorTerms(expr, n = 2, a = 0, b = 0) {
     // compute taylor
-    let exprNode = math.parse(expr);
+    let exprNode = math.simplify(expr);
     let approxComponents = [];
     let order = [] // partials. for n = 3: fxxx, fxxy, fxyy, fyyy
     ;
