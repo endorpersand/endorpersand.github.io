@@ -1,7 +1,7 @@
 import { create, all } from "mathjs";
 import { TaylorMessage } from "./calc";
+import katex from 'katex';
 
-declare var MathJax: any;
 const math = create(all);
 type MaybeTex = {
     valid: false,
@@ -12,14 +12,14 @@ type MaybeTex = {
     tex: string
 };
 
-let centerDiv = document.querySelector("#centerDiv")!      as HTMLDivElement,
+let centerDiv = document.querySelector("#centerDiv")!    as HTMLDivElement,
     [centerX, centerY] = centerDiv.querySelectorAll("input"),
-    funcInput = document.querySelector("#func input")!     as HTMLInputElement,
-    funcTex = document.querySelector("#funcTex")!          as HTMLDivElement,
-    resultTex = document.querySelector("#resultTex")!      as HTMLDivElement,
-    approxNRadio = document.querySelector("#appn")!        as HTMLInputElement,
-    approxNInput = document.querySelector("#appninput")!   as HTMLInputElement,
-    computeButton = document.querySelector("#compute")!    as HTMLButtonElement;
+    funcInput = document.querySelector("#funcInput")!    as HTMLInputElement,
+    funcTex = document.querySelector("#funcTex")!        as HTMLDivElement,
+    resultTex = document.querySelector("#resultTex")!    as HTMLDivElement,
+    approxNRadio = document.querySelector("#appn")!      as HTMLInputElement,
+    approxNInput = document.querySelector("#appninput")! as HTMLInputElement,
+    computeButton = document.querySelector("#compute")!  as HTMLButtonElement;
 
 let tex: MaybeTex = {valid: false, expr: ""};
 let swiftie = new Worker(new URL("./calc", import.meta.url), {type: "module"});
@@ -29,6 +29,11 @@ centerY.addEventListener("input", grayResult);
 funcInput.addEventListener("input", updateFuncTex);
 document.querySelectorAll("input[name=approx]").forEach(i => i.addEventListener("change", radioUpdate));
 computeButton.addEventListener("click", updateResultTex);
+
+katex.render(`f(x, y) = `, document.querySelector("#lhs")!, {
+    throwOnError: false
+});
+
 updateFuncTex();
 updateResultTex();
 
@@ -63,23 +68,14 @@ function grayResult() {
     resultTex.classList.add("notCurrentFunc");
 }
 
-function updateTex() {
-    if ("typeset" in MathJax) {
-        MathJax.typeset();
-    }
-}
-
 function updateFuncTex() {
     tex = verifyExpression(funcInput.value);
 
-    if (tex.valid) {
-        funcTex.innerHTML = `$$${tex.tex}$$`;
-    } else {
-        funcTex.innerHTML = `$$\\color{red}{?}$$`
-    }
-
+    let display = tex.valid ? tex.tex : String.raw`\color{red}{?}`;
+    katex.render(display, funcTex, {
+        throwOnError: false
+    });
     grayResult();
-    updateTex();
 }
 
 function updateResultTex() {
@@ -94,16 +90,18 @@ function updateResultTex() {
 }
 
 function invalidResult() {
-    resultTex.innerHTML = `$$\\color{red}{?}$$`;
-    updateTex();
+    katex.render(String.raw`\color{red}{?}`, resultTex, {
+        throwOnError: false
+    });
 }
 
 swiftie.onmessage = function(e) {
     resultTex.classList.remove("err");
     let rtex = verifyExpression(e.data, "\\approx", false);
     if (rtex.valid) {
-        resultTex.textContent = `$$${rtex.tex}$$`;
-        updateTex();
+        katex.render(rtex.tex, resultTex, {
+            throwOnError: false
+        });
     } else {
         invalidResult();
     }

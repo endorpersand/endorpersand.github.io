@@ -21,7 +21,7 @@ function pascal_row(n: number) {
 function taylorTerms(expr: string, n = 2, a = 0, b = 0): TaylorTerm[] {
 
     // compute taylor
-    let exprNode: math.MathNode = math.parse(expr);
+    let exprNode: math.MathNode = math.simplify(expr);
     let approxComponents: TaylorTerm[] = []
     let order: math.MathNode[] = [] // partials. for n = 3: fxxx, fxxy, fxyy, fyyy
 

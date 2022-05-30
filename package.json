@@ -11,14 +11,17 @@
         "complex.js": "^2.0.15",
         "cross-env": "^7.0.3",
         "gh-pages": "^3.2.3",
+        "katex": "^0.15.6",
         "mathjs": "^10.1.1",
-        "parcel": "^2.5.0",
+        "parcel": "2.3.2",
         "typescript": "^4.5.5"
     },
-
     "browserslist": [
         "> 1%",
         "last 2 versions",
         "not ie <= 8"
-    ]
+    ],
+    "devDependencies": {
+        "@types/katex": "^0.14.0"
+    }
 }
