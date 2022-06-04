@@ -2,6 +2,7 @@
 <html>
     <head>
         <link href="site.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             
             .tex {
@@ -19,16 +20,14 @@
                 color: #F88;
             }
             .bigbutton {
-                font-size: 15px;
+                margin-top: 10px;
             }
 
             .box {
                 border: solid #AAA;
                 padding: 15px;
                 margin: 5px;
-            }
 
-            .flex-row {
                 display: flex;
                 flex-direction: row;
                 justify-content: space-between;
@@ -44,27 +43,46 @@
                 min-height: 60px;
             }
 
-            .pad {
-                margin-top: 10px;
+            #funcInput {
+                width: 30%;
             }
+            input[type="number"] {
+                width: 3ch;
+            }
+
+            @media (max-width: 300px) {
+                html, input, button { font-size: 5vw; }
+            }
+
+            @media (max-width: 500px) {
+                .box {
+                    flex-direction: column;
+                }
+
+                .tex {
+                    margin-top: 20px;
+                    text-align: center;
+                }
+            }
+
         </style>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css" integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">
     </head>
     <body>
-        <div class="flex-row box" id="input-wrapper">
+        <div class="box" id="input-wrapper">
             <div class="vert-center">
                 <div>
                     <span id="lhs">f(x, y) = </span>
                     <input id="funcInput" value="x * sin(y)">
                 </div>
                 <div id="centerDiv">Center:
-                    (<input size="2" placeholder="a" value="0">,
-                    <input size="2" placeholder="b" value="0">)
+                    (<input size="2" placeholder="a" value="0" type="number">,
+                    <input size="2" placeholder="b" value="0" type="number">)
                 </div>
             </div>
             <div class="vert-center tex" id="funcTex"></div>
         </div>
-        <div class="flex-row box">
+        <div class="box">
             <div class="vert-center">
                 <div>
                     <b>Type of approximation:</b>
@@ -84,7 +102,7 @@
                 <div>
                     <input type='radio' name='approx' id='appn' value='0'>
                     <label for='appn'>n = </label>
-                    <input size="2" value='4' id="appninput" disabled>
+                    <input size="2" value='4' id="appninput" type="number" disabled>
                 </div>
                 <button class="bigbutton pad" id="compute">Compute</button>
             </div>

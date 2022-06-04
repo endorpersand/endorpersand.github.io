@@ -2,7 +2,7 @@ declare var OffscreenCanvas: any;
 
 const canvas = document.querySelector('canvas')! as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
-let ipol = 'lin';
+let ipol = (document.querySelector("input[name='ipol'][checked]")! as HTMLInputElement).value;
 
 let ipolRadios = document.querySelectorAll('input[type=radio]'),
     coloradd = document.querySelector('#coloradd')! as HTMLButtonElement,

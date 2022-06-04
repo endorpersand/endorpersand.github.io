@@ -2,11 +2,12 @@
 <html>
     <head>
         <link href="site.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             .wrapper {
                 display: flex;
-                width: 100%;
-                height: 100%;
+                flex-direction: row;
+                justify-content: space-between;
             }
             .wrapper > :first-child {
                 display: flex;
@@ -22,15 +23,21 @@
                 display: grid;
                 grid-template-columns: 1fr 1fr;
             }
+
+            @media (width <= 700px) {
+                .wrapper {
+                    flex-direction: column;
+                }
+            }
         </style>
     </head>
     <body>
         <div class="wrapper">
             <div>
                 <div>
-                    <input type='radio' name='ipol' id='lin' value='lin' checked>
+                    <input type='radio' name='ipol' id='lin' value='lin'>
                     <label for='lin'>Linear interpolation</label><br>
-                    <input type='radio' name='ipol' id='rms' value='rms'>
+                    <input type='radio' name='ipol' id='rms' value='rms' checked>
                     <label for='rms'>RMS interpolation</label>
                 </div>
                 <div id="colors">
@@ -45,8 +52,7 @@
                     <button id='coloradd'>+</button>
                 </div>
             </div>
-            <div></div>
-            <canvas width=700 height=700></canvas>
+            <canvas width=512 height=512></canvas>
         </div>
         <script src='gradient/gradient.ts'></script>
     </body>
