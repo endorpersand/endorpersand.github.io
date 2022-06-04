@@ -1,4 +1,5 @@
-type Coord = [number, number];
+type Coord = [number, number]; // each cell is 1 unit
+type NormCoord = [number, number]; // the entire wrapper 1 unit
 type RGB = [number, number, number];
 
 let wrapper = document.querySelector('.wrapper')!;
@@ -38,21 +39,32 @@ function createPlaceholderSquare() {
 }
 
 function regenColors() {
-    let cornerClrs = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
-    setColors(cornerClrs);
+    if (cols < 3) {
+        let corners = Array.from({length: 2}, () => randRGB(0x50)) as [RGB, RGB];
+        assignColors(i => interpolate2(corners, asCoord(i)));
+    } else {
+        let corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
+        assignColors(i => interpolate4(corners, asNormCoord(i)));
+    }
 }
 
-function setColors(cornerClrs: [RGB, RGB, RGB, RGB]) {
+function assignColors(callback: (cellIndex: number) => RGB) {
     squares.forEach((s, i) => {
-        let [pr, pc] = asCoord(i);
-        let normPos = [pr / (rows - 1), pc / (cols - 1)] as [number, number];
-        let clr = interpolate(cornerClrs, normPos);
-
+        let clr = callback(i);
         s.style.backgroundColor = hex(clr);
 
         let hexText = s.querySelector('.colhex')!;
         hexText.textContent = hex(clr);
     });
+}
+function asCoord(i: number): Coord {
+    // takes an index in the array, maps it to its [row, col] value
+    return [Math.floor(i / cols), i % cols];
+}
+function asNormCoord(i: number): NormCoord {
+    // takes an index in the array, maps it to its NormCoord value
+    let [r, c] = asCoord(i);
+    return [r / (rows - 1), c / (cols - 1)];
 }
 
 function randInt(min: number, max: number) {
@@ -65,10 +77,6 @@ function randRGB(min = 0, max = 256): RGB {
 function hex(arr: RGB) {
     // converts rgb array => hex notation
     return `#${arr.map(x => Math.round(x).toString(16).padStart(2, "0")).join('')}`
-}
-function asCoord(i: number): Coord {
-    // takes an index in the array, maps it to its [row, col] value
-    return [Math.floor(i / cols), i % cols];
 }
 
 function zip<A extends any[]>(...v: {[I in keyof A]: A[I][]}): A[] {
@@ -85,24 +93,52 @@ function lerp<T extends number[]>(pts: [T, T], dist: number): T {
     }) as T;
 }
 
-function bilerp<T extends number[]>(pts: [T, T, T, T], dist: [number, number]): T {
+function bilerp<T extends number[]>(pts: [T, T, T, T], c: NormCoord): T {
     type ArrPair = [T, T];
-    let [px, py] = dist;
+    let [px, py] = c;
     let [top, bottom] = [pts.slice(0, 2) as ArrPair, pts.slice(2, 4) as ArrPair]
     return lerp([lerp(bottom, px), lerp(top, px)], py);
 }
 
-function calcWeights(dist: [number, number]) {
-    return bilerp<[number, number, number, number]>([
+// interpolate given that each corner is assigned a color
+function interpolate4(clrs: [RGB, RGB, RGB, RGB], c: NormCoord) {
+    // weight = how much each of the 4 points are valued based on the distance point c is from the corner
+    let weights = bilerp<[number, number, number, number]>([
         [1,0,0,0],
         [0,1,0,0],
         [0,0,1,0],
         [0,0,0,1]
-    ], dist);
+    ], c);
+
+    return Array.from({length: 3}, (_, i) => {
+        let channels = clrs.map(clr => clr[i]);
+
+        let sqsum = zip(channels, weights)
+            .map(([c, w]) => w * c * c)
+            .reduce((acc, cv) => acc + cv);
+        
+        return Math.round(Math.sqrt(sqsum));
+    }) as RGB;
 }
 
-function interpolate(clrs: [RGB, RGB, RGB, RGB], dist: [number, number]) {
-    let weights = calcWeights(dist);
+function manhattan(p: Coord, q: Coord): number {
+    return zip(p, q)
+        .map(([px, qx]) => Math.abs(px - qx))
+        .reduce((acc, cv) => acc + cv);
+}
+
+// interpolate given that the top left and bottom right are assigned colors
+function interpolate2(clrs: [RGB, RGB], c: Coord) {
+    // weight = how much each of the 2 points are valued based on the distance point c is from the corner
+    let [aw, bw] = [
+        manhattan([0, 0], c),
+        manhattan([rows - 1, cols - 1], c),
+    ];
+    let weights = [
+        bw / (aw + bw), // note, flipped
+        aw / (aw + bw)
+    ];
+
     return Array.from({length: 3}, (_, i) => {
         let channels = clrs.map(clr => clr[i]);
 

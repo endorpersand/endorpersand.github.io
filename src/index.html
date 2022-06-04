@@ -1,9 +1,10 @@
 <head>
     <meta charset="utf-8">
     <link href="site.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         .wrapper {
-            --cols: 3;
+            --cols: 4;
             display: grid;
             grid-template-columns: repeat(var(--cols), 1fr);
             grid-auto-rows: minmax(200px, auto);
@@ -37,6 +38,17 @@
         .title {
             font-weight: bolder;
             font-size: 17px;
+        }
+
+        @media (width <= 600px) {
+            .wrapper {
+                --cols: 2;
+            }
+        }
+        @media (600px <= width <= 1000px) {
+            .wrapper {
+                --cols: 3;
+            }
         }
     </style>
 </head>
