@@ -3,68 +3,130 @@ type NormCoord = [number, number]; // the entire wrapper 1 unit
 type RGB = [number, number, number];
 
 let wrapper = document.querySelector('.wrapper')!;
-let squares = [...document.querySelectorAll('.wrapper a')] as HTMLElement[];
 
-let cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
-let rows = 3; // add more placeholder project boxes by changing this
+class SquareTracker {
+    static #MIN_ROWS = 3;
+    #cols: number;
+    readonly projectSquares: HTMLElement[];
+    placeholderSquares: HTMLElement[];
 
-if (squares.length > cols * rows) rows = Math.ceil(squares.length / cols);
+    constructor() {
+        this.#cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
 
-for (let i = squares.length; i < (cols * rows); i++) {
-    createPlaceholderSquare();
-}
+        this.projectSquares = [...wrapper.querySelectorAll('a')];
+        for (let s of this.projectSquares) {
+            let span = document.createElement('span');
+            span.classList.add('colhex');
+            s.appendChild(span);
+        }
 
-for (let s of squares) {
-    let span = document.createElement('span');
-    span.classList.add('colhex');
-    s.appendChild(span);
-}
-
-regenColors();
-
-function createPlaceholderSquare() {
-    let a = document.createElement('a');
-    let title = document.createElement('div');
-    let desc = document.createElement('div');
-
-    title.classList.add('title');
-    desc.classList.add('desc');
-
-    a.appendChild(title);
-    a.appendChild(desc);
-    a.onclick = regenColors;
-
-    wrapper.appendChild(a);
-    squares.push(a);
-}
-
-function regenColors() {
-    if (cols < 3) {
-        let corners = Array.from({length: 2}, () => randRGB(0x50)) as [RGB, RGB];
-        assignColors(i => interpolate2(corners, asCoord(i)));
-    } else {
-        let corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
-        assignColors(i => interpolate4(corners, asNormCoord(i)));
+        this.placeholderSquares = [];
+        for (let i = this.squares; i < (this.cols * SquareTracker.#MIN_ROWS); i++) {
+            this.#addSquare();
+        }
     }
-}
 
-function assignColors(callback: (cellIndex: number) => RGB) {
-    squares.forEach((s, i) => {
-        let clr = callback(i);
-        s.style.backgroundColor = hex(clr);
+    get squares() {
+        return this.projectSquares.length + this.placeholderSquares.length;
+    }
 
-        let hexText = s.querySelector('.colhex')!;
-        hexText.textContent = hex(clr);
-    });
+    get cols() {
+        return this.#cols;
+    }
+    set cols(value) {
+        if (value != this.#cols) {
+            this.#cols = value;
+            this.#rebalance();
+        }
+    }
+
+    get rows(): number {
+        return this.squares / this.cols;
+    }
+
+    #addSquare() {
+        let a = document.createElement('a');
+        let title = document.createElement('div');
+        let desc = document.createElement('div');
+        let colhex = document.createElement('span');
+        
+        title.classList.add('title');
+        desc.classList.add('desc');
+        colhex.classList.add('colhex');
+        
+        a.appendChild(title);
+        a.appendChild(desc);
+        a.appendChild(colhex);
+        a.addEventListener("click", this.regenColors.bind(this));
+    
+        wrapper.appendChild(a);
+        this.placeholderSquares.push(a);
+    }
+
+    #removeSquare() {
+        this.placeholderSquares.pop()?.remove();
+    }
+
+    #rebalance() {
+        let squares = this.squares;
+        // n = number of squares that should be on board
+        let n = Math.max(this.#cols * SquareTracker.#MIN_ROWS, this.projectSquares.length);
+        n = Math.ceil(n / this.#cols) * this.#cols;
+
+        if (squares == n) return;
+        if (squares > n) {
+            for (let i = squares; i > n; i--) {
+                this.#removeSquare();
+            }
+        } else if (squares < n) {
+            for (let i = squares; i < n; i++) {
+                this.#addSquare();
+            }
+        }
+
+        this.regenColors();
+    }
+
+    forEach(callback: (value: HTMLElement, index: number) => void) {
+        let i = 0;
+        for (let e of this.projectSquares) callback(e, i++);
+        for (let e of this.placeholderSquares) callback(e, i++);
+    }
+
+    regenColors() {
+        if (this.#cols < 3) {
+            let corners = Array.from({length: 2}, () => randRGB(0x50)) as [RGB, RGB];
+            this.assignColors(i => interpolate2(corners, asCoord(i)));
+        } else {
+            let corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
+            this.assignColors(i => interpolate4(corners, asNormCoord(i)));
+        }
+    }
+
+    assignColors(callback: (cellIndex: number) => RGB) {
+        squares.forEach((s, i) => {
+            let clr = callback(i);
+            s.style.backgroundColor = hex(clr);
+    
+            s.querySelector('.colhex')!.textContent = hex(clr);
+        });
+    }
+
 }
+let squares = new SquareTracker();
+squares.regenColors();
+
+window.addEventListener("resize", e => {
+    squares.cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
+})
 function asCoord(i: number): Coord {
     // takes an index in the array, maps it to its [row, col] value
-    return [Math.floor(i / cols), i % cols];
+    return [Math.floor(i / squares.cols), i % squares.cols];
 }
 function asNormCoord(i: number): NormCoord {
     // takes an index in the array, maps it to its NormCoord value
     let [r, c] = asCoord(i);
-    return [r / (rows - 1), c / (cols - 1)];
+    return [r / (squares.rows - 1), c / (squares.cols - 1)];
 }
 
 function randInt(min: number, max: number) {
@@ -132,7 +194,7 @@ function interpolate2(clrs: [RGB, RGB], c: Coord) {
     // weight = how much each of the 2 points are valued based on the distance point c is from the corner
     let [aw, bw] = [
         manhattan([0, 0], c),
-        manhattan([rows - 1, cols - 1], c),
+        manhattan([squares.rows - 1, squares.cols - 1], c),
     ];
     let weights = [
         bw / (aw + bw), // note, flipped
