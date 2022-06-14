@@ -13,13 +13,15 @@
         }
         .wrapper a {
             text-align: center;
-            transition: filter 0.25s ease-in-out;
-            transition: background-color 0.25s ease-in-out;
             background-color: #777;
             filter: none;
         }
         .wrapper a:hover {
             filter: brightness(150%);
+        }
+        :not(.no-transition) {
+            transition: filter 0.25s ease-in-out;
+            transition: background-color 0.25s ease-in-out;
         }
         a {
             position: relative;

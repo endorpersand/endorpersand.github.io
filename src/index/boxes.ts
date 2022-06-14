@@ -9,6 +9,12 @@ class SquareTracker {
     #columns: number;
     readonly projectSquares: HTMLElement[];
     placeholderSquares: HTMLElement[];
+    corners: [RGB, RGB, RGB, RGB] = [ // top right, bottom right, top left, bottom left
+        [0x77, 0x77, 0x77],
+        [0x77, 0x77, 0x77],
+        [0x77, 0x77, 0x77],
+        [0x77, 0x77, 0x77]
+    ];
 
     constructor() {
         this.#columns = +getComputedStyle(wrapper).getPropertyValue('--cols');
@@ -57,7 +63,7 @@ class SquareTracker {
         a.appendChild(title);
         a.appendChild(desc);
         a.appendChild(colhex);
-        a.addEventListener("click", this.regenColors.bind(this));
+        a.addEventListener("click", this.regenColors.bind(this, false));
     
         wrapper.appendChild(a);
         this.placeholderSquares.push(a);
@@ -84,7 +90,7 @@ class SquareTracker {
             }
         }
 
-        this.regenColors();
+        this.regenColors(true);
     }
 
     forEach(callback: (value: HTMLElement, index: number) => void) {
@@ -93,23 +99,42 @@ class SquareTracker {
         for (let e of this.placeholderSquares) callback(e, i++);
     }
 
-    regenColors() {
+    regenColors(useCurrentCorners: boolean = false) {
+        if (!useCurrentCorners) this.corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
+        let corners = this.corners;
+        
         if (this.#columns < 3) {
-            let corners = Array.from({length: 2}, () => randRGB(0x50)) as [RGB, RGB];
-            this.assignColors(i => interpolate2(corners, asCoord(i)));
+            // use TL + BR boxes rather than the corners to make a consistent grid (rather than 2 columns of color)
+            let corners2: [RGB, RGB] = [corners[2], corners[1]];
+            this.assignColors(i => interpolate2(corners2, asCoord(i)), useCurrentCorners);
         } else {
-            let corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
-            this.assignColors(i => interpolate4(corners, asNormCoord(i)));
+            this.assignColors(i => interpolate4(corners, asNormCoord(i)), useCurrentCorners);
         }
+
     }
 
-    assignColors(callback: (cellIndex: number) => RGB) {
+    assignColors(callback: (cellIndex: number) => RGB, skipTransition = false) {
         squares.forEach((s, i) => {
             let clr = callback(i);
+            if (skipTransition) {
+                s.classList.add("no-transition");
+                s.offsetHeight;
+            }
             s.style.backgroundColor = hex(clr);
     
             s.querySelector('.colhex')!.textContent = hex(clr);
         });
+
+        if (skipTransition) {
+            // return transition after color change
+            requestAnimationFrame(() => { // this is called before update
+                requestAnimationFrame(() => { // this is called after update
+                    squares.forEach(s => {
+                        s.classList.remove("no-transition");
+                    });
+                });
+            });
+        }
     }
 
 }
