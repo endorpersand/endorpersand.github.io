@@ -6,12 +6,12 @@ let wrapper = document.querySelector('.wrapper')!;
 
 class SquareTracker {
     static #MIN_ROWS = 3;
-    #cols: number;
+    #columns: number;
     readonly projectSquares: HTMLElement[];
     placeholderSquares: HTMLElement[];
 
     constructor() {
-        this.#cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
+        this.#columns = +getComputedStyle(wrapper).getPropertyValue('--cols');
 
         this.projectSquares = [...wrapper.querySelectorAll('a')];
         for (let s of this.projectSquares) {
@@ -31,11 +31,11 @@ class SquareTracker {
     }
 
     get cols() {
-        return this.#cols;
+        return this.#columns;
     }
     set cols(value) {
-        if (value != this.#cols) {
-            this.#cols = value;
+        if (value != this.#columns) {
+            this.#columns = value;
             this.#rebalance();
         }
     }
@@ -70,8 +70,8 @@ class SquareTracker {
     #rebalance() {
         let squares = this.squares;
         // n = number of squares that should be on board
-        let n = Math.max(this.#cols * SquareTracker.#MIN_ROWS, this.projectSquares.length);
-        n = Math.ceil(n / this.#cols) * this.#cols;
+        let n = Math.max(this.#columns * SquareTracker.#MIN_ROWS, this.projectSquares.length);
+        n = Math.ceil(n / this.#columns) * this.#columns;
 
         if (squares == n) return;
         if (squares > n) {
@@ -94,7 +94,7 @@ class SquareTracker {
     }
 
     regenColors() {
-        if (this.#cols < 3) {
+        if (this.#columns < 3) {
             let corners = Array.from({length: 2}, () => randRGB(0x50)) as [RGB, RGB];
             this.assignColors(i => interpolate2(corners, asCoord(i)));
         } else {
