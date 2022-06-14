@@ -532,6 +532,28 @@ let wrapper = document.querySelector('.wrapper');
 class SquareTracker {
     static #MIN_ROWS = 3;
     #columns;
+    corners = [
+        [
+            0x77,
+            0x77,
+            0x77
+        ],
+        [
+            0x77,
+            0x77,
+            0x77
+        ],
+        [
+            0x77,
+            0x77,
+            0x77
+        ],
+        [
+            0x77,
+            0x77,
+            0x77
+        ]
+    ];
     constructor(){
         this.#columns = +getComputedStyle(wrapper).getPropertyValue('--cols');
         this.projectSquares = [
@@ -571,7 +593,7 @@ class SquareTracker {
         a.appendChild(title);
         a.appendChild(desc);
         a.appendChild(colhex);
-        a.addEventListener("click", this.regenColors.bind(this));
+        a.addEventListener("click", this.regenColors.bind(this, false));
         wrapper.appendChild(a);
         this.placeholderSquares.push(a);
     }
@@ -586,35 +608,47 @@ class SquareTracker {
         if (squares == n) return;
         if (squares > n) for(let i = squares; i > n; i--)this.#removeSquare();
         else if (squares < n) for(let i1 = squares; i1 < n; i1++)this.#addSquare();
-        this.regenColors();
+        this.regenColors(true);
     }
     forEach(callback) {
         let i = 0;
         for (let e of this.projectSquares)callback(e, i++);
         for (let e1 of this.placeholderSquares)callback(e1, i++);
     }
-    regenColors() {
+    regenColors(useCurrentCorners = false) {
+        if (!useCurrentCorners) this.corners = Array.from({
+            length: 4
+        }, ()=>randRGB(0x50)
+        );
+        let corners = this.corners;
         if (this.#columns < 3) {
-            let corners = Array.from({
-                length: 2
-            }, ()=>randRGB(0x50)
-            );
-            this.assignColors((i)=>interpolate2(corners, asCoord(i))
-            );
-        } else {
-            let corners = Array.from({
-                length: 4
-            }, ()=>randRGB(0x50)
-            );
-            this.assignColors((i)=>interpolate4(corners, asNormCoord(i))
-            );
-        }
+            // use TL + BR boxes rather than the corners to make a consistent grid (rather than 2 columns of color)
+            let corners2 = [
+                corners[2],
+                corners[1]
+            ];
+            this.assignColors((i)=>interpolate2(corners2, asCoord(i))
+            , useCurrentCorners);
+        } else this.assignColors((i)=>interpolate4(corners, asNormCoord(i))
+        , useCurrentCorners);
     }
-    assignColors(callback) {
+    assignColors(callback, skipTransition = false) {
         squares.forEach((s, i)=>{
             let clr = callback(i);
+            if (skipTransition) {
+                s.classList.add("no-transition");
+                s.offsetHeight;
+            }
             s.style.backgroundColor = hex(clr);
             s.querySelector('.colhex').textContent = hex(clr);
+        });
+        if (skipTransition) // return transition after color change
+        requestAnimationFrame(()=>{
+            requestAnimationFrame(()=>{
+                squares.forEach((s)=>{
+                    s.classList.remove("no-transition");
+                });
+            });
         });
     }
 }
