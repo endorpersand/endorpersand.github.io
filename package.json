@@ -10,7 +10,9 @@
     "dependencies": {
         "complex.js": "^2.1.1",
         "katex": "^0.15.6",
-        "mathjs": "^10.6.0"
+        "mathjs": "^10.6.0",
+        "pixi.js": "^6.4.2",
+        "querystring-es3": "^0.2.1"
     },
     "browserslist": [
         "> 1%",
