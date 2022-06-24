@@ -1,0 +1,25 @@
+.wrapper {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+.wrapper > :first-child {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+}
+#colors {
+    display: flex;
+    flex-direction: column;
+    width: 100px;
+}
+#colors > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+@media (width <= 700px) {
+    .wrapper {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,15 @@
+body {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+canvas {
+    cursor: crosshair;
+}
+form {
+    display: inline;
+}
+.error {
+    color: red;
+}

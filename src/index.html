@@ -1,58 +1,8 @@
 <head>
     <meta charset="utf-8">
     <link href="site.css" rel="stylesheet">
+    <link href="index/page.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .wrapper {
-            --cols: 4;
-            display: grid;
-            grid-template-columns: repeat(var(--cols), 1fr);
-            grid-auto-rows: minmax(200px, auto);
-            gap: 10px;
-            width: 100%;
-        }
-        .wrapper a {
-            text-align: center;
-            background-color: #777;
-            filter: none;
-        }
-        .wrapper a:hover {
-            filter: brightness(150%);
-        }
-        :not(.no-transition) {
-            transition: filter 0.25s ease-in-out;
-            transition: background-color 0.25s ease-in-out;
-        }
-        a {
-            position: relative;
-            text-decoration: none;
-            color: #111;
-        }
-        a > div {
-            margin: 5px;
-        }
-        .colhex {
-            position: absolute;
-            bottom: 5;
-            right: 5;
-            color: #0000007f;
-        }
-        .title {
-            font-weight: bolder;
-            font-size: 110%;
-        }
-
-        @media (width <= 600px) {
-            .wrapper {
-                --cols: 2;
-            }
-        }
-        @media (600px <= width <= 1000px) {
-            .wrapper {
-                --cols: 3;
-            }
-        }
-    </style>
 </head>
 <body>
     <span>Hi</span>
