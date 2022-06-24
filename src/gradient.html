@@ -2,34 +2,8 @@
 <html>
     <head>
         <link href="site.css" rel="stylesheet">
+        <link href="gradient/page.css" rel="stylesheet">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            .wrapper {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-            }
-            .wrapper > :first-child {
-                display: flex;
-                flex-direction: column;
-                flex-basis: 100%;
-            }
-            #colors {
-                display: flex;
-                flex-direction: column;
-                width: 100px;
-            }
-            #colors > div {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
-
-            @media (width <= 700px) {
-                .wrapper {
-                    flex-direction: column;
-                }
-            }
-        </style>
     </head>
     <body>
         <div class="wrapper">
