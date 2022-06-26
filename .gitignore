@@ -3,3 +3,4 @@ old_projdump/
 **/node_modules
 **/dist
 **/.parcel-cache
+**/__*
