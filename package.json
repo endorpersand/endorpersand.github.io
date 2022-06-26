@@ -20,10 +20,19 @@
         "not ie <= 8"
     ],
     "devDependencies": {
+        "@parcel/config-default": "^2.6.2",
+        "@parcel/core": "^2.6.2",
+        "@parcel/resolver-glob": "^2.6.2",
         "@types/katex": "^0.14.0",
+        "@types/node": "^18.0.0",
         "cross-env": "^7.0.3",
         "gh-pages": "^4.0.0",
         "parcel": "^2.6.2",
+        "ts-node": "^10.8.1",
         "typescript": "^4.7.4"
+    },
+    "peerDependencies": {
+        "@parcel/core": "^2.6.2",
+        "@types/node": "^18.0.0"
     }
 }
