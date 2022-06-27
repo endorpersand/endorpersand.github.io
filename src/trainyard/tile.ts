@@ -114,19 +114,93 @@ export abstract class TravTile extends Tile {
 }
 
 namespace TileGraphics {
+    export function sized(size: number, f?: (c: PIXI.Container) => void): PIXI.Container {
+        const con = new PIXI.Container();
+        f?.(con);
+
+        con.width = size;
+        con.height = size;
+        return con;
+    }
+
     export function box(textures: Atlas): [box: PIXI.Sprite, inner: number] {
         const box = new PIXI.Sprite(textures["t_box.png"]);
         return [
-            box, box.width - 6
+            box, box.width - 10
         ]
     }
 
+    function pivotCenter(sprite: PIXI.Sprite) {
+        const [cx, cy] = [sprite.width / 2, sprite.height / 2];
+
+        sprite.pivot.set(cx, cy);
+        sprite.position.set(cx, cy);
+    }
+
     export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
-        throw new Error("To be implemented");
+        const sprite = new PIXI.Sprite(textures["s_active.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = -90 * d;
+
+        return sprite;
     }
 
     export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
-        throw new Error("To be implemented");
+        const sprite = new PIXI.Sprite(textures["s_passive.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = -90 * d;
+
+        return sprite;
+    }
+
+    export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
+        sprite.tint = Palette.Train[c];
+        return sprite;
+    }
+
+    export function splitterSymbol(textures: Atlas, d: Dir): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["t_splitter.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = 180 - 90 * d;
+
+        return sprite;
+    }
+
+    export function rock(textures: Atlas): PIXI.Sprite { // TODO
+        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
+        
+        pivotCenter(sprite);
+        sprite.angle = 180;
+
+        return sprite;
+    }
+
+    export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
+        let [e1, e2] = entrances;
+
+        let straight = !((e1 - e2) % 2);
+        console.log(entrances, straight);
+        
+        let sprite = new PIXI.Sprite(textures[straight ? "rail.png" : "rail2.png"]);
+        if (straight) {
+            sprite.angle = -90 * e1;
+        } else {
+            let d = ((e2 - e1) % 4 + 4) % 4;
+            if (d == 1) {
+                // difference of 1 means e1 is left of e2
+                sprite.angle = -90 * e1;
+            } else { // d == 3
+                // difference of 3 means e2 is left of e1
+                sprite.angle = -90 * e2;
+            }
+        }
+
+        pivotCenter(sprite);
+        return sprite;
     }
 }
 
@@ -158,23 +232,25 @@ export namespace Tile {
             }
             
             render(textures: Atlas, size: number): PIXI.Container {
-                const con = new PIXI.Container();
-        
-                const [box, inner] = TileGraphics.box(textures);
-                con.addChild(box);
-                
-                const centerX = Math.floor(box.width / 2);
-                const rad = Math.floor(inner / 2) - 2;
-                const circle = new PIXI.Graphics()
-                    .beginFill(Palette.Train[Color.Red])
-                    .drawCircle(centerX, centerX, rad);
-                con.addChild(circle);
-                
-                con.addChild(TileGraphics.passiveSide(textures, this.out));
-
-                con.width = size;
-                con.height = size;
-                return con;
+                return TileGraphics.sized(size, con => {
+                    const [box, inner] = TileGraphics.box(textures);
+                    con.addChild(box);
+                    
+                    const centerZ = Math.floor(box.width / 2);
+    
+                    const pWidth = inner - 1;
+                    const pHeight = pWidth / 2;
+                    const [x, y] = [centerZ - pWidth / 2, centerZ - pHeight / 2];
+    
+                    const plus = new PIXI.Graphics()
+                        .beginFill(Palette.Train[Color.Red])
+                        .drawRect(x, y, pWidth, pHeight)
+                        .drawRect(y, x, pHeight, pWidth);
+    
+                    con.addChild(plus);
+                    
+                    con.addChild(TileGraphics.passiveSide(textures, this.out));
+                });
             }
         }
         
@@ -214,25 +290,21 @@ export namespace Tile {
             }
         
             render(textures: Atlas, size: number): PIXI.Container {
-                const con = new PIXI.Container();
-        
-                const [box, inner] = TileGraphics.box(textures);
-                con.addChild(box);
-                
-                const centerX = Math.floor(box.width / 2);
-                const rad = Math.floor(inner / 2) - 2;
-                const circle = new PIXI.Graphics()
-                    .beginFill(Palette.Train[Color.Red])
-                    .drawCircle(centerX, centerX, rad);
-                con.addChild(circle);
-                
-                con.addChild(...[...this.entrances]
-                    .map(e => TileGraphics.activeSide(textures, e))
-                )
-
-                con.width = size;
-                con.height = size;
-                return con;
+                return TileGraphics.sized(size, con => {
+                    const [box, inner] = TileGraphics.box(textures);
+                    con.addChild(box);
+                    
+                    const centerX = Math.floor(box.width / 2);
+                    const rad = Math.floor(inner / 2);
+                    const circle = new PIXI.Graphics()
+                        .beginFill(Palette.Train[Color.Red])
+                        .drawCircle(centerX, centerX, rad);
+                    con.addChild(circle);
+                    
+                    con.addChild(...[...this.entrances]
+                        .map(e => TileGraphics.activeSide(textures, e))
+                    )
+                });
             }
         }
         
@@ -275,7 +347,16 @@ export namespace Tile {
             }
 
             render(textures: Atlas, size: number): PIXI.Container {
-                throw new Error("Method not implemented.");
+                return TileGraphics.sized(size, con => {
+                    const [box, inner] = TileGraphics.box(textures);
+                    con.addChild(box);
+                    
+                    const centerX = Math.floor(box.width / 2);
+                    con.addChild(TileGraphics.painterSymbol(textures, this.color));
+                    con.addChild(...[...this.actives]
+                        .map(e => TileGraphics.activeSide(textures, e))
+                    )
+                });
             }
         }
         
@@ -326,7 +407,18 @@ export namespace Tile {
             }
 
             render(textures: Atlas, size: number): PIXI.Container {
-                throw new Error("Method not implemented.");
+                return TileGraphics.sized(size, con => {
+                    const [box, inner] = TileGraphics.box(textures);
+                    con.addChild(box);
+                    
+                    con.addChild(TileGraphics.splitterSymbol(textures, this.active));
+                    
+                    let sides = [
+                        TileGraphics.activeSide(textures, this.active),
+                        ...this.sides.map(s => TileGraphics.passiveSide(textures, s))
+                    ];
+                    con.addChild(...sides);
+                });
             }
         }
         
@@ -337,13 +429,15 @@ export namespace Tile {
             }
 
             render(textures: Atlas, size: number): PIXI.Container {
-                return new PIXI.Container();
+                return TileGraphics.sized(size);
             }
         }
         
         export class Rock extends Blank {
             render(textures: Atlas, size: number): PIXI.Container {
-                throw new Error("Method not implemented.");
+                return TileGraphics.sized(size, con => {
+                    con.addChild(TileGraphics.rock(textures));
+                });
             }
         }
         
@@ -438,7 +532,9 @@ export namespace Tile {
             }
         
             render(textures: Atlas, size: number): PIXI.Container {
-                throw new Error("Method not implemented.");
+                return TileGraphics.sized(size, con => {
+                    con.addChild(TileGraphics.rail(textures, ...this.entrances));
+                });
             }
         }
         
@@ -476,7 +572,16 @@ export namespace Tile {
             }
 
             render(textures: Atlas, size: number): PIXI.Container {
-                throw new Error("Method not implemented.");
+                return TileGraphics.sized(size, con => {
+                    const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
+
+                    if (this.#do_railswap) {
+                        rails[1].tint = 0x7F7F7F;
+                        rails.reverse();
+                    }
+
+                    con.addChild(...rails);
+                });
             }
         }
 }

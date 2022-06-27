@@ -32,10 +32,12 @@ function setup() {
 
     let i = 0;
     for (let t of [
-        new Tile.Goal([Color.Red], [Dir.Up]),
-        new Tile.Outlet(Dir.Down, [Color.Red]),
-        new Tile.Painter(Color.Red, Dir.Left, Dir.Right),
+        new Tile.Goal([Color.Blue], [Dir.Up]),
+        new Tile.Outlet(Dir.Down, [Color.Blue]),
+        new Tile.Painter(Color.Blue, Dir.Left, Dir.Right),
         new Tile.Splitter(Dir.Up),
+        new Tile.Rock(),
+        new Tile.Blank(),
         new Tile.SingleRail(Dir.Left, Dir.Right),
         Tile.Rail.of(
             new Tile.SingleRail(Dir.Left, Dir.Right),

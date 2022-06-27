@@ -59,7 +59,7 @@ export namespace Color {
 }
 
 export enum Dir {
-    Up, Left, Down, Right
+    Right, Up, Left, Down
 }
 
 export namespace Dir {
