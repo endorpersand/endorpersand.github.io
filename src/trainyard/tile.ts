@@ -76,7 +76,7 @@ export class TileGrid {
             for (let j = 0; j < this.size; j++) {
                 let tile = this.tile(i, j);
 
-                if (typeof tile !== "undefined" && tile.trains.length > 0) {
+                if (tile instanceof TravTile && tile.trains.length > 0) {
                     this.cursor = [i, j];
                     tile.step(this);
                 }
@@ -89,37 +89,38 @@ export class TileGrid {
     }
 }
 
-export interface Tile {
-    /**
-     * A list of the trains currently on the tile.
-     */
-    trains: Train[];
-
-    /**
-     * Indicates what this tile should do during the step (is only called if the tile has a train).
-     * @param grid Grid that the tile is on
-     */
-    step(grid: TileGrid): void;
-
+export abstract class Tile {
     /**
      * Indicates what this tile should do when a train moves onto it.
      * @param train 
      */
-    accept(grid: TileGrid, train: Train): void;
+    abstract accept(grid: TileGrid, train: Train): void;
+}
+
+export abstract class TravTile extends Tile {
+    /**
+     * A list of the trains currently on the tile.
+     */
+    trains: Train[] = [];
+    
+    /**
+     * Indicates what this tile should do during the step (is only called if the tile has a train).
+     * @param grid Grid that the tile is on
+     */
+    abstract step(grid: TileGrid): void;
 }
 
 /**
  * Tile which trains appear from.
  */
-export class Outlet implements Tile {
-    trains: Train[];
-
+export class Outlet extends TravTile {
     /**
      * The output side.
      */
     out: Dir;
 
     constructor(out: Dir, colors: Color[]) {
+        super();
         this.out = out;
         this.trains = Array.from(colors, color => ({color, dir: out}));
     }
@@ -138,8 +139,7 @@ export class Outlet implements Tile {
 /**
  * Tiles which trains must go to.
  */
-export class Goal implements Tile {
-    trains: Train[] = [];
+export class Goal extends Tile {
     /**
      * The train colors this goal block wants. If met, the color is switched to undefined.
      */
@@ -151,14 +151,9 @@ export class Goal implements Tile {
     entrances: DirFlags;
 
     constructor(targets: Color[], entrances: Dir[]) {
+        super();
         this.targets = targets;
         this.entrances = new DirFlags(entrances);
-    }
-
-    step(_: TileGrid): void {
-        // This is an unreachable state, since a goal tile should never have a train.
-        // Trains should not be on this tile, so the train var can be cleared.
-        this.trains = [];
     }
 
     accept(grid: TileGrid, train: Train): void {
@@ -181,8 +176,7 @@ export class Goal implements Tile {
 /**
  * Tiles which paint the train.
  */
-export class Painter implements Tile {
-    trains: Train[] = [];
+export class Painter extends TravTile {
     /**
      * The active sides.
      * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
@@ -191,6 +185,7 @@ export class Painter implements Tile {
     color: Color;
 
     constructor(color: Color, active1: Dir, active2: Dir) {
+        super();
         this.actives = new DirFlags([active1, active2]);
         this.color = color;
     }
@@ -220,8 +215,7 @@ export class Painter implements Tile {
 /**
  * Tiles which split the train into 2 trains.
  */
-export class Splitter implements Tile {
-    trains: Train[] = [];
+export class Splitter extends TravTile {
     /**
      * The active side.
      * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
@@ -229,6 +223,7 @@ export class Splitter implements Tile {
     active: Dir;
 
     constructor(active: Dir) {
+        super();
         this.active = active;
     }
 
@@ -258,15 +253,7 @@ export class Splitter implements Tile {
     }
 }
 
-export class Blank implements Tile {
-    trains: Train[] = [];
-
-    step(_: TileGrid): void {
-        // This is an unreachable state, since a blank tile should never have a train.
-        // Trains should not be on this tile, so the train var can be cleared.
-        this.trains = [];
-    }
-
+export class Blank extends Tile {
     accept(grid: TileGrid, _: Train): void {
         // If a train tries to land on a blank tile, then the train must've crashed.
         grid.fail();
@@ -275,11 +262,11 @@ export class Blank implements Tile {
 
 export class Rock extends Blank {}
 
-export abstract class Rail implements Tile {
-    trains: Train[] = [];
+export abstract class Rail extends TravTile {
     entrances: DirFlags;
 
     constructor(entrances: Dir[] | DirFlags) {
+        super();
         this.entrances = new DirFlags(entrances);
     }
 
