@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js'
 // @ts-ignore
 import assets from '../../static/*'
+import { Color } from "./values";
 
 const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
@@ -11,6 +12,19 @@ const app = new PIXI.Application({
     width: 512, 
     height: 512
 });
+
+const Palette = {
+    Train: {
+        [Color.Red]:    0xEE3030,
+        [Color.Orange]: 0xEE8F30,
+        [Color.Yellow]: 0xEFEF3F,
+        [Color.Green]:  0x36EE30,
+        [Color.Blue]:   0x3056EE,
+        [Color.Purple]: 0xB530EE,
+        [Color.Brown]:  0x9C6D2F,
+    },
+    BG: 0x2F2F2F
+}
 document.querySelector("#game")!.prepend(app.view);
 
 app.renderer.backgroundColor = 0xFFAFAF;
