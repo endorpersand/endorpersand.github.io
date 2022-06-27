@@ -6,14 +6,15 @@ const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
 
 PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
-const game = document.querySelector("#game")!;
+
 const app = new PIXI.Application({
-    width: 256, 
-    height: 256
+    width: 512, 
+    height: 512
 });
+document.querySelector("#game")!.prepend(app.view);
 
 app.renderer.backgroundColor = 0xFFAFAF;
-game.prepend(app.view);
+app.renderer.plugins.interaction.moveWhenInside = true;
 
 loader
     .add(assets["trainyard.json"])
@@ -21,7 +22,7 @@ loader
 
 let textures: {[name: string]: PIXI.Texture<PIXI.Resource>};
 
-let tile = (i: number) => [32 * (i % 8), 32 * (Math.floor(i / 8))] as [number, number];
+let tile = (i: number) => [32 * (i % 16), 32 * (Math.floor(i / 16))] as [number, number];
 
 function setup() {
     textures = resources[assets["trainyard.json"]].textures!;
@@ -31,10 +32,21 @@ function setup() {
         let st = new PIXI.Sprite(t);
         st.position.set(...tile(i++));
         app.stage.addChild(st);
+        
+        st.interactive = true;
+        st.on("mouseout", leave);
+        st.on("mouseover", enter);
     }
 
-    app.ticker.add(gameLoop);
+    // app.ticker.add(gameLoop);
 };
+
+function enter(e: PIXI.InteractionEvent) {
+    (e.currentTarget as PIXI.Sprite).tint = 0xFF0000;
+}
+function leave(e: PIXI.InteractionEvent) {
+    (e.currentTarget as PIXI.Sprite).tint = 0xFFFFFF;
+}
 
 function gameLoop(delta: number) {
     // cat.x = (cat.x + speed + delta) % 256;
