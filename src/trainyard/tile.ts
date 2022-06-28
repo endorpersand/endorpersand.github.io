@@ -77,7 +77,7 @@ export class TileGrid {
             for (let j = 0; j < this.size; j++) {
                 let tile = this.tile(i, j);
 
-                if (tile instanceof TravTile && tile.trains.length > 0) {
+                if (tile.trains.length > 0) {
                     this.cursor = [i, j];
                     tile.step(this);
                 }
@@ -92,25 +92,43 @@ export class TileGrid {
 
 export abstract class Tile {
     /**
-     * Indicates what this tile should do when a train moves onto it.
-     * @param train 
-     */
-    abstract accept(grid: TileGrid, train: Train): void;
-
-    abstract render(textures: Atlas, size: number): PIXI.Container;
-}
-
-export abstract class TravTile extends Tile {
-    /**
      * A list of the trains currently on the tile.
      */
     trains: Train[] = [];
-    
+    /**
+     * The sides that trains can enter this tile through.
+     * Note that if an active left side accepts right-facing trains.
+     */
+    readonly actives: DirFlags;
+
+    constructor(...actives: Dir[]) {
+        this.actives = new DirFlags(actives);
+    }
+
+    /**
+     * Adds this train to the tile's train storage (if the train passes through an active side)
+     * @param train 
+     */
+        accept(grid: TileGrid, train: Train): void {
+        if (this.actives.has(Dir.flip(train.dir))) {
+            this.trains.push(train);
+        } else {
+            grid.fail();
+        }
+    }
+
     /**
      * Indicates what this tile should do during the step (is only called if the tile has a train).
      * @param grid Grid that the tile is on
      */
     abstract step(grid: TileGrid): void;
+
+    /**
+     * Create the Container that displays this tile.
+     * @param textures The texture atlas that holds all assets
+     * @param size Size of the tile
+     */
+    abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
 namespace TileGraphics {
@@ -245,7 +263,7 @@ export namespace Tile {
         /**
          * Tile which trains appear from.
          */
-        export class Outlet extends TravTile {
+        export class Outlet extends Tile {
             /**
              * The output side.
              */
@@ -262,11 +280,6 @@ export namespace Tile {
                 // While the outlet has trains, deploy one.
                 this.released += 1;
                 grid.intoNeighbor(this.trains.shift()!);
-            }
-        
-            accept(grid: TileGrid, _: Train): void {
-                // A train cannot enter an outlet.
-                grid.fail();
             }
             
             render(textures: Atlas, size: number): PIXI.Container {
@@ -302,31 +315,24 @@ export namespace Tile {
              * The train colors this goal block wants. If met, the color is switched to undefined.
              */
             targets: (Color | undefined)[];
-            /**
-             * The active sides.
-             * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
-             */
-            entrances: DirFlags;
-        
+
             constructor(targets: Color[], entrances: Dir[]) {
-                super();
+                super(...entrances);
                 this.targets = targets;
-                this.entrances = new DirFlags(entrances);
             }
         
-            accept(grid: TileGrid, train: Train): void {
-                // If the train enters from an active side:
-                if (this.entrances.has(Dir.flip(train.dir))) {
-        
-                    // If this goal was expecting this train's color:
+            step(grid: TileGrid): void {
+                let trains = this.trains;
+                this.trains = [];
+
+                for (let train of trains) {
                     let i = this.targets.indexOf(train.color);
                     if (i != -1) {
                         this.targets[i] = undefined;
-                        return;
+                    } else {
+                        grid.fail();
                     }
-        
                 }
-                grid.fail();
             }
         
             render(textures: Atlas, size: number): PIXI.Container {
@@ -342,7 +348,7 @@ export namespace Tile {
                     );
                     con.addChild(symbols);
 
-                    con.addChild(...[...this.entrances]
+                    con.addChild(...[...this.actives]
                         .map(e => TileGraphics.activeSide(textures, e))
                     )
                 });
@@ -352,17 +358,11 @@ export namespace Tile {
         /**
         * Tiles which paint the train.
         */
-        export class Painter extends TravTile {
-            /**
-             * The active sides.
-             * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
-             */
-            actives: DirFlags;
+        export class Painter extends Tile {
             color: Color;
         
             constructor(color: Color, active1: Dir, active2: Dir) {
-                super();
-                this.actives = new DirFlags([active1, active2]);
+                super(active1, active2);
                 this.color = color;
             }
         
@@ -404,7 +404,7 @@ export namespace Tile {
         /**
          * Tiles which split the train into 2 trains.
          */
-        export class Splitter extends TravTile {
+        export class Splitter extends Tile {
             /**
              * The active side.
              * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
@@ -412,7 +412,7 @@ export namespace Tile {
             active: Dir;
         
             constructor(active: Dir) {
-                super();
+                super(active);
                 this.active = active;
             }
         
@@ -437,15 +437,6 @@ export namespace Tile {
                     color: rclr, dir: rdir
                 });
             }
-            
-            accept(grid: TileGrid, train: Train): void {
-                // A train can only enter a splitter through the active side.
-                if (this.active === Dir.flip(train.dir)) {
-                    this.trains.push(train);
-                } else {
-                    grid.fail();
-                }
-            }
 
             render(textures: Atlas, size: number): PIXI.Container {
                 return TileGraphics.sized(size, con => {
@@ -464,8 +455,9 @@ export namespace Tile {
         }
         
         export class Blank extends Tile {
-            accept(grid: TileGrid, _: Train): void {
-                // If a train tries to land on a blank tile, then the train must've crashed.
+            step(grid: TileGrid): void {
+                // Unreachable state.
+                this.trains = [];
                 grid.fail();
             }
 
@@ -482,12 +474,9 @@ export namespace Tile {
             }
         }
         
-        export abstract class Rail extends TravTile {
-            entrances: DirFlags;
-        
+        export abstract class Rail extends Tile {
             constructor(entrances: Dir[] | DirFlags) {
-                super();
-                this.entrances = new DirFlags(entrances);
+                super(...entrances);
             }
         
             step(grid: TileGrid): void {
@@ -529,22 +518,13 @@ export namespace Tile {
              * @returns the new rail
              */
             static of(rail1: SingleRail, rail2: SingleRail) {
-                let [e1, e2] = [rail1.entrances, rail2.entrances];
+                let [e1, e2] = [rail1.actives, rail2.actives];
         
                 if (e1.equals(e2)) {
                     let [d1, d2, ..._] = e1;
                     return new SingleRail(d1, d2);
                 }
                 return new DoubleRail([e1, e2]);
-            }
-        
-            accept(grid: TileGrid, train: Train): void {
-                // Only accept train if the train passes through one of the rail's entrances
-                if (this.entrances.has(Dir.flip(train.dir))) {
-                    this.trains.push(train);
-                } else {
-                    grid.fail();
-                }
             }
             
             /**
@@ -566,15 +546,15 @@ export namespace Tile {
                 let enterDir = Dir.flip(dir);
                 
                 // A train that entered through one entrance exits through the other entrance
-                if (this.entrances.has(enterDir)) {
-                    return {color, dir: this.entrances.dirExcluding(enterDir)};
+                if (this.actives.has(enterDir)) {
+                    return {color, dir: this.actives.dirExcluding(enterDir)};
                 }
                 // invalid state: wipe truck from existence
             }
         
             render(textures: Atlas, size: number): PIXI.Container {
                 return TileGraphics.sized(size, con => {
-                    con.addChild(TileGraphics.rail(textures, ...this.entrances));
+                    con.addChild(TileGraphics.rail(textures, ...this.actives));
                 });
             }
         }
@@ -590,7 +570,7 @@ export namespace Tile {
                 }
                 super(e0.or(e1));
                 this.paths = paths;
-                this.#do_railswap = [...this.entrances].length < 4;
+                this.#do_railswap = [...this.actives].length < 4;
             }
         
             redirect(t: Train): Train | undefined {
