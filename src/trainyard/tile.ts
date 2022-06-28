@@ -260,349 +260,350 @@ namespace TileGraphics {
 
 export namespace Tile {
 
+    /**
+     * Tile which trains appear from.
+     */
+    export class Outlet extends Tile {
         /**
-         * Tile which trains appear from.
+         * The output side.
          */
-        export class Outlet extends Tile {
-            /**
-             * The output side.
-             */
-            out: Dir;
-            released: number = 0;
-        
-            constructor(out: Dir, colors: Color[]) {
-                super();
-                this.out = out;
-                this.trains = Array.from(colors, color => ({color, dir: out}));
-            }
-        
-            step(grid: TileGrid): void {
-                // While the outlet has trains, deploy one.
-                this.released += 1;
-                grid.intoNeighbor(this.trains.shift()!);
-            }
-            
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    const [box, inner] = TileGraphics.box(textures);
-                    con.addChild(box);
-                    
-                    const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
-                    const symbols = TileGraphics.symbolSet(
-                        this.trains.map(t => t.color), [center, inner],
-                        (cx, cy, s, clr, g) => {
-                            const width = s;
-                            const height = width / 2;
-
-                            const [dx, dy] = [-width / 2, -height / 2];
-                            return g.beginFill(Palette.Train[clr])
-                                .drawRect(cx + dx, cy + dy, width, height)
-                                .drawRect(cx + dy, cy + dx, height, width);
-                        }
-                    );
-                    con.addChild(symbols);
-                    
-                    con.addChild(TileGraphics.passiveSide(textures, this.out));
-                });
-            }
+        out: Dir;
+        released: number = 0;
+    
+        constructor(out: Dir, colors: Color[]) {
+            super();
+            this.out = out;
+            this.trains = Array.from(colors, color => ({color, dir: out}));
+        }
+    
+        step(grid: TileGrid): void {
+            // While the outlet has trains, deploy one.
+            this.released += 1;
+            grid.intoNeighbor(this.trains.shift()!);
         }
         
-        /**
-         * Tiles which trains must go to.
-         */
-        export class Goal extends Tile {
-            /**
-             * The train colors this goal block wants. If met, the color is switched to undefined.
-             */
-            targets: (Color | undefined)[];
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                const symbols = TileGraphics.symbolSet(
+                    this.trains.map(t => t.color), [center, inner],
+                    (cx, cy, s, clr, g) => {
+                        const width = s;
+                        const height = width / 2;
 
-            constructor(targets: Color[], entrances: Dir[]) {
-                super(...entrances);
-                this.targets = targets;
-            }
-        
-            step(grid: TileGrid): void {
-                let trains = this.trains;
-                this.trains = [];
-
-                for (let train of trains) {
-                    let i = this.targets.indexOf(train.color);
-                    if (i != -1) {
-                        this.targets[i] = undefined;
-                    } else {
-                        grid.fail();
+                        const [dx, dy] = [-width / 2, -height / 2];
+                        return g.beginFill(Palette.Train[clr])
+                            .drawRect(cx + dx, cy + dy, width, height)
+                            .drawRect(cx + dy, cy + dx, height, width);
                     }
-                }
-            }
-        
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    const [box, inner] = TileGraphics.box(textures);
-                    con.addChild(box);
-                    
-                    const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
-                    const symbols = TileGraphics.symbolSet(
-                        this.targets as Color[], [center, inner],
-                        (cx, cy, s, clr, g) => g.beginFill(Palette.Train[clr])
-                            .drawCircle(cx, cy, s / 2)
-                    );
-                    con.addChild(symbols);
-
-                    con.addChild(...[...this.actives]
-                        .map(e => TileGraphics.activeSide(textures, e))
-                    )
-                });
-            }
+                );
+                con.addChild(symbols);
+                
+                con.addChild(TileGraphics.passiveSide(textures, this.out));
+            });
         }
-        
+    }
+    
+    /**
+     * Tiles which trains must go to.
+     */
+    export class Goal extends Tile {
         /**
-        * Tiles which paint the train.
-        */
-        export class Painter extends Tile {
-            color: Color;
-        
-            constructor(color: Color, active1: Dir, active2: Dir) {
-                super(active1, active2);
-                this.color = color;
-            }
-        
-            step(grid: TileGrid): void {
-                // Paint the train and output it.
-                let train = this.trains.shift()!;
-                // Get the output direction.
-                let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
-        
-                grid.intoNeighbor({
-                    color: this.color,
-                    dir: outDir
-                });
-            }
-            
-            accept(grid: TileGrid, train: Train): void {
-                // A train can only enter an outlet from the active side.
-                if (this.actives.has(Dir.flip(train.dir))) {
-                    this.trains.push(train);
+         * The train colors this goal block wants. If met, the color is switched to undefined.
+         */
+        targets: (Color | undefined)[];
+
+        constructor(targets: Color[], entrances: Dir[]) {
+            super(...entrances);
+            this.targets = targets;
+        }
+    
+        step(grid: TileGrid): void {
+            let trains = this.trains;
+            this.trains = [];
+
+            for (let train of trains) {
+                let i = this.targets.indexOf(train.color);
+                if (i != -1) {
+                    this.targets[i] = undefined;
                 } else {
                     grid.fail();
                 }
             }
+        }
+    
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                const symbols = TileGraphics.symbolSet(
+                    this.targets as Color[], [center, inner],
+                    (cx, cy, s, clr, g) => g.beginFill(Palette.Train[clr])
+                        .drawCircle(cx, cy, s / 2)
+                );
+                con.addChild(symbols);
 
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    const [box, inner] = TileGraphics.box(textures);
-                    con.addChild(box);
-                    
-                    const centerX = Math.floor(box.width / 2);
-                    con.addChild(TileGraphics.painterSymbol(textures, this.color));
-                    con.addChild(...[...this.actives]
-                        .map(e => TileGraphics.activeSide(textures, e))
-                    )
-                });
+                con.addChild(...[...this.actives]
+                    .map(e => TileGraphics.activeSide(textures, e))
+                )
+            });
+        }
+    }
+    
+    /**
+    * Tiles which paint the train.
+    */
+    export class Painter extends Tile {
+        color: Color;
+    
+        constructor(color: Color, active1: Dir, active2: Dir) {
+            super(active1, active2);
+            this.color = color;
+        }
+    
+        step(grid: TileGrid): void {
+            // Paint the train and output it.
+            let train = this.trains.shift()!;
+            // Get the output direction.
+            let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
+    
+            grid.intoNeighbor({
+                color: this.color,
+                dir: outDir
+            });
+        }
+        
+        accept(grid: TileGrid, train: Train): void {
+            // A train can only enter an outlet from the active side.
+            if (this.actives.has(Dir.flip(train.dir))) {
+                this.trains.push(train);
+            } else {
+                grid.fail();
             }
+        }
+
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                const centerX = Math.floor(box.width / 2);
+                con.addChild(TileGraphics.painterSymbol(textures, this.color));
+                con.addChild(...[...this.actives]
+                    .map(e => TileGraphics.activeSide(textures, e))
+                )
+            });
+        }
+    }
+    
+    /**
+     * Tiles which split the train into 2 trains.
+     */
+    export class Splitter extends Tile {
+        /**
+         * The active side.
+         * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
+         */
+        active: Dir;
+    
+        constructor(active: Dir) {
+            super(active);
+            this.active = active;
+        }
+    
+        get sides(): [Dir, Dir] {
+            return [
+                Dir.rotate(this.active, 1),
+                Dir.rotate(this.active, 3),
+            ];
+        }
+
+        step(grid: TileGrid): void {
+            let train = this.trains.shift()!;
+    
+            let [ldir, rdir] = this.sides;
+    
+            // Split train's colors, pass the new trains through the two passive sides.
+            let [lclr, rclr] = Color.split(train.color);
+            grid.intoNeighbor({
+                color: lclr, dir: ldir
+            });
+            grid.intoNeighbor({
+                color: rclr, dir: rdir
+            });
+        }
+
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                con.addChild(TileGraphics.splitterSymbol(textures, this.active));
+                
+                let sides = [
+                    TileGraphics.activeSide(textures, this.active),
+                    ...this.sides.map(s => TileGraphics.passiveSide(textures, s))
+                ];
+                con.addChild(...sides);
+            });
+        }
+    }
+    
+    export class Blank extends Tile {
+        step(grid: TileGrid): void {
+            // Unreachable state.
+            this.trains = [];
+            grid.fail();
+        }
+
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size);
+        }
+    }
+    
+    export class Rock extends Blank {
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                con.addChild(TileGraphics.rock(textures));
+            });
+        }
+    }
+    
+    export abstract class Rail extends Tile {
+        constructor(entrances: Dir[] | DirFlags) {
+            super(...entrances);
+        }
+    
+        step(grid: TileGrid): void {
+            let trains = this.trains;
+            this.trains = [];
+    
+            // Figure out where all the trains are leaving
+            let destTrains = trains
+                .map(this.redirect)
+                .filter(t => typeof t !== "undefined") as Train[];
+            
+            // Merge exits and dispatch
+            for (let t of Rail.collapseTrains(destTrains)) {
+                grid.intoNeighbor(t);
+            }
+        }
+    
+        /**
+         * Combine trains into one expected output
+         * @param trains trains, uncombined
+         * @returns the combined trains
+         */
+        static collapseTrains(trains: Train[]) {
+            // merge all the colors of all the trains going through the rail
+            let color = Color.mixMany(trains.map(t => t.color));
+    
+            // get all train destinations
+            let dest = new Set(trains.map(t => t.dir));
+    
+            // create one train per dest.
+            return [...dest].map(dir => ({color, dir}));
+        }
+    
+        /**
+         * Create a new rail from two single rails.
+         * If they are the same rail, return a SingleRail, else create a joined DoubleRail.
+         * @param rail1 rail 1
+         * @param rail2 rail 2
+         * @returns the new rail
+         */
+        static of(rail1: SingleRail, rail2: SingleRail) {
+            let [e1, e2] = [rail1.actives, rail2.actives];
+    
+            if (e1.equals(e2)) {
+                let [d1, d2, ..._] = e1;
+                return new SingleRail(d1, d2);
+            }
+            return new DoubleRail([e1, e2]);
         }
         
         /**
-         * Tiles which split the train into 2 trains.
+         * Designate where a train should exit the rail (given its entrance state)
+         * @param t train to redirect
          */
-        export class Splitter extends Tile {
-            /**
-             * The active side.
-             * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
-             */
-            active: Dir;
-        
-            constructor(active: Dir) {
-                super(active);
-                this.active = active;
-            }
-        
-            get sides(): [Dir, Dir] {
-                return [
-                    Dir.rotate(this.active, 1),
-                    Dir.rotate(this.active, 3),
-                ];
-            }
-
-            step(grid: TileGrid): void {
-                let train = this.trains.shift()!;
-        
-                let [ldir, rdir] = this.sides;
-        
-                // Split train's colors, pass the new trains through the two passive sides.
-                let [lclr, rclr] = Color.split(train.color);
-                grid.intoNeighbor({
-                    color: lclr, dir: ldir
-                });
-                grid.intoNeighbor({
-                    color: rclr, dir: rdir
-                });
-            }
-
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    const [box, inner] = TileGraphics.box(textures);
-                    con.addChild(box);
-                    
-                    con.addChild(TileGraphics.splitterSymbol(textures, this.active));
-                    
-                    let sides = [
-                        TileGraphics.activeSide(textures, this.active),
-                        ...this.sides.map(s => TileGraphics.passiveSide(textures, s))
-                    ];
-                    con.addChild(...sides);
-                });
-            }
+        abstract redirect(t: Train): Train | undefined;
+    }
+    
+    export class SingleRail extends Rail {
+        constructor(dir1: Dir, dir2: Dir) {
+            if (dir1 === dir2) throw new Error("Invalid single rail");
+            super([dir1, dir2]);
         }
-        
-        export class Blank extends Tile {
-            step(grid: TileGrid): void {
-                // Unreachable state.
-                this.trains = [];
-                grid.fail();
+    
+        redirect(t: Train): Train | undefined {
+            
+            let {color, dir} = t;
+            let enterDir = Dir.flip(dir);
+            
+            // A train that entered through one entrance exits through the other entrance
+            if (this.actives.has(enterDir)) {
+                return {color, dir: this.actives.dirExcluding(enterDir)};
             }
-
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size);
-            }
+            // invalid state: wipe truck from existence
         }
-        
-        export class Rock extends Blank {
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    con.addChild(TileGraphics.rock(textures));
-                });
-            }
+    
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                con.addChild(TileGraphics.rail(textures, ...this.actives));
+            });
         }
-        
-        export abstract class Rail extends Tile {
-            constructor(entrances: Dir[] | DirFlags) {
-                super(...entrances);
+    }
+    
+    export class DoubleRail extends Rail {
+        paths: [DirFlags, DirFlags];
+        #do_railswap: boolean;
+    
+        constructor(paths: [DirFlags, DirFlags]) {
+            let [e0, e1] = paths;
+            if (e0.equals(e1)) {
+                throw new Error("Rails match");
             }
-        
-            step(grid: TileGrid): void {
-                let trains = this.trains;
-                this.trains = [];
-        
-                // Figure out where all the trains are leaving
-                let destTrains = trains
-                    .map(this.redirect)
-                    .filter(t => typeof t !== "undefined") as Train[];
-                
-                // Merge exits and dispatch
-                for (let t of Rail.collapseTrains(destTrains)) {
-                    grid.intoNeighbor(t);
+            super(e0.or(e1));
+            this.paths = paths;
+            this.#do_railswap = [...this.actives].length < 4;
+        }
+    
+        redirect(t: Train): Train | undefined {
+            let {color, dir} = t;
+            let enterDir = Dir.flip(dir);
+    
+            // Find which path the train is on. Pass the train onto the other side of the path.
+            let rails = this.paths
+                .filter(r => r.has(enterDir));
+    
+            if (rails.length > 0) {
+                // If the double rail merges at a point, then the primary and secondary rails swap.
+                if (this.#do_railswap) {
+                    this.paths.push(this.paths.shift()!);
                 }
-            }
-        
-            /**
-             * Combine trains into one expected output
-             * @param trains trains, uncombined
-             * @returns the combined trains
-             */
-            static collapseTrains(trains: Train[]) {
-                // merge all the colors of all the trains going through the rail
-                let color = Color.mixMany(trains.map(t => t.color));
-        
-                // get all train destinations
-                let dest = new Set(trains.map(t => t.dir));
-        
-                // create one train per dest.
-                return [...dest].map(dir => ({color, dir}));
-            }
-        
-            /**
-             * Create a new rail from two single rails.
-             * If they are the same rail, return a SingleRail, else create a joined DoubleRail.
-             * @param rail1 rail 1
-             * @param rail2 rail 2
-             * @returns the new rail
-             */
-            static of(rail1: SingleRail, rail2: SingleRail) {
-                let [e1, e2] = [rail1.actives, rail2.actives];
-        
-                if (e1.equals(e2)) {
-                    let [d1, d2, ..._] = e1;
-                    return new SingleRail(d1, d2);
-                }
-                return new DoubleRail([e1, e2]);
+                return { color, dir: rails[0].dirExcluding(enterDir) };
             }
             
-            /**
-             * Designate where a train should exit the rail (given its entrance state)
-             * @param t train to redirect
-             */
-            abstract redirect(t: Train): Train | undefined;
+            // invalid state: wipe truck from existence
         }
-        
-        export class SingleRail extends Rail {
-            constructor(dir1: Dir, dir2: Dir) {
-                if (dir1 === dir2) throw new Error("Invalid single rail");
-                super([dir1, dir2]);
-            }
-        
-            redirect(t: Train): Train | undefined {
-                
-                let {color, dir} = t;
-                let enterDir = Dir.flip(dir);
-                
-                // A train that entered through one entrance exits through the other entrance
-                if (this.actives.has(enterDir)) {
-                    return {color, dir: this.actives.dirExcluding(enterDir)};
+
+        render(textures: Atlas, size: number): PIXI.Container {
+            return TileGraphics.sized(size, con => {
+                const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
+
+                if (this.#do_railswap) {
+                    rails[1].tint = 0x7F7F7F;
+                    rails.reverse();
                 }
-                // invalid state: wipe truck from existence
-            }
-        
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    con.addChild(TileGraphics.rail(textures, ...this.actives));
-                });
-            }
+
+                con.addChild(...rails);
+            });
         }
-        
-        export class DoubleRail extends Rail {
-            paths: [DirFlags, DirFlags];
-            #do_railswap: boolean;
-        
-            constructor(paths: [DirFlags, DirFlags]) {
-                let [e0, e1] = paths;
-                if (e0.equals(e1)) {
-                    throw new Error("Rails match");
-                }
-                super(e0.or(e1));
-                this.paths = paths;
-                this.#do_railswap = [...this.actives].length < 4;
-            }
-        
-            redirect(t: Train): Train | undefined {
-                let {color, dir} = t;
-                let enterDir = Dir.flip(dir);
-        
-                // Find which path the train is on. Pass the train onto the other side of the path.
-                let rails = this.paths
-                    .filter(r => r.has(enterDir));
-        
-                if (rails.length > 0) {
-                    // If the double rail merges at a point, then the primary and secondary rails swap.
-                    if (this.#do_railswap) {
-                        this.paths.push(this.paths.shift()!);
-                    }
-                    return { color, dir: rails[0].dirExcluding(enterDir) };
-                }
-                
-                // invalid state: wipe truck from existence
-            }
-
-            render(textures: Atlas, size: number): PIXI.Container {
-                return TileGraphics.sized(size, con => {
-                    const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
-
-                    if (this.#do_railswap) {
-                        rails[1].tint = 0x7F7F7F;
-                        rails.reverse();
-                    }
-
-                    con.addChild(...rails);
-                });
-            }
-        }
+    }
+    
 }
