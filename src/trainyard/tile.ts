@@ -49,7 +49,7 @@ export class TileGrid implements Renderable {
     }
 
     tile(x: number, y: number) {
-        return (this.tiles?.[y]?.[x]) ?? new Tile.Blank();
+        return this.tiles?.[y]?.[x];
     }
 
     /**
@@ -85,7 +85,7 @@ export class TileGrid implements Renderable {
      * @param train train to move
      */
     intoNeighbor(train: Train) {
-        this.#neighbor(train.dir).accept(this, train);
+        this.#neighbor(train.dir)?.accept(this, train);
     }
 
     /**
@@ -96,7 +96,7 @@ export class TileGrid implements Renderable {
             for (let x = 0; x < this.cellLength; x++) {
                 let tile = this.tile(x, y);
 
-                if (tile.trains.length > 0) {
+                if (typeof tile !== "undefined" && tile.trains.length > 0) {
                     this.cursor = [x, y];
                     tile.step(this);
                 }
@@ -131,7 +131,7 @@ export class TileGrid implements Renderable {
             // each cell
             for (let y = 0; y < this.cellLength; y++) {
                 for (let x = 0; x < this.cellLength; x++) {
-                    let rendered = this.tiles[y][x]?.render(textures, this.cellSize);
+                    let rendered = this.tile(x, y)?.render(textures, this.cellSize);
                     if (rendered) {
                         con.addChild(rendered);
                         rendered.position.set(
@@ -504,19 +504,13 @@ export namespace Tile {
         }
     }
     
-    export class Blank extends Tile {
+    export class Rock extends Tile {
         step(grid: TileGrid): void {
             // Unreachable state.
             this.trains = [];
             grid.fail();
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
-            return TileGraphics.sized(size);
-        }
-    }
-    
-    export class Rock extends Blank {
         render(textures: Atlas, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rock(textures));
