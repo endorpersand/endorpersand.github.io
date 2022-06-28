@@ -1,4 +1,5 @@
-import { Color, Dir, DirFlags, Train } from "./values";
+import { Atlas, Color, Dir, DirFlags, Palette, Train } from "./values";
+import * as PIXI from "pixi.js";
 
 /**
  A class which holds a grid of the current tiles on board.
@@ -95,6 +96,8 @@ export abstract class Tile {
      * @param train 
      */
     abstract accept(grid: TileGrid, train: Train): void;
+
+    abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
 export abstract class TravTile extends Tile {
@@ -108,6 +111,23 @@ export abstract class TravTile extends Tile {
      * @param grid Grid that the tile is on
      */
     abstract step(grid: TileGrid): void;
+}
+
+namespace TileGraphics {
+    export function box(textures: Atlas): [box: PIXI.Sprite, inner: number] {
+        const box = new PIXI.Sprite(textures["t_box.png"]);
+        return [
+            box, box.width - 6
+        ]
+    }
+
+    export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
+        throw new Error("To be implemented");
+    }
+
+    export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
+        throw new Error("To be implemented");
+    }
 }
 
 export namespace Tile {
@@ -135,6 +155,26 @@ export namespace Tile {
             accept(grid: TileGrid, _: Train): void {
                 // A train cannot enter an outlet.
                 grid.fail();
+            }
+            
+            render(textures: Atlas, size: number): PIXI.Container {
+                const con = new PIXI.Container();
+        
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                const centerX = Math.floor(box.width / 2);
+                const rad = Math.floor(inner / 2) - 2;
+                const circle = new PIXI.Graphics()
+                    .beginFill(Palette.Train[Color.Red])
+                    .drawCircle(centerX, centerX, rad);
+                con.addChild(circle);
+                
+                con.addChild(TileGraphics.passiveSide(textures, this.out));
+
+                con.width = size;
+                con.height = size;
+                return con;
             }
         }
         
@@ -173,11 +213,32 @@ export namespace Tile {
                 grid.fail();
             }
         
+            render(textures: Atlas, size: number): PIXI.Container {
+                const con = new PIXI.Container();
+        
+                const [box, inner] = TileGraphics.box(textures);
+                con.addChild(box);
+                
+                const centerX = Math.floor(box.width / 2);
+                const rad = Math.floor(inner / 2) - 2;
+                const circle = new PIXI.Graphics()
+                    .beginFill(Palette.Train[Color.Red])
+                    .drawCircle(centerX, centerX, rad);
+                con.addChild(circle);
+                
+                con.addChild(...[...this.entrances]
+                    .map(e => TileGraphics.activeSide(textures, e))
+                )
+
+                con.width = size;
+                con.height = size;
+                return con;
+            }
         }
         
         /**
-         * Tiles which paint the train.
-         */
+        * Tiles which paint the train.
+        */
         export class Painter extends TravTile {
             /**
              * The active sides.
@@ -212,6 +273,10 @@ export namespace Tile {
                     grid.fail();
                 }
             }
+
+            render(textures: Atlas, size: number): PIXI.Container {
+                throw new Error("Method not implemented.");
+            }
         }
         
         /**
@@ -229,11 +294,17 @@ export namespace Tile {
                 this.active = active;
             }
         
+            get sides(): [Dir, Dir] {
+                return [
+                    Dir.rotate(this.active, 1),
+                    Dir.rotate(this.active, 3),
+                ];
+            }
+
             step(grid: TileGrid): void {
                 let train = this.trains.shift()!;
         
-                let ldir =  Dir.rotate(train.dir, 1);
-                let rdir = Dir.rotate(train.dir, 3);
+                let [ldir, rdir] = this.sides;
         
                 // Split train's colors, pass the new trains through the two passive sides.
                 let [lclr, rclr] = Color.split(train.color);
@@ -253,6 +324,10 @@ export namespace Tile {
                     grid.fail();
                 }
             }
+
+            render(textures: Atlas, size: number): PIXI.Container {
+                throw new Error("Method not implemented.");
+            }
         }
         
         export class Blank extends Tile {
@@ -260,9 +335,17 @@ export namespace Tile {
                 // If a train tries to land on a blank tile, then the train must've crashed.
                 grid.fail();
             }
+
+            render(textures: Atlas, size: number): PIXI.Container {
+                return new PIXI.Container();
+            }
         }
         
-        export class Rock extends Blank {}
+        export class Rock extends Blank {
+            render(textures: Atlas, size: number): PIXI.Container {
+                throw new Error("Method not implemented.");
+            }
+        }
         
         export abstract class Rail extends TravTile {
             entrances: DirFlags;
@@ -354,6 +437,9 @@ export namespace Tile {
                 // invalid state: wipe truck from existence
             }
         
+            render(textures: Atlas, size: number): PIXI.Container {
+                throw new Error("Method not implemented.");
+            }
         }
         
         export class DoubleRail extends Rail {
@@ -388,6 +474,9 @@ export namespace Tile {
                 
                 // invalid state: wipe truck from existence
             }
-        }
 
+            render(textures: Atlas, size: number): PIXI.Container {
+                throw new Error("Method not implemented.");
+            }
+        }
 }

@@ -1,3 +1,5 @@
+import { Resource, Texture } from "pixi.js";
+
 export enum Color {
     // primaries
     Red    = 0b0001, 
@@ -140,3 +142,18 @@ export type Train = {
     color: Color,
     dir: Dir
 };
+
+export const Palette = {
+    Train: {
+        [Color.Red]:    0xEE3030,
+        [Color.Orange]: 0xEE8F30,
+        [Color.Yellow]: 0xEFEF3F,
+        [Color.Green]:  0x36EE30,
+        [Color.Blue]:   0x3056EE,
+        [Color.Purple]: 0xB530EE,
+        [Color.Brown]:  0x9C6D2F,
+    },
+    BG: 0x2F2F2F
+};
+
+export type Atlas = {[name: string]: Texture<Resource>};
