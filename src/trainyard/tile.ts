@@ -155,6 +155,42 @@ namespace TileGraphics {
         return sprite;
     }
 
+    const SYM_GAP = 1;
+    export function symbolSet(
+        clrs: Color[], 
+        bounds: [center: [number, number], size: number], 
+        symbol: (cx: number, cy: number, s: number, clr: Color, graphics: PIXI.Graphics) => PIXI.Graphics
+    ): PIXI.Graphics {
+        const [boundsCenter, boundsSize] = bounds;
+        
+        const n = clrs.length;
+        const rowN = Math.ceil(Math.sqrt(n));
+
+        const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
+        const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
+
+        const graphics = new PIXI.Graphics();
+        
+
+        for (let i = 0; i < n; i++) {
+            let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
+            let [centerX, centerY] = [
+                originX + SYM_GAP + cellX * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
+                originY + SYM_GAP + cellY * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
+            ]
+            
+            symbol(
+                centerX, 
+                centerY, 
+                cellSize, 
+                clrs[i],
+                graphics
+            );
+        }
+
+        return graphics;
+    }
+
     export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
         const sprite = new PIXI.Sprite(textures["t_painter.png"]);
         sprite.tint = Palette.Train[c];
@@ -214,6 +250,7 @@ export namespace Tile {
              * The output side.
              */
             out: Dir;
+            released: number = 0;
         
             constructor(out: Dir, colors: Color[]) {
                 super();
@@ -223,6 +260,7 @@ export namespace Tile {
         
             step(grid: TileGrid): void {
                 // While the outlet has trains, deploy one.
+                this.released += 1;
                 grid.intoNeighbor(this.trains.shift()!);
             }
         
@@ -236,18 +274,20 @@ export namespace Tile {
                     const [box, inner] = TileGraphics.box(textures);
                     con.addChild(box);
                     
-                    const centerZ = Math.floor(box.width / 2);
-    
-                    const pWidth = inner - 1;
-                    const pHeight = pWidth / 2;
-                    const [x, y] = [centerZ - pWidth / 2, centerZ - pHeight / 2];
-    
-                    const plus = new PIXI.Graphics()
-                        .beginFill(Palette.Train[Color.Red])
-                        .drawRect(x, y, pWidth, pHeight)
-                        .drawRect(y, x, pHeight, pWidth);
-    
-                    con.addChild(plus);
+                    const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                    const symbols = TileGraphics.symbolSet(
+                        this.trains.map(t => t.color), [center, inner],
+                        (cx, cy, s, clr, g) => {
+                            const width = s;
+                            const height = width / 2;
+
+                            const [dx, dy] = [-width / 2, -height / 2];
+                            return g.beginFill(Palette.Train[clr])
+                                .drawRect(cx + dx, cy + dy, width, height)
+                                .drawRect(cx + dy, cy + dx, height, width);
+                        }
+                    );
+                    con.addChild(symbols);
                     
                     con.addChild(TileGraphics.passiveSide(textures, this.out));
                 });
@@ -294,13 +334,14 @@ export namespace Tile {
                     const [box, inner] = TileGraphics.box(textures);
                     con.addChild(box);
                     
-                    const centerX = Math.floor(box.width / 2);
-                    const rad = Math.floor(inner / 2);
-                    const circle = new PIXI.Graphics()
-                        .beginFill(Palette.Train[Color.Red])
-                        .drawCircle(centerX, centerX, rad);
-                    con.addChild(circle);
-                    
+                    const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                    const symbols = TileGraphics.symbolSet(
+                        this.targets as Color[], [center, inner],
+                        (cx, cy, s, clr, g) => g.beginFill(Palette.Train[clr])
+                            .drawCircle(cx, cy, s / 2)
+                    );
+                    con.addChild(symbols);
+
                     con.addChild(...[...this.entrances]
                         .map(e => TileGraphics.activeSide(textures, e))
                     )
