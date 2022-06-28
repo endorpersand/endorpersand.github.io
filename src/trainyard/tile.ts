@@ -1,18 +1,30 @@
 import { Atlas, Color, Dir, DirFlags, Palette, Train } from "./values";
 import * as PIXI from "pixi.js";
 
+interface Renderable {
+    /**
+     * Create the Container that displays this tile.
+     * @param textures The texture atlas that holds all assets
+     * @param size Size of the tile
+     */
+    render(textures: Atlas, size: number): PIXI.Container;
+}
 /**
  A class which holds a grid of the current tiles on board.
  */
-export class TileGrid {
+export class TileGrid implements Renderable {
     /**
      * The tiles.
      */
-    tiles: Tile[][];
+    tiles: (Tile | undefined)[][];
     /**
-     * The tile grid is size x size big.
+     * Each cell is [size x size] big.
      */
-    size: number;
+    cellSize: number;
+    /**
+     * There are [length x length] cells.
+     */
+    cellLength: number;
 
     /**
      * During a step, the cursor indicates which tile the tile grid is currently scanning on.
@@ -24,13 +36,20 @@ export class TileGrid {
      */
     passing: boolean = true;
 
-    constructor(size: number) {
-        this.size = size;
-        this.tiles = Array.from({length: size}, () => []);
+    constructor(cellSize: number, cellLength: number) {
+        this.cellSize = cellSize;
+        let length = this.cellLength = cellLength;
+        this.tiles = Array.from({length}, () => Array.from({length}));
+    }
+
+    static readonly TILE_GAP = 1;
+
+    get gridSize(): number {
+        return this.cellSize * this.cellLength + TileGrid.TILE_GAP * (this.cellLength + 1);
     }
 
     tile(x: number, y: number) {
-        return (this.tiles?.[x][y]) ?? new Tile.Blank();
+        return (this.tiles?.[y]?.[x]) ?? new Tile.Blank();
     }
 
     /**
@@ -73,12 +92,12 @@ export class TileGrid {
      * Iterate one step through the board.
      */
     step() {
-        for (let i = 0; i < this.size; i++) {
-            for (let j = 0; j < this.size; j++) {
-                let tile = this.tile(i, j);
+        for (let y = 0; y < this.cellLength; y++) {
+            for (let x = 0; x < this.cellLength; x++) {
+                let tile = this.tile(x, y);
 
                 if (tile.trains.length > 0) {
-                    this.cursor = [i, j];
+                    this.cursor = [x, y];
                     tile.step(this);
                 }
             }
@@ -88,9 +107,45 @@ export class TileGrid {
     fail() {
         this.passing = false;
     }
+
+    render(textures: Atlas, size: number): PIXI.Container {
+        const TILE_GAP = TileGrid.TILE_GAP;
+        const DELTA = this.cellSize + TILE_GAP;
+        const GRID_SIZE = this.gridSize;
+
+        return TileGraphics.sized(size, con => {
+            // grid
+            const grid = new PIXI.Graphics()
+                .beginFill(Palette.Line);
+
+            for (let i = 0; i <= this.cellLength; i++) {
+                let x = 0 + DELTA * i;
+                grid.drawRect(x, 0, TILE_GAP, GRID_SIZE);
+            }
+            for (let j = 0; j <= this.cellLength; j++) {
+                let y = 0 + DELTA * j;
+                grid.drawRect(0, y, GRID_SIZE, TILE_GAP);
+            }
+            con.addChild(grid);
+
+            // each cell
+            for (let y = 0; y < this.cellLength; y++) {
+                for (let x = 0; x < this.cellLength; x++) {
+                    let rendered = this.tiles[y][x]?.render(textures, this.cellSize);
+                    if (rendered) {
+                        con.addChild(rendered);
+                        rendered.position.set(
+                            TILE_GAP + x * DELTA,
+                            TILE_GAP + y * DELTA,
+                        );
+                    }
+                }
+            }
+        });
+    }
 }
 
-export abstract class Tile {
+export abstract class Tile implements Renderable {
     /**
      * A list of the trains currently on the tile.
      */
@@ -123,11 +178,6 @@ export abstract class Tile {
      */
     abstract step(grid: TileGrid): void;
 
-    /**
-     * Create the Container that displays this tile.
-     * @param textures The texture atlas that holds all assets
-     * @param size Size of the tile
-     */
     abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
@@ -597,7 +647,7 @@ export namespace Tile {
                 const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
 
                 if (this.#do_railswap) {
-                    rails[1].tint = 0x7F7F7F;
+                    rails[1].tint = Palette.Shadow;
                     rails.reverse();
                 }
 
@@ -605,5 +655,5 @@ export namespace Tile {
             });
         }
     }
-    
+
 }

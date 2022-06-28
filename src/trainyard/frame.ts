@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js'
 // @ts-ignore
 import assets from '../../static/*'
-import { Tile } from './tile';
+import { Tile, TileGrid } from './tile';
 import { Atlas, Color, Dir, Palette } from "./values";
 
 const loader = PIXI.Loader.shared,
@@ -37,6 +37,7 @@ function setup() {
     }
 
     let i = 0;
+    /*
     for (let t of [
         new Tile.Goal([Color.Red],    [Dir.Right]),
         new Tile.Goal([Color.Orange], [Dir.Up]),
@@ -151,10 +152,22 @@ function setup() {
         let st = t.render(textures, 64);
         st.position.set(...tile(i++));
         app.stage.addChild(st);
-        
-        st.interactive = true;
     }
-    // app.ticker.add(gameLoop);
+    */
+    
+    const tg = new TileGrid(64, 7);
+    tg.tiles[0] = [new Tile.Goal([Color.Red], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]), new Tile.Goal([Color.Red], [Dir.Up, Dir.Left, Dir.Down, Dir.Right])];
+    const tgc = tg.render(textures, tg.gridSize);
+
+    const sprite = new PIXI.Sprite(PIXI.Texture.WHITE);
+    sprite.tint = 0xFFCFCF;
+    sprite.width = tgc.width;
+    sprite.height = tgc.height;
+
+    sprite.position.set(16, 16);
+    tgc.position.set(16, 16);
+    app.stage.addChild(sprite);
+    app.stage.addChild(tgc);
 };
 
 function gameLoop(delta: number) {
