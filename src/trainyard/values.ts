@@ -176,8 +176,10 @@ export const Palette = {
         [Color.Brown]:  0x9C6D2F,
     },
     BG: 0x2F2F2F,
+    GridBG: 0x000000,
     Line: 0x7F7F7F,
     Shadow: 0x7F7F7F,
+    Hover: 0xD7FFE7,
 };
 
 export type Atlas = {[name: string]: Texture<Resource>};

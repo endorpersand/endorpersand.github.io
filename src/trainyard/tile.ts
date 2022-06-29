@@ -164,7 +164,7 @@ export class TileGrid {
         return TileGraphics.sized(GRID_SIZE, con => {
             // bg
             const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
-            bg.tint = 0x000000;
+            bg.tint = Palette.GridBG;
             bg.width = GRID_SIZE;
             bg.height = GRID_SIZE;
             con.addChild(bg);
@@ -318,7 +318,7 @@ export class TileGrid {
             const hoverSquare = TileGraphics.hoverIndicator(this.textures);
             hoverSquare.width = this.cellSize;
             hoverSquare.height = this.cellSize;
-            hoverSquare.tint = 0xD7FFE7;
+            hoverSquare.tint = Palette.Hover;
             hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
             hoverSquare.visible = false;
             con.addChild(hoverSquare);
