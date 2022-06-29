@@ -76,7 +76,7 @@ canvas.addEventListener('click', e => {
 input.addEventListener('input', () => {
     input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, ''); //removes invalid characters
 })
-graphButton.addEventListener('click', () => {
+graphButton.addEventListener('click', async () => {
     if (!canNest) graphButton.disabled = true;
     zcoord.classList.remove('error');
     zoomInput.value = scale.toString();
@@ -85,6 +85,7 @@ graphButton.addEventListener('click', () => {
     if (canvas.width !== size) canvas.width = canvas.height = size;
     [domain[0].textContent, domain[1].textContent] = domaind.map(x => x.div(scale).toString());
     zcoord.textContent = 'Graphing...'
+    await waitPageUpdate();
     canvas.removeEventListener('mousemove', canvasHover);
 
     let fstr = input.value;
@@ -144,6 +145,13 @@ funcForm.addEventListener('submit', e => {
     graphButton.click();
 })
 
+async function waitPageUpdate() {
+    return new Promise<void>(resolve => {
+        requestAnimationFrame(() => { // this is called before update
+            requestAnimationFrame(() => resolve()); // this is called after update
+        });
+    })
+}
 function convPlanes(x: number, y: number) {
     //converts xy pixel plane to complex plane
 
