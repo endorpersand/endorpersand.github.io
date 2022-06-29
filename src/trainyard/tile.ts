@@ -46,10 +46,12 @@ export class TileGrid implements Serializable {
      */
     textures: Atlas;
 
-    constructor(cellSize: number, cellLength: number, textures: Atlas) {
+    constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile|undefined)[][]) {
         this.cellSize = cellSize;
         let length = this.cellLength = cellLength;
-        this.tiles = Array.from({length}, () => Array.from({length}));
+        this.tiles = Array.from({length}, (_, y) => 
+            Array.from({length},(_, x) => tiles?.[y]?.[x])
+        );
 
         this.textures = textures;
     }
@@ -534,11 +536,7 @@ export class TileGrid implements Serializable {
             })
         );
 
-        return (size: number, textures: Atlas) => {
-            let grid = new TileGrid(size, length, textures);
-            grid.tiles = newTiles;
-            return grid;
-        };
+        return (size: number, textures: Atlas) => new TileGrid(size, length, textures, newTiles);
     }
 
     static parse(s: string) {

@@ -34,20 +34,21 @@ function setup() {
     let cellSpace = gridSize - TileGrid.TILE_GAP * (cellLength + 1);
     let cellSize = 64; //Math.floor(cellSpace / 7);
 
-    const tg = new TileGrid(cellSize, cellLength, textures);
-    tg.tiles = [
-        [,,, new Tile.Outlet(Dir.Down, [Color.Blue])],
-        [],
-        [],
+    const tg = new TileGrid(cellSize, cellLength, textures,
         [
-            new Tile.Outlet(Dir.Right, [Color.Green]),,,
-            new Tile.Goal([Color.Green, Color.Blue, Color.Red, Color.Yellow], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]),,,
-            new Tile.Outlet(Dir.Left, [Color.Yellow])
-        ],
-        [],
-        [],
-        [,,, new Tile.Outlet(Dir.Up, [Color.Red])],
-    ];
+            [,,, new Tile.Outlet(Dir.Down, [Color.Blue])],
+            [],
+            [],
+            [
+                new Tile.Outlet(Dir.Right, [Color.Green]),,,
+                new Tile.Goal([Color.Green, Color.Blue, Color.Red, Color.Yellow], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]),,,
+                new Tile.Outlet(Dir.Left, [Color.Yellow])
+            ],
+            [],
+            [],
+            [,,, new Tile.Outlet(Dir.Up, [Color.Red])],
+        ]
+    );
 
     const tgc = tg.container;
 
