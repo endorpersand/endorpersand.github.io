@@ -958,7 +958,7 @@ export namespace Tile {
     
     export class DoubleRail extends Rail {
         paths: [DirFlags, DirFlags];
-        #do_railswap: boolean;
+        #overlapping: boolean;
     
         constructor(paths: [DirFlags, DirFlags]) {
             let [e0, e1] = paths;
@@ -967,7 +967,7 @@ export namespace Tile {
             }
             super(e0.or(e1));
             this.paths = paths;
-            this.#do_railswap = [...this.actives].length < 4;
+            this.#overlapping = [...this.actives].length < 4;
         }
     
         redirect(t: Train): Train | undefined {
@@ -980,7 +980,7 @@ export namespace Tile {
     
             if (rails.length > 0) {
                 // If the double rail merges at a point, then the primary and secondary rails swap.
-                if (this.#do_railswap) {
+                if (this.#overlapping) {
                     this.paths.push(this.paths.shift()!);
                 }
                 return { color, dir: rails[0].dirExcluding(enterDir) };
@@ -993,7 +993,7 @@ export namespace Tile {
             return TileGraphics.sized(size, con => {
                 const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
 
-                if (this.#do_railswap) {
+                if (this.#overlapping) {
                     rails[1].tint = Palette.Shadow;
                     rails.reverse();
                 }
