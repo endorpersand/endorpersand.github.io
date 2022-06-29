@@ -1,18 +1,14 @@
 import { Atlas, Color, Dir, DirFlags, Palette, Train } from "./values";
 import * as PIXI from "pixi.js";
 
-interface Renderable {
-    /**
-     * Create the Container that displays this tile.
-     * @param textures The texture atlas that holds all assets
-     * @param size Size of the tile
-     */
-    render(textures: Atlas, size: number): PIXI.Container;
-}
+type Edge   = [c1: [number, number], c2: [number, number]];
+type Center = [center: [number, number], _: undefined];
+type RailTouch = Edge | Center;
+
 /**
  A class which holds a grid of the current tiles on board.
  */
-export class TileGrid implements Renderable {
+export class TileGrid {
     /**
      * The tiles.
      */
@@ -29,20 +25,39 @@ export class TileGrid implements Renderable {
     /**
      * During a step, the cursor indicates which tile the tile grid is currently scanning on.
      */
-    cursor: [number, number] = [-1, -1];
+    #cursor: [number, number] = [-1, -1];
 
     /**
      * If false, a train crashed.
      */
     passing: boolean = true;
 
-    constructor(cellSize: number, cellLength: number) {
+    /**
+     * Cache for this.container
+     */
+    #c_container: PIXI.Container | undefined;
+    /**
+     * The texture resource
+     */
+    textures: Atlas;
+
+    constructor(cellSize: number, cellLength: number, textures: Atlas) {
         this.cellSize = cellSize;
         let length = this.cellLength = cellLength;
         this.tiles = Array.from({length}, () => Array.from({length}));
+
+        this.textures = textures;
     }
 
     static readonly TILE_GAP = 1;
+
+    get container(): PIXI.Container {
+        if (!this.#c_container) {
+            this.#c_container = this.#createContainer();
+        }
+        
+        return this.#c_container;
+    }
 
     get gridSize(): number {
         return this.cellSize * this.cellLength + TileGrid.TILE_GAP * (this.cellLength + 1);
@@ -58,26 +73,7 @@ export class TileGrid implements Renderable {
      * @returns the neighbor tile
      */
     #neighbor(direction: Dir) {
-        let [x, y] = this.cursor;
-
-        switch (direction) {
-            case Dir.Up:
-                y += 1;
-                break;
-            case Dir.Down:
-                y -= 1;
-                break;
-            case Dir.Left:
-                x -= 1;
-                break;
-            case Dir.Right:
-                x += 1;
-                break;
-            default:
-                throw new Error("Invalid direction");
-        }
-
-        return this.tile(x, y);
+        return this.tile(...Dir.shift(this.#cursor, direction));
     }
 
     /**
@@ -97,7 +93,7 @@ export class TileGrid implements Renderable {
                 let tile = this.tile(x, y);
 
                 if (typeof tile !== "undefined" && tile.trains.length > 0) {
-                    this.cursor = [x, y];
+                    this.#cursor = [x, y];
                     tile.step(this);
                 }
             }
@@ -108,12 +104,33 @@ export class TileGrid implements Renderable {
         this.passing = false;
     }
 
-    render(textures: Atlas, size: number): PIXI.Container {
+    
+    #renderTile(t: Tile | undefined, x: number, y: number): PIXI.Container {
+        let con: PIXI.Container;
+        if (t) {
+            con = t.render(this.textures, this.cellSize)
+        } else {
+            con = new PIXI.Container();
+            con.visible = false;
+        }
+
+        con.position.set(x, y);
+        return con;
+    }
+
+    #createContainer(): PIXI.Container {
         const TILE_GAP = TileGrid.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
         const GRID_SIZE = this.gridSize;
 
-        return TileGraphics.sized(size, con => {
+        return TileGraphics.sized(GRID_SIZE, con => {
+            // bg
+            const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
+            bg.tint = 0x000000;
+            bg.width = GRID_SIZE;
+            bg.height = GRID_SIZE;
+            con.addChild(bg);
+
             // grid
             const grid = new PIXI.Graphics()
                 .beginFill(Palette.Line);
@@ -129,23 +146,26 @@ export class TileGrid implements Renderable {
             con.addChild(grid);
 
             // each cell
+            const cellCon = new PIXI.Container();
+            cellCon.name = "cells";
+
             for (let y = 0; y < this.cellLength; y++) {
                 for (let x = 0; x < this.cellLength; x++) {
-                    let rendered = this.tile(x, y)?.render(textures, this.cellSize);
-                    if (rendered) {
-                        con.addChild(rendered);
-                        rendered.position.set(
-                            TILE_GAP + x * DELTA,
-                            TILE_GAP + y * DELTA,
-                        );
-                    }
+                    const [lx, ly] = [
+                        TILE_GAP + x * DELTA,
+                        TILE_GAP + y * DELTA
+                    ];
+
+                    cellCon.addChild(
+                        this.#renderTile( this.tile(x, y), lx, ly )
+                    );
                 }
             }
         });
     }
 }
 
-export abstract class Tile implements Renderable {
+export abstract class Tile {
     /**
      * A list of the trains currently on the tile.
      */
@@ -155,7 +175,7 @@ export abstract class Tile implements Renderable {
      * Note that if an active left side accepts right-facing trains.
      */
     readonly actives: DirFlags;
-
+    
     constructor(...actives: Dir[]) {
         this.actives = new DirFlags(actives);
     }
@@ -178,6 +198,11 @@ export abstract class Tile implements Renderable {
      */
     abstract step(grid: TileGrid): void;
 
+    /**
+     * Create the Container that displays this tile.
+     * @param textures The texture atlas that holds all assets
+     * @param size Size of the tile
+     */
     abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
@@ -287,7 +312,6 @@ namespace TileGraphics {
         let [e1, e2] = entrances;
 
         let straight = !((e1 - e2) % 2);
-        console.log(entrances, straight);
         
         let sprite = new PIXI.Sprite(textures[straight ? "rail.png" : "rail2.png"]);
         if (straight) {

@@ -155,18 +155,24 @@ function setup() {
     }
     */
     
-    const tg = new TileGrid(64, 7);
-    tg.tiles[0] = [new Tile.Goal([Color.Red], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]), new Tile.Goal([Color.Red], [Dir.Up, Dir.Left, Dir.Down, Dir.Right])];
-    const tgc = tg.render(textures, tg.gridSize);
+    const tg = new TileGrid(64, 7, textures);
+    tg.tiles = [
+        [,,, new Tile.Outlet(Dir.Down, [Color.Blue])],
+        [],
+        [],
+        [
+            new Tile.Outlet(Dir.Right, [Color.Green]),,,
+            new Tile.Goal([Color.Green, Color.Blue, Color.Red, Color.Yellow], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]),,,
+            new Tile.Outlet(Dir.Left, [Color.Yellow])
+        ],
+        [],
+        [],
+        [,,, new Tile.Outlet(Dir.Up, [Color.Red])],
+    ];
 
-    const sprite = new PIXI.Sprite(PIXI.Texture.WHITE);
-    sprite.tint = 0xFFCFCF;
-    sprite.width = tgc.width;
-    sprite.height = tgc.height;
+    const tgc = tg.container;
 
-    sprite.position.set(16, 16);
-    tgc.position.set(16, 16);
-    app.stage.addChild(sprite);
+    tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
     app.stage.addChild(tgc);
 };
 

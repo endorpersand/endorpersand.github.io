@@ -81,6 +81,28 @@ export namespace Dir {
     export function flip(d: Dir): Dir {
         return rotate(d, 2);
     }
+
+    export function shift([x, y]: [number, number], d: Dir, n = 1): [number, number] {
+        switch (d) {
+            case Dir.Right: return [x + n, y]
+            case Dir.Up:    return [x, y - n]
+            case Dir.Left:  return [x - n, y]
+            case Dir.Down:  return [x, y + n]
+        }
+    }
+
+    export function difference([x1, y1]: [number, number], [x2, y2]: [number, number]): Dir | undefined {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        if (dx > 0 && dy == 0) return Dir.Right;
+        if (dx == 0 && dy < 0) return Dir.Up;
+        if (dx < 0 && dy == 0) return Dir.Left;
+        if (dx == 0 && dy > 0) return Dir.Down;
+
+        return undefined;
+    }
+
 }
 
 export class DirFlags {
