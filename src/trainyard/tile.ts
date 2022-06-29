@@ -67,6 +67,31 @@ export class TileGrid {
         return this.tiles?.[y]?.[x];
     }
 
+    setTile(x: number, y: number, t: Tile | undefined) {
+        this.tiles[y] ??= [];
+        this.tiles[y][x] = t;
+
+        if (this.#c_container) {
+            const cells = this.container.getChildByName("cells", false) as PIXI.Container;
+            const index = y * this.cellLength + x;
+
+            const {x: lx, y: ly} = cells.getChildAt(index).position;
+    
+            const con: PIXI.Container = this.#renderTile(t, lx, ly);
+
+            // replace child at index:
+            cells.addChildAt(con, index);
+            cells.removeChildAt(index + 1).destroy();
+        }
+    }
+
+    replaceTile(x: number, y: number, f: (t: Tile | undefined) => (Tile | undefined)) {
+        let t = f(this.tile(x, y));
+
+        this.setTile(x, y, t);
+        return t;
+    }
+
     /**
      * Get the neighbor tile in a specific direction
      * @param direction the direction
@@ -182,6 +207,14 @@ export class TileGrid {
 
             con.interactive = true;
 
+            let pointers = 0;
+
+            // <rail-mode>
+            // On pointer down, this can be the center or the edge
+            // Once you start moving though, it can only bind to edges
+            let cellPointer: RailTouch | undefined = undefined;
+            // </rail-mode>
+
             con.on("pointermove", (e: PIXI.InteractionEvent) => {
                 // On desktop, highlight the tile being hovered over.
                 const pos = e.data.getLocalPosition(con);
@@ -189,7 +222,104 @@ export class TileGrid {
                 const cellPos = this.positionToCell(pos);
                 const [cellX, cellY] = cellPos;
                 hoverSquare.position.set(TILE_GAP + cellX * DELTA, TILE_GAP + cellY * DELTA);
+                
+                // <rail-mode>
+                // If pointers != 1, things get funky, so only track if one pointer.
+                if (pointers == 1) {
+                    // cellPointer can now only bind to edges, so ignore centers.
+                    let edge = this.nearestEdge(pos, cellPos);
+                    if (typeof edge === "undefined") return;
+                    
+                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
+
+                    // If cellPointer has not existed yet, just set it
+                    // If it has, then we can try to create a rail
+                    if (typeof cellPointer !== "undefined") {
+                        // If the cell pointers are in the same cell, we can try to create a rail
+
+                        let result = this.findSharedCell(cellPointer, nCellPointer);
+
+                        if (typeof result !== "undefined") {
+                            let [shared, me0, me1] = result;
+                            
+                            // edge + edge = make connection
+                            // center + edge = make straight line
+                            let e1 = me1!;
+                            let e0 = me0 ?? Dir.flip(e1);
+
+                            if (e0 !== e1) {
+                                this.replaceTile(...shared, t => {
+                                    if (typeof t === "undefined") {
+                                        return new Tile.SingleRail(e0, e1);
+                                    } else if (t instanceof Tile.Rail) {
+                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                                    } else {
+                                        return t;
+                                    }
+                                });
+                            }
+                        }
+                    }
+
+                    cellPointer = nCellPointer;
+                } else {
+                    // Drop stored pointer otherwise, because this information is useless.
+                    cellPointer = undefined;
+                }
             });
+
+            let dbtTile: [number, number] | undefined;
+            let tdtTimeout: NodeJS.Timeout | undefined;
+            const DT_TIMEOUT_MS = 1000;
+
+            con.on("pointerdown", (e: PIXI.InteractionEvent) => {
+                pointers++;
+
+                const pos = e.data.getLocalPosition(con);
+                const cellPos = this.positionToCell(pos);
+
+                let edge = this.nearestEdge(pos, cellPos);
+                cellPointer = [
+                    cellPos, 
+                    typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+                ];
+
+                // double tap to swap rails (on a double rail)
+
+                // first tap: if tile is dbl rail, store rail information
+                if (!dbtTile) {
+                    if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
+                        dbtTile = cellPos;
+                        tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
+                    }
+                } else {
+                    // second tap (if done fast enough & same rail tapped), swap the rail
+                    if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
+                        clearTimeout(tdtTimeout);
+                        
+                        this.replaceTile(...dbtTile, t => {
+                            const rail = t as Tile.DoubleRail;
+                            rail.paths.reverse();
+                            return rail;
+                        });
+    
+                        dbtTile = undefined;
+                    }
+                }
+            });
+
+            function pointerup(e: PIXI.InteractionEvent) {
+                pointers--;
+                cellPointer = undefined;
+            }
+            con.on("pointerup", pointerup);
+            con.on("pointerupoutside", pointerup);
+
+            con.on("pointercancel", (e: PIXI.InteractionEvent) => {
+                pointers = 0;
+                cellPointer = undefined;
+            })
+            // </rail-mode>
 
             // note these don't actually work on mobile:
             con.on("pointerover", (e: PIXI.InteractionEvent) => {
@@ -200,6 +330,111 @@ export class TileGrid {
             });
             
         });
+    }
+
+    static readonly EDGE_THRESHOLD = 0.2;
+    
+    /**
+     * Find the nearest edge to a cell from a given point.
+     * @param param0 the point
+     * @param param1 the cell to compare the edges to
+     * @returns a direction, if near enough to an edge, 
+     *     or undefined if close to the center or far away from the cell
+     */
+    nearestEdge({x, y}: PIXI.IPointData, [cellX, cellY]: [x: number, y: number]): Dir | undefined {
+        const TILE_GAP = TileGrid.TILE_GAP;
+        const EDGE_THRESHOLD = this.cellSize * TileGrid.EDGE_THRESHOLD;
+        const DELTA = this.cellSize + TILE_GAP;
+
+        const [minX, minY] = [ // the left and top edge, 1 pixel before where the cell starts (on the line)
+            DELTA * cellX + (TILE_GAP - 1), 
+            DELTA * cellY + (TILE_GAP - 1)
+        ];
+        const [maxX, maxY] = [ // the right and bottom edge, 1 pixel after where the cell ends (on the line)
+            minX + this.cellSize + 1,
+            minY + this.cellSize + 1,
+        ];
+
+        let which = [
+            x + EDGE_THRESHOLD >= maxX, // right
+            y - EDGE_THRESHOLD <= minY, // up
+            x - EDGE_THRESHOLD <= minX, // left
+            y + EDGE_THRESHOLD >= maxY, // down
+        ]
+        // get the near directions
+        let near: Dir[] = [];
+        for (let i = 0; i < which.length; i++) {
+            if (which[i]) near.push(i);
+        }
+
+        if (near.length == 1) {
+            return near[0];
+        } else if (near.length > 1) {
+            const [halfX, halfY] = [(minX + maxX) / 2, (minY + maxY) / 2];
+            let edges = [
+                [halfX, maxY], // right
+                [minX, halfY], // up
+                [halfX, minY], // left
+                [maxX, halfY], // down
+            ];
+
+            let [nearestDir] = near.map(i => [i, edges[i]] as [Dir, [number, number]]) // map near into [index: edge] pair
+                .map(([i, [ex, ey]]) => [i, Math.hypot(x - ex, y - ey)] as [Dir, number]) // convert points into distances
+                .reduce(([ai, ad], [ci, cd]) => { // find minimum distance
+                    if (ad > cd) {
+                        return [ci, cd];
+                    } else {
+                        return [ai, ad];
+                    }
+                });
+            
+            return nearestDir;
+        }
+
+        // if no nears, treat as if direction was the center.
+    }
+
+    /**
+     * Given two rail points, find if they share a cell. If so, find which direction the edge is located in.
+     * @param ptr1 edge or center of a cell
+     * @param ptr2 edge or center of a cell
+     * @returns a triplet value or undefined (if the two do not share a cell)
+     */
+    findSharedCell(
+        ptr1: RailTouch, 
+        ptr2: RailTouch
+        ): [shared: [number, number], edge1: Dir | undefined, edge2: Dir | undefined] | undefined {
+            // find the shared cell
+            let match: [number, number] | undefined;
+            let others: [number, number] = [-1, -1]; // indexes of the values that aren't the shared cell
+            for (let i = 0; i < 2; i++) {
+                const ci = ptr1[i];
+                if (typeof ci === "undefined") continue;
+                
+                for (let j = 0; j < 2; j++) {
+                    const cj = ptr2[j];
+                    if (typeof cj === "undefined") continue;
+                    
+                    if (ci[0] == cj[0] && ci[1] == cj[1]) {
+                        match = ci;
+                        others = [1 - i, 1 - j];
+                        break;
+                    }
+                }
+            }
+            if (typeof match === "undefined") return; // no shared cell
+
+            // find the edges
+
+            const [oi, oj] = others;
+            // the other cell (the ones that aren't the shared cell)
+            const nc1 = ptr1[oi];
+            const nc2 = ptr2[oj];
+
+            const edge1 = typeof nc1 === "undefined" ? undefined : Dir.difference(match, nc1);
+            const edge2 = typeof nc2 === "undefined" ? undefined : Dir.difference(match, nc2);
+
+            return [match, edge1, edge2];
     }
 }
 
@@ -638,6 +873,8 @@ export namespace Tile {
          * @param t train to redirect
          */
         abstract redirect(t: Train): Train | undefined;
+
+        abstract top(): SingleRail;
     }
     
     export class SingleRail extends Rail {
@@ -662,6 +899,10 @@ export namespace Tile {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rail(textures, ...this.actives));
             });
+        }
+
+        top() {
+            return this;
         }
     }
     
@@ -709,6 +950,11 @@ export namespace Tile {
 
                 con.addChild(...rails);
             });
+        }
+
+        top() {
+            let [d1, d2] = this.paths[0];
+            return new Tile.SingleRail(d1, d2);
         }
     }
 
