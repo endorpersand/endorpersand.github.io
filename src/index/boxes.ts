@@ -24,6 +24,8 @@ class SquareTracker {
             let span = document.createElement('span');
             span.classList.add('colhex');
             s.appendChild(span);
+
+            s.classList.add('box');
         }
 
         this.placeholderSquares = [];
@@ -51,7 +53,7 @@ class SquareTracker {
     }
 
     #addSquare() {
-        let a = document.createElement('a');
+        let box = document.createElement('div');
         let title = document.createElement('div');
         let desc = document.createElement('div');
         let colhex = document.createElement('span');
@@ -60,13 +62,12 @@ class SquareTracker {
         desc.classList.add('desc');
         colhex.classList.add('colhex');
         
-        a.appendChild(title);
-        a.appendChild(desc);
-        a.appendChild(colhex);
-        a.addEventListener("click", this.regenColors.bind(this, false));
+        box.classList.add('box');
+        box.append(title, desc, colhex);
+        box.addEventListener("click", this.regenColors.bind(this, false));
     
-        wrapper.appendChild(a);
-        this.placeholderSquares.push(a);
+        wrapper.appendChild(box);
+        this.placeholderSquares.push(box);
     }
 
     #removeSquare() {

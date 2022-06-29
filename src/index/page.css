@@ -5,24 +5,27 @@
     gap: 10px;
     width: 100%;
 }
-.wrapper a {
+.wrapper .box {
     text-align: center;
     background-color: #777;
     filter: none;
 }
-.wrapper a:hover {
+.wrapper .box:hover {
     filter: brightness(150%);
 }
 :not(.no-transition) {
     transition: filter 0.25s ease-in-out;
     transition: background-color 0.25s ease-in-out;
 }
+
 a {
-    position: relative;
     text-decoration: none;
     color: #111;
 }
-a > div {
+.box {
+    position: relative;
+}
+.box > div {
     margin: 5px;
 }
 .colhex {
