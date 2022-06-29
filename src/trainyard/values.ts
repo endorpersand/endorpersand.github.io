@@ -56,6 +56,19 @@ export namespace Color {
             default: return [a, a]
         }
     }
+
+    /**
+     * Convert a string name into a Color
+     * @param name the string name
+     * @returns color (or error if not valid color)
+     */
+    export function parse(name: string): Color {
+        // @ts-ignore
+        let clr: unknown = Color[name];
+
+        if (typeof clr === "number") return clr;
+        throw new TypeError(`Invalid color ${name}`);
+    }
 }
 
 export enum Dir {
@@ -103,25 +116,41 @@ export namespace Dir {
         return undefined;
     }
 
+    /**
+     * Verify that a given number is a direction
+     * @param index number
+     * @returns the same number, if it is a valid direction
+     */
+    export function parse(index: number): Dir {
+        let d: string | undefined = Dir[index];
+
+        if (typeof d === "string") return index;
+        throw new TypeError(`Invalid direction ${index}`);
+    }
 }
 
 export class DirFlags {
     #flags: number;
     static #MAX_BITS: number = 4;
 
-    constructor(dirs: Dir[] | DirFlags = []) {
+    constructor(dirs: Dir[] | DirFlags | number = []) {
         if (dirs instanceof DirFlags) {
             this.#flags = dirs.#flags;
+        } else if (typeof dirs === "number") {
+            this.#flags = dirs;
         } else {
-            let f = this.#flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
-    
-            if (f < 0 || f >= (1 << DirFlags.#MAX_BITS)) {
-                throw new Error("Invalid direction entered");
-            }
+            this.#flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
+        }
+
+        let f = this.#flags;
+        if (f < 0 || f >= (1 << DirFlags.#MAX_BITS)) {
+            throw new Error("Invalid direction entered");
         }
     }
 
     get bits() { return this.#flags; }
+
+    get ones() { return Array.from(this, () => 1).reduce((acc, cv) => acc + cv, 0); }
 
     has(dir: Dir) {
         return !!(this.#flags & (1 << dir));

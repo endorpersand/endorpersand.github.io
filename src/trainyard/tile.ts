@@ -5,10 +5,15 @@ type Edge   = [c1: [number, number], c2: [number, number]];
 type Center = [center: [number, number], _: undefined];
 type RailTouch = Edge | Center;
 
+interface Serializable<J = any> {
+    toJSON(): J;
+    // static fromJSON(o: J): this;
+}
+
 /**
  A class which holds a grid of the current tiles on board.
  */
-export class TileGrid {
+export class TileGrid implements Serializable {
     /**
      * The tiles.
      */
@@ -479,6 +484,66 @@ export class TileGrid {
 
             return [match, edge1, edge2];
     }
+
+    toJSON() {
+        let length = this.cellLength;
+
+        let board = Array.from({length}, () => "");
+        let tiles: {[x: number]: Tile & Serializable} = {};
+
+        for (let y = 0; y < length; y++) {
+            let row = "";
+            for (let x = 0; x < length; x++) {
+                let tile = this.tile(x, y);
+
+                row += tile?.serChar ?? " ";
+
+                if (typeof tile !== "undefined" && "toJSON" in tile) {
+                    tiles[y * length + x] = tile;
+                }
+            }
+
+            board[y] = row;
+        }
+
+        return {board, tiles};
+    }
+
+    static fromJSON(o: {board: string[], tiles: {[x: number]: unknown}}) {
+        let {board, tiles} = o;
+        let length = board.length;
+
+        let newTiles = Array.from({length}, (_, y) => 
+            Array.from<unknown, Tile | undefined>({length}, (_, x) => {
+                let index = y * length + x;
+                let tileChar = board[y][x];
+
+                type Values<T> = T[keyof T];
+                // @ts-ignore
+                let TileType: Values<typeof Tile.deserChars> | undefined = Tile.deserChars[tileChar];
+                let tileData = tiles[index];
+
+                if (TileType instanceof Tile.Rock) {
+                    return new Tile.Rock();
+                }
+                if (typeof TileType !== "undefined" && typeof tileData !== "undefined") {
+                    // @ts-ignore
+                    return TileType.fromJSON(tileData);
+                }
+                return undefined;
+            })
+        );
+
+        return (size: number, textures: Atlas) => {
+            let grid = new TileGrid(size, length, textures);
+            grid.tiles = newTiles;
+            return grid;
+        };
+    }
+
+    static parse(s: string) {
+        return TileGrid.fromJSON(JSON.parse(s));
+    }
 }
 
 export abstract class Tile {
@@ -491,7 +556,12 @@ export abstract class Tile {
      * Note that if an active left side accepts right-facing trains.
      */
     readonly actives: DirFlags;
-    
+
+    /**
+     * Char this is represented with during serialization. If not serialized, serChar is " ".
+     */
+    readonly serChar: string = " ";
+
     constructor(...actives: Dir[]) {
         this.actives = new DirFlags(actives);
     }
@@ -660,25 +730,48 @@ export namespace Tile {
     /**
      * Tile which trains appear from.
      */
-    export class Outlet extends Tile {
+    export class Outlet extends Tile implements Serializable {
         /**
          * The output side.
          */
         out: Dir;
+
+        /**
+         * The colors of trains that this outlet stores.
+         */
+        colors: Color[];
+
+        /**
+         * Number of trains released.
+         */
         released: number = 0;
-    
+
+        readonly serChar = "+";
+
         constructor(out: Dir, colors: Color[]) {
             super();
             this.out = out;
+            this.colors = colors;
             this.trains = Array.from(colors, color => ({color, dir: out}));
         }
-    
+
         step(grid: TileGrid): void {
             // While the outlet has trains, deploy one.
             this.released += 1;
             grid.intoNeighbor(this.trains.shift()!);
         }
         
+        toJSON() {
+            return {out: this.out, colors: this.colors.map(c => Color[c])};
+        }
+
+        static fromJSON({out, colors}: {out: Dir, colors: string[]}) {
+            const outR = Dir.parse(out);
+            const colorsR = colors.map(Color.parse);
+
+            return new Outlet(outR, colorsR);
+        }
+
         render(textures: Atlas, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
@@ -686,7 +779,7 @@ export namespace Tile {
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
                 const symbols = TileGraphics.symbolSet(
-                    this.trains.map(t => t.color), [center, inner],
+                    this.colors, [center, inner],
                     (cx, cy, s, clr, g) => {
                         const width = s;
                         const height = width / 2;
@@ -707,11 +800,12 @@ export namespace Tile {
     /**
      * Tiles which trains must go to.
      */
-    export class Goal extends Tile {
+    export class Goal extends Tile implements Serializable {
         /**
          * The train colors this goal block wants. If met, the color is switched to undefined.
          */
         targets: (Color | undefined)[];
+        readonly serChar = "o";
 
         constructor(targets: Color[], entrances: Dir[]) {
             super(...entrances);
@@ -732,6 +826,17 @@ export namespace Tile {
             }
         }
     
+        toJSON() {
+            return {targets: (this.targets as Color[]).map(c => Color[c]), actives: this.actives.bits};
+        }
+
+        static fromJSON({targets, actives}: {targets: string[], actives: number}) {
+            const targetsR = targets.map(Color.parse);
+            const entrances = [...new DirFlags(actives)];
+
+            return new Goal(targetsR, entrances);
+        }
+
         render(textures: Atlas, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
@@ -755,9 +860,10 @@ export namespace Tile {
     /**
     * Tiles which paint the train.
     */
-    export class Painter extends Tile {
+    export class Painter extends Tile implements Serializable {
         color: Color;
-    
+        readonly serChar = "p";
+
         constructor(color: Color, active1: Dir, active2: Dir) {
             super(active1, active2);
             this.color = color;
@@ -768,7 +874,7 @@ export namespace Tile {
             let train = this.trains.shift()!;
             // Get the output direction.
             let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
-    
+
             grid.intoNeighbor({
                 color: this.color,
                 dir: outDir
@@ -782,6 +888,19 @@ export namespace Tile {
             } else {
                 grid.fail();
             }
+        }
+
+        toJSON() {
+            return {actives: this.actives.bits, color: Color[this.color]};
+        }
+
+        static fromJSON({actives, color}: {actives: number, color: string}) {
+            const colorR = Color.parse(color);
+            const activesR = new DirFlags(actives);
+
+            if (activesR.ones != 2) throw new TypeError("Painter must have 2 active sides");
+            const [a1, a2] = activesR;
+            return new Painter(colorR, a1, a2);
         }
 
         render(textures: Atlas, size: number): PIXI.Container {
@@ -801,12 +920,13 @@ export namespace Tile {
     /**
      * Tiles which split the train into 2 trains.
      */
-    export class Splitter extends Tile {
+    export class Splitter extends Tile implements Serializable {
         /**
          * The active side.
          * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
          */
         active: Dir;
+        readonly serChar = "s";
     
         constructor(active: Dir) {
             super(active);
@@ -835,6 +955,17 @@ export namespace Tile {
             });
         }
 
+        toJSON() {
+            return {actives: this.actives.bits};
+        }
+        static fromJSON({actives}: {actives: number}) {
+            const af = new DirFlags(actives);
+            if (af.ones != 1) throw new TypeError("Splitter must have 1 active side");
+
+            const [active] = af;
+            return new Splitter(active);
+        }
+
         render(textures: Atlas, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
@@ -852,6 +983,8 @@ export namespace Tile {
     }
     
     export class Rock extends Tile {
+        readonly serChar = "r";
+
         step(grid: TileGrid): void {
             // Unreachable state.
             this.trains = [];
@@ -1008,4 +1141,11 @@ export namespace Tile {
         }
     }
 
+    export let deserChars = {
+        "+": Outlet,
+        "o": Goal,
+        "p": Painter,
+        "s": Splitter,
+        "r": Rock
+    }
 }
