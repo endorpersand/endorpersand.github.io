@@ -1,7 +1,27 @@
 <head>
     <meta charset="utf-8">
-    <link href="site.css" rel="stylesheet">
-    <link href="index/page.css" rel="stylesheet">
+    <style>
+        /* 
+            iOS is dumb and can load "index/page.css" after "index/boxes.ts".
+            As such, this variable needs to be embedded onto the HTML.
+        */
+        :root {
+            --cols: 4;
+        }
+
+        @media (width <= 600px) {
+            :root {
+                --cols: 2;
+            }
+        }
+        @media (600px < width <= 1000px) {
+            :root {
+                --cols: 3;
+            }
+        }
+    </style>
+    <link href="site.css" rel="stylesheet" type="text/css">
+    <link href="index/page.css" rel="stylesheet" type="text/css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>

@@ -6,7 +6,7 @@ let wrapper = document.querySelector('.wrapper')!;
 
 class SquareTracker {
     static #MIN_ROWS = 3;
-    #columns: number;
+    #cols: number;
     readonly projectSquares: HTMLElement[];
     placeholderSquares: HTMLElement[];
     corners: [RGB, RGB, RGB, RGB] = [ // top right, bottom right, top left, bottom left
@@ -17,7 +17,7 @@ class SquareTracker {
     ];
 
     constructor() {
-        this.#columns = +getComputedStyle(wrapper).getPropertyValue('--cols');
+        this.#cols = +getComputedStyle(document.documentElement).getPropertyValue('--cols');
 
         this.projectSquares = [...wrapper.querySelectorAll('a')];
         for (let s of this.projectSquares) {
@@ -37,11 +37,11 @@ class SquareTracker {
     }
 
     get cols() {
-        return this.#columns;
+        return this.#cols;
     }
     set cols(value) {
-        if (value != this.#columns) {
-            this.#columns = value;
+        if (value != this.#cols) {
+            this.#cols = value;
             this.#rebalance();
         }
     }
@@ -76,8 +76,8 @@ class SquareTracker {
     #rebalance() {
         let squares = this.squares;
         // n = number of squares that should be on board
-        let n = Math.max(this.#columns * SquareTracker.#MIN_ROWS, this.projectSquares.length);
-        n = Math.ceil(n / this.#columns) * this.#columns;
+        let n = Math.max(this.#cols * SquareTracker.#MIN_ROWS, this.projectSquares.length);
+        n = Math.ceil(n / this.#cols) * this.#cols;
 
         if (squares == n) return;
         if (squares > n) {
@@ -103,7 +103,7 @@ class SquareTracker {
         if (!useCurrentCorners) this.corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
         let corners = this.corners;
         
-        if (this.#columns < 3) {
+        if (this.#cols < 3) {
             // use TL + BR boxes rather than the corners to make a consistent grid (rather than 2 columns of color)
             let corners2: [RGB, RGB] = [corners[2], corners[1]];
             this.assignColors(i => interpolate2(corners2, asCoord(i)), useCurrentCorners);

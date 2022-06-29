@@ -1,5 +1,4 @@
 .wrapper {
-    --cols: 4;
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
     grid-auto-rows: minmax(200px, auto);
@@ -35,15 +34,4 @@ a > div {
 .title {
     font-weight: bolder;
     font-size: 110%;
-}
-
-@media (width <= 600px) {
-    .wrapper {
-        --cols: 2;
-    }
-}
-@media (600px <= width <= 1000px) {
-    .wrapper {
-        --cols: 3;
-    }
 }
