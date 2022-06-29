@@ -104,6 +104,15 @@ export class TileGrid {
         this.passing = false;
     }
 
+    positionToCell({x, y}: PIXI.IPointData): [cellX: number, cellY: number] {
+        const DELTA = this.cellSize + TileGrid.TILE_GAP;
+        let [cx, cy] = [Math.floor(x / DELTA), Math.floor(y / DELTA)];
+
+        return [
+            Math.max(0, Math.min(cx, this.cellLength - 1)),
+            Math.max(0, Math.min(cy, this.cellLength - 1))
+        ];
+    }
     
     #renderTile(t: Tile | undefined, x: number, y: number): PIXI.Container {
         let con: PIXI.Container;
@@ -161,6 +170,35 @@ export class TileGrid {
                     );
                 }
             }
+            con.addChild(cellCon);
+
+            const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
+            hoverSquare.alpha = 0.5;
+            hoverSquare.width = this.cellSize;
+            hoverSquare.height = this.cellSize;
+            hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
+            hoverSquare.visible = false;
+            con.addChild(hoverSquare);
+
+            con.interactive = true;
+
+            con.on("pointermove", (e: PIXI.InteractionEvent) => {
+                // On desktop, highlight the tile being hovered over.
+                const pos = e.data.getLocalPosition(con);
+
+                const cellPos = this.positionToCell(pos);
+                const [cellX, cellY] = cellPos;
+                hoverSquare.position.set(TILE_GAP + cellX * DELTA, TILE_GAP + cellY * DELTA);
+            });
+
+            // note these don't actually work on mobile:
+            con.on("pointerover", (e: PIXI.InteractionEvent) => {
+                hoverSquare.visible = true;
+            });
+            con.on("pointerout", (e: PIXI.InteractionEvent) => {
+                hoverSquare.visible = false;
+            });
+            
         });
     }
 }
