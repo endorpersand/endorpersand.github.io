@@ -4,7 +4,7 @@ const CHUNK_SIZE = 50;
 const N_WORKERS = 4;
 
 let free = Array.from({length: N_WORKERS}, () => {
-    let w = new Worker(new URL("./chunkloader", import.meta.url), {type: "module"});
+    let w = new Worker(new URL("./chunkLoader", import.meta.url), {type: "module"});
 
     w.onmessage = function (e) {
         let out: LoaderOut = e.data;

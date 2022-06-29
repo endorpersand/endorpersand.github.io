@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { Complex, ComplexFunction, MainIn, MainOut, PartialEvaluator } from "./types";
+import { Complex, ComplexFunction, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
 const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
@@ -18,18 +18,45 @@ const ctx = canvas.getContext('2d', {alpha: false})!;
 let scale = 1; // increase = zoom in, decrease = zoom out
 let d: ComplexFunction = (z => z); // actual values of the function
 
-let worker: Worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
-worker.onmessage = function (e) {
-    let msg: MainOut = e.data;
+let worker: Worker;
+let canNest: boolean;
+let time: number;
+let webkitTest = new Worker(new URL("./worker/webkitTest", import.meta.url), {type: "module"});
+webkitTest.postMessage(undefined);
 
-    if (msg.action === "loadChunk") {
-        let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
-        ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
-    } else if (msg.action === "done") {
-        markDone(msg.time);
+webkitTest.onmessage = function (e: MessageEvent<boolean>) {
+    canNest = e.data;
+    if (canNest) {
+        worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
+
+        worker.onmessage = function (e: MessageEvent<MainOut>) {
+            let msg: MainOut = e.data;
+        
+            if (msg.action === "loadChunk") {
+                let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
+                ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+            } else if (msg.action === "done") {
+                markDone(msg.time);
+            }
+        }
+    } else {
+        worker = new Worker(new URL("./worker/chunkLoader", import.meta.url), {type: "module"});
+
+        worker.onmessage = function (e: MessageEvent<LoaderOut>) {
+            let msg = e.data;
+
+            let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
+            ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+            markDone(Math.trunc(performance.now() - time));
+
+            graphButton.disabled = false;
+        }
     }
+    
+    worker.onerror = onComputeError;
+    graphButton.click();
+    webkitTest.terminate();
 }
-worker.onerror = onComputeError;
 
 var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
 
@@ -50,6 +77,7 @@ input.addEventListener('input', () => {
     input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, ''); //removes invalid characters
 })
 graphButton.addEventListener('click', () => {
+    if (!canNest) graphButton.disabled = true;
     zcoord.classList.remove('error');
     zoomInput.value = scale.toString();
 
@@ -133,6 +161,8 @@ function convPlanes(x: number, y: number) {
 }
 
 function startWorker(w: Worker, fstr: string) {
+    if (!canNest) time =performance.now();
+
     let msg: MainIn = {
         pev: partialEvaluate(fstr), 
         cd: {
@@ -175,5 +205,3 @@ function onComputeError(e: Error | ErrorEvent) {
 function reenableHover() {
     setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
 }
-
-graphButton.click();

@@ -1,14 +1,27 @@
 import { create, all } from "mathjs";
-import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut } from "../types";
+import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn } from "../types";
 const math = create(all);
 
-onmessage = function (e) {
-    let {pev, cd, chunk}: LoaderIn = e.data;
+onmessage = function (e: MessageEvent<MainIn | LoaderIn>) {
+    let data = e.data;
+
+    let {pev, cd} = data;
+    let chunk: ChunkData = isLoaderInput(data) ? data.chunk : {
+        width: cd.width, 
+        height: cd.height, 
+        offx: 0, 
+        offy: 0
+    };
+
     let ev = buildEvaluator(pev);
     let buf = computeBuffer(ev, cd, chunk);
 
     let msg: LoaderOut = {buf, chunk};
     postMessage(msg, [buf] as any);
+}
+
+function isLoaderInput(t: MainIn | LoaderIn): t is LoaderIn {
+    return "chunk" in t;
 }
 
 function buildEvaluator(pev: PartialEvaluator): Evaluator {
