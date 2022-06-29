@@ -139,6 +139,10 @@ export class TileGrid {
         ];
     }
     
+    canRail(t: Tile | undefined): boolean {
+        return typeof t === "undefined" || t instanceof Tile.Rail;
+    }
+
     #renderTile(t: Tile | undefined, x: number, y: number): PIXI.Container {
         let con: PIXI.Container;
         if (t) {
@@ -197,14 +201,6 @@ export class TileGrid {
             }
             con.addChild(cellCon);
 
-            const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
-            hoverSquare.alpha = 0.5;
-            hoverSquare.width = this.cellSize;
-            hoverSquare.height = this.cellSize;
-            hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
-            hoverSquare.visible = false;
-            con.addChild(hoverSquare);
-
             con.interactive = true;
 
             let pointers = 0;
@@ -216,14 +212,10 @@ export class TileGrid {
             // </rail-mode>
 
             con.on("pointermove", (e: PIXI.InteractionEvent) => {
-                // On desktop, highlight the tile being hovered over.
-                const pos = e.data.getLocalPosition(con);
-
-                const cellPos = this.positionToCell(pos);
-                const [cellX, cellY] = cellPos;
-                hoverSquare.position.set(TILE_GAP + cellX * DELTA, TILE_GAP + cellY * DELTA);
-                
                 // <rail-mode>
+                const pos = e.data.getLocalPosition(con);
+                const cellPos = this.positionToCell(pos);
+                
                 // If pointers != 1, things get funky, so only track if one pointer.
                 if (pointers == 1) {
                     // cellPointer can now only bind to edges, so ignore centers.
@@ -321,18 +313,69 @@ export class TileGrid {
             })
             // </rail-mode>
 
-            // note these don't actually work on mobile:
-            con.on("pointerover", (e: PIXI.InteractionEvent) => {
-                hoverSquare.visible = true;
+            // on desktop, do hover square
+            // (not on mobile cause it looks bad and it doesn't actually work on mobile anyway)
+            const hoverSquare = TileGraphics.hoverIndicator(this.textures);
+            hoverSquare.width = this.cellSize;
+            hoverSquare.height = this.cellSize;
+            hoverSquare.tint = 0xD7FFE7;
+            hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
+            hoverSquare.visible = false;
+            con.addChild(hoverSquare);
+
+            const enum Condition {
+                IN_BOUNDS, MOUSE_UP, RAILABLE
+            };
+            let visibility = [
+                true, true, true
+            ];
+            
+            con.on("mousemove", (e: PIXI.InteractionEvent) => {
+                const pos = e.data.getLocalPosition(con);
+                const cellPos = this.positionToCell(pos);
+                const [cellX, cellY] = cellPos;
+
+                let dir = this.nearestEdge(pos, cellPos);
+
+                if (typeof dir === "undefined" || !this.canRail(this.tile(...cellPos))) {
+                    visibility[Condition.RAILABLE] = false;
+                } else {
+                    visibility[Condition.RAILABLE] = true;
+                    hoverSquare.position.set(
+                        TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
+                        TILE_GAP + cellY * DELTA + hoverSquare.height / 2
+                        );
+                        hoverSquare.angle = -90 * dir;
+                }
+                hoverSquare.visible = visibility.every(t => t);
+            })
+
+            con.on("mousedown", (e: PIXI.InteractionEvent) => {
+                visibility[Condition.MOUSE_UP] = false;
+                hoverSquare.visible = visibility.every(t => t);
             });
-            con.on("pointerout", (e: PIXI.InteractionEvent) => {
-                hoverSquare.visible = false;
+            con.on("mouseup", (e: PIXI.InteractionEvent) => {
+                visibility[Condition.MOUSE_UP] = true;
+                hoverSquare.visible = visibility.every(t => t);
+            });
+            con.on("mouseupoutside", (e: PIXI.InteractionEvent) => {
+                visibility[Condition.MOUSE_UP] = true;
+                hoverSquare.visible = visibility.every(t => t);
+            });
+
+            con.on("mouseover", (e: PIXI.InteractionEvent) => {
+                visibility[Condition.IN_BOUNDS] = true;
+                hoverSquare.visible = visibility.every(t => t);
+            });
+            con.on("mouseout", (e: PIXI.InteractionEvent) => {
+                visibility[Condition.IN_BOUNDS] = false;
+                hoverSquare.visible = visibility.every(t => t);
             });
             
         });
     }
 
-    static readonly EDGE_THRESHOLD = 0.2;
+    static readonly EDGE_THRESHOLD = 0.25;
     
     /**
      * Find the nearest edge to a cell from a given point.
@@ -599,6 +642,13 @@ namespace TileGraphics {
                 sprite.angle = -90 * e2;
             }
         }
+
+        pivotCenter(sprite);
+        return sprite;
+    }
+
+    export function hoverIndicator(textures: Atlas): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["hover.png"]);
 
         pivotCenter(sprite);
         return sprite;
