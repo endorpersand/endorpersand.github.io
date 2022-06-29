@@ -1,0 +1,20 @@
+body {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  display: flex;
+}
+
+canvas {
+  cursor: crosshair;
+}
+
+form {
+  display: inline;
+}
+
+.error {
+  color: red;
+}
+
+/*# sourceMappingURL=complexgrapher.8621e7ea.css.map */

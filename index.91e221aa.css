@@ -1,0 +1,22 @@
+@import "https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap";
+body {
+  color: #fff;
+  background-color: #222;
+  font-family: Fira Sans, sans-serif;
+}
+
+* {
+  font-family: inherit;
+}
+
+textarea {
+  font-family: Fira Mono, sans-serif;
+}
+
+h2 {
+  font-size: 150%;
+  text-decoration: underline;
+}
+
+/*# sourceMappingURL=index.91e221aa.css.map */
