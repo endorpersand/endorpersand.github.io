@@ -1,9 +1,15 @@
-body {
+#wrapper {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
     align-items: flex-start;
 }
+
+#controls {
+    flex: 1;
+    box-sizing: border-box;
+}
+
 canvas {
     cursor: crosshair;
 }
@@ -12,4 +18,15 @@ form {
 }
 .error {
     color: red;
+}
+
+@media (width <= 815px) {
+    #wrapper {
+        flex-direction: column-reverse;
+        align-items: center;
+    }
+
+    #controls {
+        padding: 16px;
+    }
 }
