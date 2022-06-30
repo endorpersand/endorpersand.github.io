@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { Complex, ComplexFunction, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
+import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
 const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
@@ -24,24 +24,31 @@ let time: number;
 let webkitTest = new Worker(new URL("./worker/webkitTest", import.meta.url), {type: "module"});
 webkitTest.postMessage(undefined);
 
-webkitTest.onmessage = function (e: MessageEvent<boolean>) {
+webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
+    zcoord.textContent = "Initializing workers..."
+    await waitPageUpdate();
     canNest = e.data;
-    if (canNest) {
-        worker = new Worker(new URL("./worker/main", import.meta.url), {type: "module"});
 
+    worker = canNest 
+        ? new Worker(new URL("./worker/main", import.meta.url), {type: "module"}) 
+        : new Worker(new URL("./worker/chunkLoader", import.meta.url), {type: "module"});
+    
+    await initWorker(worker);
+
+    if (canNest) {
         worker.onmessage = function (e: MessageEvent<MainOut>) {
             let msg: MainOut = e.data;
         
-            if (msg.action === "loadChunk") {
+            if (msg.action === "displayChunk") {
                 let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
                 ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
             } else if (msg.action === "done") {
                 markDone(msg.time);
+            } else {
+                let _: never = msg;
             }
         }
     } else {
-        worker = new Worker(new URL("./worker/chunkLoader", import.meta.url), {type: "module"});
-
         worker.onmessage = function (e: MessageEvent<LoaderOut>) {
             let msg = e.data;
 
@@ -168,10 +175,22 @@ function convPlanes(x: number, y: number) {
     return math.complex(cmx, cmy) as unknown as Complex;
 }
 
+async function initWorker(w: Worker) {
+    let init: InitIn = { action: "init" };
+    w.postMessage(init);
+
+    return new Promise<void>(resolve => {
+        w.onmessage = function(e: MessageEvent<InitOut>) {
+            resolve();
+        }
+    });
+}
+
 function startWorker(w: Worker, fstr: string) {
     if (!canNest) time =performance.now();
 
     let msg: MainIn = {
+        action: "mainRequest",
         pev: partialEvaluate(fstr), 
         cd: {
         width: canvas.width,

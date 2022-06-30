@@ -1,68 +1,94 @@
-import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData, PartialEvaluator } from "../types";
+import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData, PartialEvaluator, InitIn, InitOut } from "../types";
 
 const CHUNK_SIZE = 50;
 const N_WORKERS = 4;
 
-let free = Array.from({length: N_WORKERS}, () => {
-    let w = new Worker(new URL("./chunkLoader", import.meta.url), {type: "module"});
-
-    w.onmessage = function (e) {
-        let out: LoaderOut = e.data;
-
-        let ticket = labor.get(w);
-        if (typeof ticket === "undefined") return;
-        let [sym, start] = ticket;
-        // load chunk
-        if (currentTask == sym) {
-            let msg: MainOut = {action: "loadChunk", ...out};
-            self.postMessage(msg, [out.buf] as any);
-        }
-
-        let t = workQueue.next();
-        if (!t.done) {
-            // reassign
-            assignWorkToWorker(w, t.value);
-        } else {
-            // no more work to do, free the worker
-            freeWorker(w);
-
-            // if all chunks finished, send done
-            if (typeof start !== "undefined" && labor.size == 0) {
-                let done: MainOut = { action: "done", time: Math.trunc(performance.now() - start) };
-                self.postMessage(done);
-            }
-        }
-    }
-
-    w.onerror = function (e) {
-        freeWorker(w);
-    }
-    return w;
-});
+let free: Worker[] = [];
 
 type Ticket = [LoaderIn, Symbol, number];
 let labor: Map<Worker, [Symbol, number]> = new Map();
 let workQueue: Generator<Ticket>;
 let currentTask: Symbol;
 
-onmessage = function (e) {
-    let start = this.performance.now();
-    let {pev, cd}: MainIn = e.data;
-    workQueue = queue(start, pev, cd);
+onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
+    let data = e.data;
 
-    let fit = free[Symbol.iterator]();
-    for (let w of fit) {
-        let t = workQueue.next();
-
-        if (!t.done) {
-            assignWorkToWorker(w, t.value);
-        } else {
-            break;
+    if (data.action === "init") {
+        await initLoaders();
+        self.postMessage({action: "ready"});
+    } else if (data.action === "mainRequest") {
+        let start = this.performance.now();
+        let {pev, cd} = data;
+        workQueue = queue(start, pev, cd);
+    
+        let fit = free[Symbol.iterator]();
+        for (let w of fit) {
+            let t = workQueue.next();
+    
+            if (!t.done) {
+                assignWorkToWorker(w, t.value);
+            } else {
+                break;
+            }
         }
+        free = [...fit];
+    } else {
+        let _: never = data;
+        throw new Error("Unexpected request into main worker");
     }
-    free = [...fit];
 }
 
+async function initLoaders() {
+    if (free.length > 0) return;
+    
+    free = Array.from({length: N_WORKERS}, () => 
+        new Worker(new URL("./chunkLoader", import.meta.url), {type: "module"})
+    );
+
+    let promises = Array.from(free, w => 
+        new Promise<Worker>(resolve => {
+            w.onmessage = function (e: MessageEvent<InitOut>) {
+                resolve(w);
+            }
+            w.postMessage({action: "init"});
+        })
+        .then(w => {
+            w.onmessage = function (e: MessageEvent<LoaderOut>) {
+                let out = e.data;
+        
+                let ticket = labor.get(w);
+                if (typeof ticket === "undefined") return;
+                let [sym, start] = ticket;
+                // load chunk
+                if (currentTask == sym) {
+                    let msg: MainOut = {...out, action: "displayChunk"};
+                    self.postMessage(msg, [out.buf] as any);
+                }
+        
+                let t = workQueue.next();
+                if (!t.done) {
+                    // reassign
+                    assignWorkToWorker(w, t.value);
+                } else {
+                    // no more work to do, free the worker
+                    freeWorker(w);
+        
+                    // if all chunks finished, send done
+                    if (typeof start !== "undefined" && labor.size == 0) {
+                        let done: MainOut = { action: "done", time: Math.trunc(performance.now() - start) };
+                        self.postMessage(done);
+                    }
+                }
+            }
+        
+            w.onerror = function (e) {
+                freeWorker(w);
+            }
+        })
+    );
+    
+    return await Promise.all(promises);
+}
 function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator<Ticket> {
     let {width, height} = cd;
     currentTask = Symbol("task");
@@ -73,6 +99,7 @@ function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator
             let ch = clamp(0, CHUNK_SIZE, height - j);
 
             yield [{
+                action: "chunkRequest",
                 pev, cd,
                 chunk: {
                     width: cw, height: ch, offx: i, offy: j

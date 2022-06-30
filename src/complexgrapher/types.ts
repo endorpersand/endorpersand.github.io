@@ -29,24 +29,50 @@ export interface Evaluator {
 
 export type ComplexFunction = (z: Complex) => Complex | number;
 
-export type MainIn = {
-    pev: PartialEvaluator,
-    cd: CanvasData
-};
-export type MainOut = {
-    action: "loadChunk",
-    chunk: ChunkData,
-    buf: ArrayBuffer
-} | {
-    action: "done",
-    time: number
-};
-export type LoaderIn = {
-    pev: PartialEvaluator
-    cd: CanvasData,
-    chunk: ChunkData,
-};
-export type LoaderOut = {
-    chunk: ChunkData,
-    buf: ArrayBuffer
-};
+namespace Messages {
+    export type MainRequest = {
+        action: "mainRequest",
+        pev: PartialEvaluator,
+        cd: CanvasData
+    };
+
+    export type DisplayChunk = {
+        action: "displayChunk",
+        chunk: ChunkData,
+        buf: ArrayBuffer
+    };
+
+    export type GraphDone = {
+        action: "done",
+        time: number
+    };
+
+    export type ChunkRequest = {
+        action: "chunkRequest",
+        pev: PartialEvaluator
+        cd: CanvasData,
+        chunk: ChunkData,
+    };
+
+    export type ChunkDone = {
+        action: "chunkDone",
+        chunk: ChunkData,
+        buf: ArrayBuffer
+    };
+
+    export type Init = {
+        action: "init"
+    };
+
+    export type Ready = {
+        action: "ready"
+    }
+}
+export type InitIn = Messages.Init;
+export type InitOut = Messages.Ready;
+
+export type MainIn = Messages.MainRequest;
+export type MainOut = Messages.DisplayChunk | Messages.GraphDone;
+
+export type LoaderIn = Messages.ChunkRequest;
+export type LoaderOut = Messages.ChunkDone;

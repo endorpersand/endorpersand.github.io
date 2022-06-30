@@ -1,27 +1,37 @@
 import { create, all } from "mathjs";
-import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn } from "../types";
+import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn } from "../types";
 const math = create(all);
 
-onmessage = function (e: MessageEvent<MainIn | LoaderIn>) {
+onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     let data = e.data;
 
+    if (data.action === "init") {
+        self.postMessage({action: "ready"});
+        return;
+    }
+
     let {pev, cd} = data;
-    let chunk: ChunkData = isLoaderInput(data) ? data.chunk : {
-        width: cd.width, 
-        height: cd.height, 
-        offx: 0, 
-        offy: 0
-    };
+    let chunk;
+
+    if (data.action === "chunkRequest") {
+        chunk = data.chunk;
+    } else if (data.action === "mainRequest") {
+        chunk = {
+            width: cd.width, 
+            height: cd.height, 
+            offx: 0, 
+            offy: 0
+        };
+    } else {
+        let _: never = data;
+        throw new Error("Unrecognized request into chunkLoader");
+    }
 
     let ev = buildEvaluator(pev);
     let buf = computeBuffer(ev, cd, chunk);
 
-    let msg: LoaderOut = {buf, chunk};
+    let msg: LoaderOut = {action: "chunkDone", buf, chunk};
     postMessage(msg, [buf] as any);
-}
-
-function isLoaderInput(t: MainIn | LoaderIn): t is LoaderIn {
-    return "chunk" in t;
 }
 
 function buildEvaluator(pev: PartialEvaluator): Evaluator {
