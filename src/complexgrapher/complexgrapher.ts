@@ -210,6 +210,6 @@ function onComputeError(e: Error | ErrorEvent) {
     reenableHover();
 }
 
-function reenableHover() {
-    setTimeout(() => canvas.addEventListener('mousemove', canvasHover), 500);
+function reenableHover(after = 500) {
+    setTimeout(() => canvas.addEventListener('mousemove', canvasHover), after);
 }
