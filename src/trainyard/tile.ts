@@ -774,52 +774,6 @@ export class TileGrid implements Serializable {
     }
 }
 
-export abstract class Tile {
-    /**
-     * A list of the trains currently on the tile.
-     */
-    trains: Train[] = [];
-    /**
-     * The sides that trains can enter this tile through.
-     * Note that if an active left side accepts right-facing trains.
-     */
-    readonly actives: DirFlags;
-
-    /**
-     * Char this is represented with during serialization. If not serialized, serChar is " ".
-     */
-    readonly serChar: string = " ";
-
-    constructor(...actives: Dir[]) {
-        this.actives = new DirFlags(actives);
-    }
-
-    /**
-     * Adds this train to the tile's train storage (if the train passes through an active side)
-     * @param train 
-     */
-        accept(grid: TileGrid, train: Train): void {
-        if (this.actives.has(Dir.flip(train.dir))) {
-            this.trains.push(train);
-        } else {
-            grid.fail();
-        }
-    }
-
-    /**
-     * Indicates what this tile should do during the step (is only called if the tile has a train).
-     * @param grid Grid that the tile is on
-     */
-    abstract step(grid: TileGrid): void;
-
-    /**
-     * Create the Container that displays this tile.
-     * @param textures The texture atlas that holds all assets
-     * @param size Size of the tile
-     */
-    abstract render(textures: Atlas, size: number): PIXI.Container;
-}
-
 namespace TileGraphics {
     export function sized(size: number, f?: (c: PIXI.Container) => void): PIXI.Container {
         const con = new PIXI.Container();
@@ -951,6 +905,52 @@ namespace TileGraphics {
         pivotCenter(sprite);
         return sprite;
     }
+}
+
+export abstract class Tile {
+    /**
+     * A list of the trains currently on the tile.
+     */
+    trains: Train[] = [];
+    /**
+     * The sides that trains can enter this tile through.
+     * Note that if an active left side accepts right-facing trains.
+     */
+    readonly actives: DirFlags;
+
+    /**
+     * Char this is represented with during serialization. If not serialized, serChar is " ".
+     */
+    readonly serChar: string = " ";
+
+    constructor(...actives: Dir[]) {
+        this.actives = new DirFlags(actives);
+    }
+
+    /**
+     * Adds this train to the tile's train storage (if the train passes through an active side)
+     * @param train 
+     */
+        accept(grid: TileGrid, train: Train): void {
+        if (this.actives.has(Dir.flip(train.dir))) {
+            this.trains.push(train);
+        } else {
+            grid.fail();
+        }
+    }
+
+    /**
+     * Indicates what this tile should do during the step (is only called if the tile has a train).
+     * @param grid Grid that the tile is on
+     */
+    abstract step(grid: TileGrid): void;
+
+    /**
+     * Create the Container that displays this tile.
+     * @param textures The texture atlas that holds all assets
+     * @param size Size of the tile
+     */
+    abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
 export namespace Tile {
