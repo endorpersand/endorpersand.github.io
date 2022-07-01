@@ -421,6 +421,8 @@ export class TileGrid implements Serializable {
             hoverSquare.tint = Palette.Hover;
             hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
             hoverSquare.visible = false;
+            hoverSquare.interactive = true;
+            hoverSquare.cursor = "grab";
             con.addChild(hoverSquare);
 
             const enum Condition {
