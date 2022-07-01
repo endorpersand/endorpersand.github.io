@@ -10,8 +10,14 @@ const loader = PIXI.Loader.shared,
 PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
 
 const {clientWidth, clientHeight} = document.documentElement;
+const defaults = {
+    cellSize: 72,
+    cellLength: 7
+};
+const defaultWidth = defaults.cellSize * defaults.cellLength + TileGrid.TILE_GAP * (defaults.cellLength + 5);
+
 const app = new PIXI.Application({
-    width: Math.min(clientWidth, 512), 
+    width: Math.min(clientWidth, defaultWidth), 
     height: clientHeight - 16
 });
 
@@ -29,10 +35,10 @@ let textures: Atlas;
 function setup() {
     textures = resources[assets["trainyard.json"]].textures!;
 
-    let gridSize = app.renderer.width - TileGrid.TILE_GAP * 3;
-    let cellLength = 7;
+    let gridSize = app.renderer.width - TileGrid.TILE_GAP * 4;
+    let cellLength = defaults.cellLength;
     let cellSpace = gridSize - TileGrid.TILE_GAP * (cellLength + 1);
-    let cellSize = 64; //Math.floor(cellSpace / 7);
+    let cellSize = Math.floor(cellSpace / cellLength);
 
     const tg = new TileGrid(cellSize, cellLength, textures,
         [
