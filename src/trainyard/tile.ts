@@ -297,9 +297,10 @@ export class TileGrid implements Serializable {
                         clearTimeout(tdtTimeout);
                         
                         this.replaceTile(...dbtTile, t => {
-                            const rail = t as Tile.DoubleRail;
-                            rail.paths.reverse();
-                            return rail;
+                            if (t instanceof Tile.DoubleRail) {
+                                t.paths.reverse();
+                            }
+                            return t;
                         });
     
                         dbtTile = undefined;
