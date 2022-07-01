@@ -301,207 +301,221 @@ export class TileGrid implements Serializable {
             con.addChild(cellCon);
 
             con.interactive = true;
-
-            let pointers = 0;
-
-            // <rail-mode>
-            // On pointer down, this can be the center or the edge
-            // Once you start moving though, it can only bind to edges
-            let cellPointer: RailTouch | undefined = undefined;
-            // </rail-mode>
-
-            con.on("pointermove", (e: PIXI.InteractionEvent) => {
-                // <rail-mode>
-                const pos = e.data.getLocalPosition(con);
-                const cellPos = this.positionToCell(pos);
-                
-                // If pointers != 1, things get funky, so only track if one pointer.
-                if (pointers == 1) {
-                    // cellPointer can now only bind to edges, so ignore centers.
-                    let edge = this.nearestEdge(pos, cellPos);
-                    if (typeof edge === "undefined") return;
-                    
-                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
-
-                    // If cellPointer has not existed yet, just set it
-                    // If it has, then we can try to create a rail
-                    if (typeof cellPointer !== "undefined") {
-                        // If the cell pointers are in the same cell, we can try to create a rail
-
-                        let result = this.findSharedCell(cellPointer, nCellPointer);
-
-                        if (typeof result !== "undefined") {
-                            let [shared, me0, me1] = result;
-                            
-                            // edge + edge = make connection
-                            // center + edge = make straight line
-                            let e1 = me1!;
-                            let e0 = me0 ?? Dir.flip(e1);
-
-                            if (e0 !== e1) {
-                                this.replaceTile(...shared, t => {
-                                    if (t instanceof Tile.Blank) {
-                                        return new Tile.SingleRail(e0, e1);
-                                    } else if (t instanceof Tile.Rail) {
-                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
-                                    } else {
-                                        return t;
-                                    }
-                                });
-                            }
-                        }
-                    }
-
-                    cellPointer = nCellPointer;
-                } else {
-                    // Drop stored pointer otherwise, because this information is useless.
-                    cellPointer = undefined;
-                }
-            });
-
-            let dbtTile: [number, number] | undefined;
-            let tdtTimeout: NodeJS.Timeout | undefined;
-            const DT_TIMEOUT_MS = 1000;
-
-            con.on("pointerdown", (e: PIXI.InteractionEvent) => {
-                pointers++;
-
-                const pos = e.data.getLocalPosition(con);
-                const cellPos = this.positionToCell(pos);
-
-                let edge = this.nearestEdge(pos, cellPos);
-                cellPointer = [
-                    cellPos, 
-                    typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
-                ];
-
-                // double tap to swap rails (on a double rail)
-
-                // first tap: if tile is dbl rail, store rail information
-                if (!dbtTile) {
-                    if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
-                        dbtTile = cellPos;
-                        tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
-                    }
-                } else {
-                    // second tap (if done fast enough & same rail tapped), swap the rail
-                    if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
-                        clearTimeout(tdtTimeout);
-                        
-                        this.replaceTile(...dbtTile, t => {
-                            if (t instanceof Tile.DoubleRail) {
-                                t.paths.reverse();
-                            }
-                            return t;
-                        });
-    
-                        dbtTile = undefined;
-                    }
-                }
-            });
-
-            function pointerup(e: PIXI.InteractionEvent) {
-                pointers--;
-                cellPointer = undefined;
-            }
-            con.on("pointerup", pointerup);
-            con.on("pointerupoutside", pointerup);
-
-            con.on("pointercancel", (e: PIXI.InteractionEvent) => {
-                pointers = 0;
-                cellPointer = undefined;
-            })
-            // </rail-mode>
-
-            // on desktop, do hover square
-            // (not on mobile cause it looks bad and it doesn't actually work on mobile anyway)
-            const hoverSquare = TileGraphics.hoverIndicator(this.textures);
-            hoverSquare.width = this.cellSize;
-            hoverSquare.height = this.cellSize;
-            hoverSquare.tint = Palette.Hover;
-            hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
-            hoverSquare.visible = false;
-            hoverSquare.interactive = true;
-            hoverSquare.cursor = "grab";
-            con.addChild(hoverSquare);
-
-            const enum Condition {
-                IN_BOUNDS, MOUSE_UP, RAILABLE
-            };
-            let visibility = [
-                true, true, true
-            ];
-            
-            function updateVisibility() {
-                hoverSquare.visible = visibility.every(t => t);
-            }
-
-            con.on("mousemove", (e: PIXI.InteractionEvent) => {
-                const pos = e.data.getLocalPosition(con);
-                const cellPos = this.positionToCell(pos);
-                const [cellX, cellY] = cellPos;
-
-                let dir = this.nearestEdge(pos, cellPos);
-
-                if (typeof dir === "undefined") {
-                    visibility[Condition.RAILABLE] = false;
-                } else {
-                    let tile = this.tile(...cellPos);
-
-                    // If you can place a rail on this tile, mark the tile on the nearest edge
-                    if (TileGrid.canRail(tile)) {
-                        visibility[Condition.RAILABLE] = true;
-                        hoverSquare.position.set(
-                            TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
-                            TILE_GAP + cellY * DELTA + hoverSquare.height / 2
-                        );
-                        hoverSquare.angle = -90 * dir;
-                    } else {
-                        let neighborPos = Dir.shift(cellPos, dir);
-                        let neighbor = this.tile(...neighborPos);
-
-                        if (TileGrid.canRail(neighbor)) {
-                            visibility[Condition.RAILABLE] = true;
-
-                            const [nx, ny] = neighborPos;
-                            hoverSquare.position.set(
-                                TILE_GAP + nx * DELTA + hoverSquare.width / 2, 
-                                TILE_GAP + ny * DELTA + hoverSquare.height / 2
-                            );
-                            hoverSquare.angle = -90 * Dir.flip(dir);
-                        } else {
-                            visibility[Condition.RAILABLE] = false;
-                        }
-                    }
-                }
-                updateVisibility();
-            })
-
-            con.on("mousedown", (e: PIXI.InteractionEvent) => {
-                visibility[Condition.MOUSE_UP] = false;
-                updateVisibility();
-            });
-            con.on("mouseup", (e: PIXI.InteractionEvent) => {
-                visibility[Condition.MOUSE_UP] = true;
-                updateVisibility();
-            });
-            con.on("mouseupoutside", (e: PIXI.InteractionEvent) => {
-                visibility[Condition.MOUSE_UP] = true;
-                updateVisibility();
-            });
-
-            con.on("mouseover", (e: PIXI.InteractionEvent) => {
-                visibility[Condition.IN_BOUNDS] = true;
-                updateVisibility();
-            });
-            con.on("mouseout", (e: PIXI.InteractionEvent) => {
-                visibility[Condition.IN_BOUNDS] = false;
-                updateVisibility();
-            });
-            
+            this.#applyPointerEvents(con);
+            this.#applyHoverIndicator(con);
         });
     }
     
+    /**
+     * Apply pointer events like click, drag, etc. to a container
+     * @param con Container to apply to.
+     */
+    #applyPointerEvents(con: PIXI.Container) {
+        let pointers = 0;
+
+        // <rail-mode>
+        // On pointer down, this can be the center or the edge
+        // Once you start moving though, it can only bind to edges
+        let cellPointer: RailTouch | undefined = undefined;
+        // </rail-mode>
+
+        con.on("pointermove", (e: PIXI.InteractionEvent) => {
+            // <rail-mode>
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = this.positionToCell(pos);
+            
+            // If pointers != 1, things get funky, so only track if one pointer.
+            if (pointers == 1) {
+                // cellPointer can now only bind to edges, so ignore centers.
+                let edge = this.nearestEdge(pos, cellPos);
+                if (typeof edge === "undefined") return;
+                
+                let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
+
+                // If cellPointer has not existed yet, just set it
+                // If it has, then we can try to create a rail
+                if (typeof cellPointer !== "undefined") {
+                    // If the cell pointers are in the same cell, we can try to create a rail
+
+                    let result = this.findSharedCell(cellPointer, nCellPointer);
+
+                    if (typeof result !== "undefined") {
+                        let [shared, me0, me1] = result;
+                        
+                        // edge + edge = make connection
+                        // center + edge = make straight line
+                        let e1 = me1!;
+                        let e0 = me0 ?? Dir.flip(e1);
+
+                        if (e0 !== e1) {
+                            this.replaceTile(...shared, t => {
+                                if (t instanceof Tile.Blank) {
+                                    return new Tile.SingleRail(e0, e1);
+                                } else if (t instanceof Tile.Rail) {
+                                    return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                                } else {
+                                    return t;
+                                }
+                            });
+                        }
+                    }
+                }
+
+                cellPointer = nCellPointer;
+            } else {
+                // Drop stored pointer otherwise, because this information is useless.
+                cellPointer = undefined;
+            }
+        });
+
+        let dbtTile: [number, number] | undefined;
+        let tdtTimeout: NodeJS.Timeout | undefined;
+        const DT_TIMEOUT_MS = 1000;
+
+        con.on("pointerdown", (e: PIXI.InteractionEvent) => {
+            pointers++;
+
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = this.positionToCell(pos);
+
+            let edge = this.nearestEdge(pos, cellPos);
+            cellPointer = [
+                cellPos, 
+                typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+            ];
+
+            // double tap to swap rails (on a double rail)
+
+            // first tap: if tile is dbl rail, store rail information
+            if (!dbtTile) {
+                if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
+                    dbtTile = cellPos;
+                    tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
+                }
+            } else {
+                // second tap (if done fast enough & same rail tapped), swap the rail
+                if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
+                    clearTimeout(tdtTimeout);
+                    
+                    this.replaceTile(...dbtTile, t => {
+                        if (t instanceof Tile.DoubleRail) {
+                            t.paths.reverse();
+                        }
+                        return t;
+                    });
+
+                    dbtTile = undefined;
+                }
+            }
+        });
+
+        function pointerup(e: PIXI.InteractionEvent) {
+            pointers--;
+            cellPointer = undefined;
+        }
+        con.on("pointerup", pointerup);
+        con.on("pointerupoutside", pointerup);
+
+        con.on("pointercancel", (e: PIXI.InteractionEvent) => {
+            pointers = 0;
+            cellPointer = undefined;
+        })
+        // </rail-mode>
+    }
+
+    /**
+     * On desktop, display a rail indicator that marks which edge the mouse is nearest to.
+     * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
+     * @param con Container to apply to
+     */
+    #applyHoverIndicator(con: PIXI.Container) {
+        const TILE_GAP = TileGrid.TILE_GAP;
+        const DELTA = this.cellSize + TILE_GAP;
+        
+        const hoverSquare = TileGraphics.hoverIndicator(this.textures);
+        hoverSquare.width = this.cellSize;
+        hoverSquare.height = this.cellSize;
+        hoverSquare.tint = Palette.Hover;
+        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
+        hoverSquare.visible = false;
+        hoverSquare.interactive = true;
+        hoverSquare.cursor = "grab";
+        con.addChild(hoverSquare);
+
+        const enum Condition {
+            IN_BOUNDS, MOUSE_UP, RAILABLE
+        };
+        let visibility = [
+            true, true, true
+        ];
+        
+        function updateVisibility() {
+            hoverSquare.visible = visibility.every(t => t);
+        }
+
+        con.on("mousemove", (e: PIXI.InteractionEvent) => {
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = this.positionToCell(pos);
+            const [cellX, cellY] = cellPos;
+
+            let dir = this.nearestEdge(pos, cellPos);
+
+            if (typeof dir === "undefined") {
+                visibility[Condition.RAILABLE] = false;
+            } else {
+                let tile = this.tile(...cellPos);
+
+                // If you can place a rail on this tile, mark the tile on the nearest edge
+                if (TileGrid.canRail(tile)) {
+                    visibility[Condition.RAILABLE] = true;
+                    hoverSquare.position.set(
+                        TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
+                        TILE_GAP + cellY * DELTA + hoverSquare.height / 2
+                    );
+                    hoverSquare.angle = -90 * dir;
+                } else {
+                    let neighborPos = Dir.shift(cellPos, dir);
+                    let neighbor = this.tile(...neighborPos);
+
+                    if (TileGrid.canRail(neighbor)) {
+                        visibility[Condition.RAILABLE] = true;
+
+                        const [nx, ny] = neighborPos;
+                        hoverSquare.position.set(
+                            TILE_GAP + nx * DELTA + hoverSquare.width / 2, 
+                            TILE_GAP + ny * DELTA + hoverSquare.height / 2
+                        );
+                        hoverSquare.angle = -90 * Dir.flip(dir);
+                    } else {
+                        visibility[Condition.RAILABLE] = false;
+                    }
+                }
+            }
+            updateVisibility();
+        })
+
+        con.on("mousedown", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = false;
+            updateVisibility();
+        });
+        con.on("mouseup", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = true;
+            updateVisibility();
+        });
+        con.on("mouseupoutside", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = true;
+            updateVisibility();
+        });
+
+        con.on("mouseover", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.IN_BOUNDS] = true;
+            updateVisibility();
+        });
+        con.on("mouseout", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.IN_BOUNDS] = false;
+            updateVisibility();
+        });
+    }
     /**
      * Find the nearest edge to a cell from a given point.
      * @param param0 the point
