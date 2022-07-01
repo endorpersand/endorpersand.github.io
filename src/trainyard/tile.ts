@@ -818,7 +818,7 @@ namespace TileGraphics {
 
     const SYM_GAP = 1;
     export function symbolSet(
-        clrs: Color[], 
+        clrs: readonly Color[], 
         bounds: [center: [number, number], size: number], 
         symbol: (cx: number, cy: number, s: number, clr: Color, graphics: PIXI.Graphics) => PIXI.Graphics
     ): PIXI.Graphics {
@@ -962,12 +962,12 @@ export namespace Tile {
         /**
          * The output side.
          */
-        out: Dir;
+        readonly out: Dir;
 
         /**
          * The colors of trains that this outlet stores.
          */
-        colors: Color[];
+        readonly colors: readonly Color[];
 
         /**
          * Number of trains released.
@@ -1089,7 +1089,7 @@ export namespace Tile {
     * Tiles which paint the train.
     */
     export class Painter extends Tile implements Serializable {
-        color: Color;
+        readonly color: Color;
         readonly serChar = "p";
 
         constructor(color: Color, active1: Dir, active2: Dir) {
@@ -1153,7 +1153,7 @@ export namespace Tile {
          * The active side.
          * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
          */
-        active: Dir;
+        readonly active: Dir;
         readonly serChar = "s";
     
         constructor(active: Dir) {
@@ -1343,7 +1343,7 @@ export namespace Tile {
     
     export class DoubleRail extends Rail {
         paths: [DirFlags, DirFlags];
-        #overlapping: boolean;
+        readonly #overlapping: boolean;
     
         constructor(paths: [DirFlags, DirFlags]) {
             let [e0, e1] = paths;
