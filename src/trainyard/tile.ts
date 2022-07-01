@@ -6,6 +6,9 @@ type Center = [center: [number, number], _: undefined];
 type RailTouch = Edge | Center;
 
 interface Serializable<J = any> {
+    /**
+     * Designate how to convert this object into JSON.
+     */
     toJSON(): J;
     // static fromJSON(o: J): this;
 }
@@ -17,7 +20,7 @@ export class TileGrid implements Serializable {
     /**
      * The tiles.
      */
-    tiles: (Tile | undefined)[][];
+    #tiles: Tile[][];
     /**
      * Each cell is [size x size] big.
      */
@@ -46,12 +49,10 @@ export class TileGrid implements Serializable {
      */
     textures: Atlas;
 
-    constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile|undefined)[][]) {
+    constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
-        let length = this.cellLength = cellLength;
-        this.tiles = Array.from({length}, (_, y) => 
-            Array.from({length},(_, x) => tiles?.[y]?.[x])
-        );
+        this.cellLength = cellLength;
+        this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
         this.textures = textures;
     }
@@ -70,13 +71,59 @@ export class TileGrid implements Serializable {
         return this.cellSize * this.cellLength + TileGrid.TILE_GAP * (this.cellLength + 1);
     }
 
+    static #normalizeTileMatrix(mat: (Tile | undefined)[][], length: number): Tile[][] {
+        return Array.from({length}, (_, y) => 
+            Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
+        );
+    }
+
+    get tiles(): Tile[][] { return this.#tiles; }
+    set tiles(mat: (Tile | undefined)[][]) {
+        this.#tiles = TileGrid.#normalizeTileMatrix(mat, this.cellLength);
+        
+        if (this.#c_container) {
+            this.#c_container = this.#createContainer();
+        }
+    }
+    /**
+     * Determine if tile at specified position is in bounds
+     * @param x cell x
+     * @param y cell y
+     * @returns true if in bounds
+     */
+    inBounds(x: number, y: number): boolean {
+        return [x, y].every(t => 0 <= t && t < this.cellLength);
+    }
+
+    /**
+     * Error if tile at specified position is not in bounds
+     * @param x cell x
+     * @param y cell y
+     */
+    assertInBounds(x: number, y: number) {
+        if (!this.inBounds(x, y)) throw new Error(`Position is not located within tile: (${x}, ${y})`);
+    }
+
+    /**
+     * Get the tile at the specified position
+     * @param x cell x
+     * @param y cell y
+     * @returns a tile, or undefined if out of bounds
+     */
     tile(x: number, y: number) {
-        return this.tiles?.[y]?.[x];
+        const tile = this.#tiles?.[y]?.[x];
+        if (typeof tile === "undefined") {
+            return this.inBounds(x, y) ? new Tile.Blank() : undefined;
+        }
+        return tile;
     }
 
     setTile(x: number, y: number, t: Tile | undefined) {
-        this.tiles[y] ??= [];
-        this.tiles[y][x] = t;
+        this.assertInBounds(x, y);
+
+        t ??= new Tile.Blank();
+        this.#tiles[y] ??= [];
+        this.#tiles[y][x] = t;
 
         if (this.#c_container) {
             const cells = this.container.getChildByName("cells", false) as PIXI.Container;
@@ -92,8 +139,9 @@ export class TileGrid implements Serializable {
         }
     }
 
-    replaceTile(x: number, y: number, f: (t: Tile | undefined) => (Tile | undefined)) {
-        let t = f(this.tile(x, y));
+    replaceTile(x: number, y: number, f: (t: Tile) => (Tile | undefined)) {
+        this.assertInBounds(x, y);
+        let t = f(this.tile(x, y)!);
 
         this.setTile(x, y, t);
         return t;
@@ -122,9 +170,9 @@ export class TileGrid implements Serializable {
     step() {
         for (let y = 0; y < this.cellLength; y++) {
             for (let x = 0; x < this.cellLength; x++) {
-                let tile = this.tile(x, y);
+                let tile = this.tile(x, y)!;
 
-                if (typeof tile !== "undefined" && tile.trains.length > 0) {
+                if (tile.trains.length > 0) {
                     this.#cursor = [x, y];
                     tile.step(this);
                 }
@@ -147,17 +195,12 @@ export class TileGrid implements Serializable {
     }
     
     static canRail(t: Tile | undefined): boolean {
-        return typeof t === "undefined" || t instanceof Tile.Rail;
+        return t instanceof Tile.Blank || t instanceof Tile.Rail;
     }
 
-    #renderTile(t: Tile | undefined, x: number, y: number): PIXI.Container {
+    #renderTile(t: Tile, x: number, y: number): PIXI.Container {
         let con: PIXI.Container;
-        if (t) {
-            con = t.render(this.textures, this.cellSize)
-        } else {
-            con = new PIXI.Container();
-            con.visible = false;
-        }
+        con = t.render(this.textures, this.cellSize);
 
         con.position.set(x, y);
         return con;
@@ -202,7 +245,7 @@ export class TileGrid implements Serializable {
                     ];
 
                     cellCon.addChild(
-                        this.#renderTile( this.tile(x, y), lx, ly )
+                        this.#renderTile( this.tile(x, y)!, lx, ly )
                     );
                 }
             }
@@ -248,7 +291,7 @@ export class TileGrid implements Serializable {
 
                             if (e0 !== e1) {
                                 this.replaceTile(...shared, t => {
-                                    if (typeof t === "undefined") {
+                                    if (t instanceof Tile.Blank) {
                                         return new Tile.SingleRail(e0, e1);
                                     } else if (t instanceof Tile.Rail) {
                                         return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
@@ -338,6 +381,10 @@ export class TileGrid implements Serializable {
                 true, true, true
             ];
             
+            function updateVisibility() {
+                hoverSquare.visible = visibility.every(t => t);
+            }
+
             con.on("mousemove", (e: PIXI.InteractionEvent) => {
                 const pos = e.data.getLocalPosition(con);
                 const cellPos = this.positionToCell(pos);
@@ -345,7 +392,6 @@ export class TileGrid implements Serializable {
 
                 let dir = this.nearestEdge(pos, cellPos);
 
-                // center
                 if (typeof dir === "undefined") {
                     visibility[Condition.RAILABLE] = false;
                 } else {
@@ -372,32 +418,34 @@ export class TileGrid implements Serializable {
                                 TILE_GAP + ny * DELTA + hoverSquare.height / 2
                             );
                             hoverSquare.angle = -90 * Dir.flip(dir);
+                        } else {
+                            visibility[Condition.RAILABLE] = false;
                         }
                     }
                 }
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             })
 
             con.on("mousedown", (e: PIXI.InteractionEvent) => {
                 visibility[Condition.MOUSE_UP] = false;
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             });
             con.on("mouseup", (e: PIXI.InteractionEvent) => {
                 visibility[Condition.MOUSE_UP] = true;
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             });
             con.on("mouseupoutside", (e: PIXI.InteractionEvent) => {
                 visibility[Condition.MOUSE_UP] = true;
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             });
 
             con.on("mouseover", (e: PIXI.InteractionEvent) => {
                 visibility[Condition.IN_BOUNDS] = true;
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             });
             con.on("mouseout", (e: PIXI.InteractionEvent) => {
                 visibility[Condition.IN_BOUNDS] = false;
-                hoverSquare.visible = visibility.every(t => t);
+                updateVisibility();
             });
             
         });
@@ -549,8 +597,8 @@ export class TileGrid implements Serializable {
                 let TileType: Values<typeof Tile.deserChars> | undefined = Tile.deserChars[tileChar];
                 let tileData = tiles[index];
 
-                if (TileType instanceof Tile.Rock) {
-                    return new Tile.Rock();
+                if (TileType === Tile.Rock || TileType === Tile.Blank) {
+                    return new TileType();
                 }
                 if (typeof TileType !== "undefined" && typeof tileData !== "undefined") {
                     // @ts-ignore
@@ -1004,9 +1052,33 @@ export namespace Tile {
         }
     }
     
+    export class Blank extends Tile {
+        readonly serChar = " ";
+
+        constructor() {
+            super();
+        }
+
+        step(grid: TileGrid): void {
+            // Unreachable state.
+            this.trains = [];
+            grid.fail();
+        }
+
+        render(textures: Atlas, size: number): PIXI.Container {
+            const con = new PIXI.Container();
+            con.visible = false;
+            return con;
+        }
+    }
+
     export class Rock extends Tile {
         readonly serChar = "r";
 
+        constructor() {
+            super();
+        }
+        
         step(grid: TileGrid): void {
             // Unreachable state.
             this.trains = [];
@@ -1164,6 +1236,7 @@ export namespace Tile {
     }
 
     export let deserChars = {
+        " ": Blank,
         "+": Outlet,
         "o": Goal,
         "p": Painter,
