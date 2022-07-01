@@ -36,10 +36,15 @@ const radiusThreshold = 250;
  * 
  * Typically 250 (so 501 x 501), but if window is small enough, this falls back to the window's width.
  */
-let defaultRadius = Math.min(
-    radiusThreshold, 
-    (document.documentElement.clientWidth - 1) / 2 - 8 // size of the window / 2, minus padding
-);
+let defaultRadius = computeDefRadius();
+function computeDefRadius() {
+    let padding = parseInt(getComputedStyle(wrapper).padding);
+    return Math.min(
+        radiusThreshold, 
+        (document.documentElement.clientWidth - 1) / 2 - padding // size of the window / 2, minus padding
+    );
+}
+
 scaleInput.value = "" + defaultRadius;
 
 /**
@@ -103,6 +108,7 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     }
     
     worker.onerror = onComputeError;
+    graphButton.disabled = false;
     graphButton.click();
     webkitTest.terminate();
 }
@@ -115,7 +121,11 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     let cy = e.pageY - canvas.offsetTop;
 
     zcoord.classList.remove('error');
-    zcoord.textContent = `z = ${convPlanes(cx, cy)}`;
+    zcoord.textContent = 'z = ';
+    
+    const code = document.createElement("code");
+    code.append("" + convPlanes(cx, cy));
+    zcoord.append(code);
 };
 canvas.addEventListener('mousemove', coordinateDisplay);
 canvas.addEventListener('click', e => {
@@ -190,13 +200,12 @@ let resizeCheck: number | undefined;
 window.addEventListener("resize", e => {
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
 
-    let windowRadius = (document.documentElement.clientWidth - 1) / 2 - 8;
-
-    defaultRadius = Math.min(windowRadius, radiusThreshold);
+    defaultRadius = computeDefRadius();
     scaleInput.value = "" + defaultRadius;
+    warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
 
     // if resize is done then perform recompute
-    resizeCheck = setTimeout(() => graphButton.click(), 100);
+    resizeCheck = setTimeout(() => graphButton.click(), 50);
 });
 
 graphButton.addEventListener('click', async () => {
@@ -277,7 +286,7 @@ async function initWorker(w: Worker) {
  * @param fstr the function input
  */
 function startWorker(w: Worker, fstr: string) {
-    if (!canNest) time =performance.now();
+    if (!canNest) time = performance.now();
 
     let msg: MainIn = {
         action: "mainRequest",

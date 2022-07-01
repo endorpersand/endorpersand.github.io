@@ -1,14 +1,27 @@
+body {
+    margin: 0px;
+}
+
 #wrapper {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
     align-items: flex-start;
+    gap: 8px;
+    padding: 16px;
 }
 
 #controls {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    gap: 5px;
+}
+
+.smallgap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
 canvas {
@@ -21,13 +34,20 @@ form {
     color: red;
 }
 
+a {
+    color: lightblue;
+}
+a:visited {
+    color: plum;
+}
+
 @media (width <= 815px) {
     #wrapper {
         flex-direction: column-reverse;
+        padding: 8px;
     }
 
     #controls {
-        padding: 16px;
         align-self: stretch;
     }
 
@@ -36,5 +56,29 @@ form {
     */
     #scaleControls {
         display: none;
+    }
+
+    #funcControls, #zoomButtonControls {
+        align-self: center;
+    }
+    
+    #zoomButtonControls {
+        padding-bottom: 8px;
+    }
+
+    #funcControls {
+        padding-top: 8px;
+    }
+
+    * {
+        font-size: 18px;
+    }
+
+    #zcoord {
+        font-size: 16px;
+    }
+
+    #zcoord * {
+        font-size: inherit;
     }
 }
