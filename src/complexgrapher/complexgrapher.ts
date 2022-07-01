@@ -1,8 +1,8 @@
 import { create, all } from "mathjs";
-import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
+import { ChunkData, Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
-const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement,
+const wrapper     = document.querySelector('#wrapper')!     as HTMLDivElement,
       funcForm    = document.querySelector('#funcForm')!    as HTMLFormElement,
       input       = funcForm.querySelector('input')!        as HTMLInputElement,
       graphButton = document.querySelector('#graphButton')! as HTMLButtonElement,
@@ -14,18 +14,66 @@ const canvas      = document.querySelector('canvas')!       as HTMLCanvasElement
       scaleInput  = scaleForm.querySelector('input')!       as HTMLInputElement,
       warning     = document.querySelector('#warning')!     as HTMLDivElement,
       domain      = document.querySelectorAll('.domain');
+
+const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
-let scale = 1; // increase = zoom in, decrease = zoom out
-let d: ComplexFunction = (z => z); // actual values of the function
+wrapper.appendChild(canvas);
+
+/**
+ * The default domain of the image at zoom 1
+ */
+const defaultDomain: [Complex, Complex] = [
+    math.complex('-2-2i'), 
+    math.complex('2+2i'),
+] as any;
+
+/**
+ * The default radius.
+ */
+const radiusThreshold = 250;
+/**
+ * The radius the calculator will default to for the image. 
+ * 
+ * Typically 250 (so 501 x 501), but if window is small enough, this falls back to the window's width.
+ */
+let defaultRadius = Math.min(
+    radiusThreshold, 
+    (document.documentElement.clientWidth - 1) / 2 - 8 // size of the window / 2, minus padding
+);
+scaleInput.value = "" + defaultRadius;
+
+/**
+ * The zoom of the image (which affects the domain, but not the dimensions of the image)
+ * 
+ * Increase: zoom in
+ * 
+ * Decrease: zoom out
+ */
+let zoom = 1;
+
+/**
+ * Function that takes the input complex value to the output one
+ * This is only used for console.log
+ * @param z input
+ * @returns output
+ */
+let d: ComplexFunction = (z => z);
 
 let worker: Worker;
 let canNest: boolean;
-let time: number;
+let time: number; // only used in fallback
+
+// On WebKit (iOS), nested Workers are not supported. So test if they are supported,
+// and if not, use the fallback that doesn't use nested Workers.
+
+/**
+ * On WebKit (iOS), nested Workers are not supported. So this worker tests if they are supported.
+ * The result is then used to determine whether or not to use the full main worker or a fallback.
+ */
 let webkitTest = new Worker(new URL("./worker/webkitTest", import.meta.url), {type: "module"});
 webkitTest.postMessage(undefined);
-
 webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
-    zcoord.textContent = "Initializing workers..."
+    zcoord.textContent = "Initializing workers...";
     await waitPageUpdate();
     canNest = e.data;
 
@@ -39,9 +87,8 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
         worker.onmessage = function (e: MessageEvent<MainOut>) {
             let msg: MainOut = e.data;
         
-            if (msg.action === "displayChunk") {
-                let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
-                ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+            if (msg.action === "chunkDone") {
+                displayChunk(msg);
             } else if (msg.action === "done") {
                 markDone(msg.time);
             } else {
@@ -50,13 +97,8 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
         }
     } else {
         worker.onmessage = function (e: MessageEvent<LoaderOut>) {
-            let msg = e.data;
-
-            let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
-            ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+            displayChunk(e.data);
             markDone(Math.trunc(performance.now() - time));
-
-            graphButton.disabled = false;
         }
     }
     
@@ -65,60 +107,54 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     webkitTest.terminate();
 }
 
-var domaind = [math.complex('-2-2i'), math.complex('2+2i')] as [unknown, unknown] as [Complex, Complex];
+/**
+ * Event listener that displays the complex coordinate of the mouse's current position.
+ */
+ function coordinateDisplay(e: MouseEvent) {
+    let cx = e.pageX - canvas.offsetLeft;
+    let cy = e.pageY - canvas.offsetTop;
 
-function canvasHover(e: MouseEvent) {
     zcoord.classList.remove('error');
-    zcoord.textContent = `z = ${convPlanes(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)}`;
+    zcoord.textContent = `z = ${convPlanes(cx, cy)}`;
 };
-
-canvas.addEventListener('mousemove', canvasHover);
+canvas.addEventListener('mousemove', coordinateDisplay);
 canvas.addEventListener('click', e => {
     let cx = e.pageX - canvas.offsetLeft;
     let cy = e.pageY - canvas.offsetTop;
 
     let z = convPlanes(cx, cy);
     console.log(`z = ${z},\nf(z) = ${d(z)}`);
-})
-input.addEventListener('input', () => {
-    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, ''); //removes invalid characters
-})
-graphButton.addEventListener('click', async () => {
-    if (!canNest) graphButton.disabled = true;
-    zcoord.classList.remove('error');
-    zoomInput.value = scale.toString();
-
-    let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) canvas.width = canvas.height = size;
-    [domain[0].textContent, domain[1].textContent] = domaind.map(x => x.div(scale).toString());
-    zcoord.textContent = 'Graphing...'
-    await waitPageUpdate();
-    canvas.removeEventListener('mousemove', canvasHover);
-
-    let fstr = input.value;
-    try {
-        d = math.evaluate(`f(z) = ${fstr}`);
-        startWorker(worker, fstr);
-    } catch (e) {
-        onComputeError(e as any);
-        throw e;
-    }
 });
 
-zoomButtons[0].addEventListener('click', () => {
-    scale *= 2;
+
+// Function input handlers:
+input.addEventListener('input', () => {
+    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, '');
+});
+funcForm.addEventListener('submit', e => {
+    e.preventDefault();
     graphButton.click();
-})
+});
+
+// zoom in
+zoomButtons[0].addEventListener('click', () => {
+    zoom *= 2;
+    graphButton.click();
+});
+// reset zoom
 zoomButtons[1].addEventListener('click', () => {
-    if (scale !== 1) {
-        scale = 1;
+    if (zoom !== 1) {
+        zoom = 1;
         graphButton.click();
     }
-})
+});
+// zoom out
 zoomButtons[2].addEventListener('click', () => {
-    scale /= 2;
+    zoom /= 2;
     graphButton.click();
-})
+});
+
+// arbitrary zoom
 zoomInput.addEventListener('input', () => {
     zoomInput.value = zoomInput.value.replace(/[^0-9.]/g, '');
     if (isNaN(+scaleInput.value)) zoomInput.value = "1";
@@ -130,14 +166,16 @@ zoomInput.addEventListener('input', () => {
 });
 zoomForm.addEventListener('submit', e => {
     e.preventDefault();
-    if (scale !== +zoomInput.value) {
-    scale = +zoomInput.value || 0;
+    if (zoom !== +zoomInput.value) {
+    zoom = +zoomInput.value || 0;
     graphButton.click();
     }
-})
+});
+
+// scale handler:
 scaleInput.addEventListener('input', () => {
-    if (isNaN(+scaleInput.value)) scaleInput.value = "250";
-    warning.style.display = +scaleInput.value > 250 ? 'inline' : 'none';
+    if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
+    warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
 });
 scaleForm.addEventListener('submit', e => {
     e.preventDefault();
@@ -146,12 +184,47 @@ scaleForm.addEventListener('submit', e => {
     canvas.width = canvas.height = size;
     graphButton.click();
     }
-})
-funcForm.addEventListener('submit', e => {
-    e.preventDefault();
-    graphButton.click();
-})
+});
 
+let resizeCheck: number | undefined;
+window.addEventListener("resize", e => {
+    if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
+
+    let windowRadius = (document.documentElement.clientWidth - 1) / 2 - 8;
+
+    defaultRadius = Math.min(windowRadius, radiusThreshold);
+    scaleInput.value = "" + defaultRadius;
+
+    // if resize is done then perform recompute
+    resizeCheck = setTimeout(() => graphButton.click(), 100);
+});
+
+graphButton.addEventListener('click', async () => {
+    if (!canNest) graphButton.disabled = true;
+
+    zcoord.classList.remove('error');
+    zoomInput.value = zoom.toString();
+
+    let size = +scaleInput.value * 2 + 1;
+    if (canvas.width !== size) canvas.width = canvas.height = size;
+    [domain[0].textContent, domain[1].textContent] = defaultDomain.map(x => x.div(zoom).toString());
+    zcoord.textContent = 'Graphing...'
+    await waitPageUpdate();
+    canvas.removeEventListener('mousemove', coordinateDisplay);
+
+    let fstr = input.value;
+    try {
+        d = math.evaluate(`f(z) = ${fstr}`);
+        startWorker(worker, fstr);
+    } catch (e) {
+        onComputeError(e as any);
+        throw e;
+    }
+});
+
+/**
+ * @returns a promise that resolves when the DOM updates displaying
+ */
 async function waitPageUpdate() {
     return new Promise<void>(resolve => {
         requestAnimationFrame(() => { // this is called before update
@@ -159,6 +232,13 @@ async function waitPageUpdate() {
         });
     })
 }
+
+/**
+ * Converts xy canvas pixels to values in the complex plane
+ * @param x x coord
+ * @param y y coord
+ * @returns Complex value
+ */
 function convPlanes(x: number, y: number) {
     //converts xy pixel plane to complex plane
 
@@ -170,11 +250,16 @@ function convPlanes(x: number, y: number) {
     // / scale: scale mult.
 
     let [rx, ry] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
-    let cmx =  (x - rx) / (rx / 2) / scale,
-        cmy = -(y - ry) / (ry / 2) / scale;
+    let cmx =  (x - rx) / (rx / 2) / zoom,
+        cmy = -(y - ry) / (ry / 2) / zoom;
     return math.complex(cmx, cmy) as unknown as Complex;
 }
 
+/**
+ * Call an "init" action on a worker to prepare it for work.
+ * @param w Worker to initialize.
+ * @returns promise that resolves once it finishes initialization.
+ */
 async function initWorker(w: Worker) {
     let init: InitIn = { action: "init" };
     w.postMessage(init);
@@ -186,6 +271,11 @@ async function initWorker(w: Worker) {
     });
 }
 
+/**
+ * Instruct the worker to begin processing a function.
+ * @param w the worker to instruct.
+ * @param fstr the function input
+ */
 function startWorker(w: Worker, fstr: string) {
     if (!canNest) time =performance.now();
 
@@ -195,11 +285,17 @@ function startWorker(w: Worker, fstr: string) {
         cd: {
         width: canvas.width,
         height: canvas.height,
-        scale
+        zoom
     }};
     w.postMessage(msg);
 }
 
+/**
+ * Take a string and evaluate it for speed. Simplify the string and also apply the reciprocal optimization.
+ * This partial evaluation can then be fully evaluated in the workers.
+ * @param fstr string to partially evaluate
+ * @returns partially evaluated string
+ */
 function partialEvaluate(fstr: string): PartialEvaluator {
     let node = math.simplify(fstr);
     let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
@@ -215,20 +311,46 @@ function partialEvaluate(fstr: string): PartialEvaluator {
     return { fstr: fnode.toString(), inverse };
 }
 
+/**
+ * Display a done message with how long it took to complete
+ * @param t time (in ms) it took for the operation to complete
+ */
 function markDone(t: number) {
     zcoord.textContent = `Done in ${t}ms.`;
     reenableHover();
 }
 
+/**
+ * Handle errors in computation
+ * @param e the error
+ */
 function onComputeError(e: Error | ErrorEvent) {
     let err = e instanceof ErrorEvent ? e.message : e;
 
-    canvas.removeEventListener('mousemove', canvasHover);
+    canvas.removeEventListener('mousemove', coordinateDisplay);
     zcoord.classList.add('error');
     zcoord.textContent = String(err);
     reenableHover();
 }
 
+/**
+ * Reenable interactability after an error
+ * @param after how many ms before hover and interactibility should reenable
+ */
 function reenableHover(after = 500) {
-    setTimeout(() => canvas.addEventListener('mousemove', canvasHover), after);
+    setTimeout(() => {
+        canvas.addEventListener('mousemove', coordinateDisplay);
+        if (!canNest) graphButton.disabled = false;
+    }, after);
+}
+
+/**
+ * Update the canvas with the loaded chunk
+ * @param data the data from the worker
+ */
+function displayChunk(data: LoaderOut) {
+    let {chunk, buf} = data;
+
+    let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
+    ctx.putImageData(dat, chunk.offx, chunk.offy);
 }

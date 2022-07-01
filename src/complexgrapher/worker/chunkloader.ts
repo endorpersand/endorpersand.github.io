@@ -34,11 +34,23 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     postMessage(msg, [buf] as any);
 }
 
+/**
+ * Take a partially computed evaluator and fully evaluate it.
+ * @param pev partially computed evaluator
+ * @returns the full evaluator
+ */
 function buildEvaluator(pev: PartialEvaluator): Evaluator {
     let {fstr, inverse} = pev;
     return {f: math.evaluate(fstr), inverse}
 }
 
+/**
+ * Compute the ArrayBuffer for the chunk
+ * @param ev The function evaluator
+ * @param cd Canvas dimension data
+ * @param chunk Chunk position and size
+ * @returns the computed chunk
+ */
 function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBuffer {
     let {f, inverse} = ev;
     let {width, height} = chunk;
@@ -66,6 +78,14 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
     return buf;
 }
 
+/**
+  * Converts xy canvas pixels to values in the complex plane
+ * @param x x coord
+ * @param y y coord
+ * @param cd canvas data
+ * @param chunk chunk offset data
+ * @returns the complex value associated
+ */
 function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
     //converts xy pixel plane to complex plane
 
@@ -76,19 +96,31 @@ function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
     // / (rx / 2): normalizes that so the edge is 2
     // / scale: scale mult.
 
-    let {width, height, scale} = cd;
+    let {width, height, zoom} = cd;
     let {offx, offy} = chunk;
     let [rx, ry] = [(width - 1) / 2, (height - 1) / 2];
-    let cmx =  (x + offx - rx) / (rx / 2) / scale,
-        cmy = -(y + offy - ry) / (ry / 2) / scale;
+    let cmx =  (x + offx - rx) / (rx / 2) / zoom,
+        cmy = -(y + offy - ry) / (ry / 2) / zoom;
     return math.complex(cmx, cmy) as unknown as Complex;
 }
 
+/**
+ * Force the input to be a complex value
+ * @param z maybe complex value
+ * @returns Complex value
+ */
 function forceComplex(z: number | Complex) {
     // z as any is ok here
     return math.complex(z as any);
 }
 
+/**
+ * Takes a polar coordinate and maps it to a color
+ * @param rad Radius
+ * @param theta Angle
+ * @param inverse Whether to invert the brightness
+ * @returns the associated color in RGB
+ */
 function polarToColor(rad: number, theta: number, inverse: boolean) {
     let hue, brightness, c, x, m, r, g, b;
     hue = mod(theta * 3 / Math.PI, 6); // hue [0,6)
@@ -112,6 +144,12 @@ function polarToColor(rad: number, theta: number, inverse: boolean) {
      ((r + m) * 0xFF);
 }
 
+/**
+ * Brightness computation
+ * @param r Radius
+ * @param inv Whether to invert the brightness
+ * @returns the brightness as float
+ */
 function bfunc(r: number, inv: boolean) {
     // bfunc needs to match the identities:
     // b(1/x) = 1 - b(x)

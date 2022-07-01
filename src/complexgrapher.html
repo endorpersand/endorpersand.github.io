@@ -17,17 +17,19 @@
                     </form>
                     <button id='graphButton'>Graph!</button>
                 </div><br>
-                <button class='zoom'>Zoom in</button>
-                <button class='zoom'>Reset zoom</button>
-                <button class='zoom'>Zoom out</button>
                 <div>
+                    <div id="zoomButtonControls">
+                        <button class='zoom'>Zoom in</button>
+                        <button class='zoom'>Reset zoom</button>
+                        <button class='zoom'>Zoom out</button>
+                    </div>
                     <span>Current zoom: </span>
                     <form id='zoomForm'>
                         <input value='1' size='4'>
                     </form>
                     <span>x</span>
-                </div>
-                <div>
+                </div><br>
+                <div id="scaleControls">
                     <span>Current radius: </span>
                     <form id='scaleForm'>
                         <input type='number' value='250' size='4' required>
@@ -38,7 +40,7 @@
                 <a href="https://mathjs.org/docs/reference/functions.html">Functions</a><br><br>
                 <div id='warning' style='display: none'>(⚠️ Larger images may take much longer to load.)</div>
             </div>
-            <canvas width=501 height=501></canvas>
+            <!-- <canvas></canvas> -->
         </div>
         <script type="module" src=complexgrapher/complexgrapher.ts></script>
     </body>

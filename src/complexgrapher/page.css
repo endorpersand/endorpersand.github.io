@@ -6,8 +6,9 @@
 }
 
 #controls {
-    flex: 1;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 canvas {
@@ -23,10 +24,17 @@ form {
 @media (width <= 815px) {
     #wrapper {
         flex-direction: column-reverse;
-        align-items: center;
     }
 
     #controls {
         padding: 16px;
+        align-self: stretch;
+    }
+
+    /* nice to have, 
+        but formatting is weird when width is small
+    */
+    #scaleControls {
+        display: none;
     }
 }

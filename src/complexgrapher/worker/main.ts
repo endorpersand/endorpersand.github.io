@@ -6,8 +6,20 @@ const N_WORKERS = 4;
 let free: Worker[] = [];
 
 type Ticket = [LoaderIn, Symbol, number];
+
+/**
+ * Map that links a worker to the task they've been assigned
+ */
 let labor: Map<Worker, [Symbol, number]> = new Map();
+
+/**
+ * The queue to pull work from
+ */
 let workQueue: Generator<Ticket>;
+
+/**
+ * The current task to be working on
+ */
 let currentTask: Symbol;
 
 onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
@@ -19,6 +31,8 @@ onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
     } else if (data.action === "mainRequest") {
         let start = this.performance.now();
         let {pev, cd} = data;
+
+        // on a request, start up the queue and assign work to all currently free workers
         workQueue = queue(start, pev, cd);
     
         let fit = free[Symbol.iterator]();
@@ -38,6 +52,9 @@ onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
     }
 }
 
+/**
+ * @returns a promise which resolves once all the chunkLoaders have been created and initialized
+ */
 async function initLoaders() {
     if (free.length > 0) return;
     
@@ -57,14 +74,16 @@ async function initLoaders() {
                 let out = e.data;
         
                 let ticket = labor.get(w);
-                if (typeof ticket === "undefined") return;
+                if (typeof ticket === "undefined") return; // worker wasn't working on a ticket
+
+                // If the current task is the currentTask, post up "loadChunk"
                 let [sym, start] = ticket;
-                // load chunk
                 if (currentTask == sym) {
-                    let msg: MainOut = {...out, action: "displayChunk"};
-                    self.postMessage(msg, [out.buf] as any);
+                    self.postMessage(out, [out.buf] as any);
                 }
         
+                // If there's any more work left to do, take it.
+                // Otherwise, free the worker and post up "done"
                 let t = workQueue.next();
                 if (!t.done) {
                     // reassign
@@ -89,6 +108,13 @@ async function initLoaders() {
     
     return await Promise.all(promises);
 }
+
+/**
+ * Generator that breaks up the canvas into computable chunks, which can be sent to chunkLoaders to compute them
+ * @param start Time queue started
+ * @param pev Partial evaluator that needs to be evaluated
+ * @param cd The dimension data of the canvas to chunk
+ */
 function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator<Ticket> {
     let {width, height} = cd;
     currentTask = Symbol("task");
@@ -109,11 +135,20 @@ function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator
     }
 }
 
+/**
+ * Designate a worker as free to work.
+ * @param w Worker to mark as free.
+ */
 function freeWorker(w: Worker) {
     labor.delete(w);
     free.push(w);
 }
 
+/**
+ * Assign a worker a chunk to compute.
+ * @param w Worker to designate.
+ * @param param1 Ticket to work on.
+ */
 function assignWorkToWorker(w: Worker, [job, sym, start]: Ticket) {
     w.postMessage(job);
     labor.set(w, [sym, start]);
