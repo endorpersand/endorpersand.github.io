@@ -49,6 +49,16 @@ export class TileGrid implements Serializable {
      */
     textures: Atlas;
 
+    /**
+     * How many pixels separate each tile
+     */
+     static readonly TILE_GAP = 1;
+
+    /**
+     * What percentage of the tile from an edge you have to be at to be considered near the edge
+     */
+     static readonly EDGE_THRESHOLD = 0.25;
+     
     constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
         this.cellLength = cellLength;
@@ -57,16 +67,20 @@ export class TileGrid implements Serializable {
         this.textures = textures;
     }
 
-    static readonly TILE_GAP = 1;
-
+    /**
+     * The PIXI container for this TileGrid
+     */
     get container(): PIXI.Container {
         if (!this.#c_container) {
-            this.#c_container = this.#createContainer();
+            this.#c_container = this.#renderContainer();
         }
         
         return this.#c_container;
     }
 
+    /**
+     * The total size this TileGrid encompasses. The TileGrid is [gridSize x gridSize] pixels.
+     */
     get gridSize(): number {
         return this.cellSize * this.cellLength + TileGrid.TILE_GAP * (this.cellLength + 1);
     }
@@ -82,7 +96,7 @@ export class TileGrid implements Serializable {
         this.#tiles = TileGrid.#normalizeTileMatrix(mat, this.cellLength);
         
         if (this.#c_container) {
-            this.#c_container = this.#createContainer();
+            this.#c_container = this.#renderContainer();
         }
     }
     /**
@@ -108,7 +122,7 @@ export class TileGrid implements Serializable {
      * Get the tile at the specified position
      * @param x cell x
      * @param y cell y
-     * @returns a tile, or undefined if out of bounds
+     * @returns a tile, or `undefined` if out of bounds
      */
     tile(x: number, y: number) {
         const tile = this.#tiles?.[y]?.[x];
@@ -118,6 +132,12 @@ export class TileGrid implements Serializable {
         return tile;
     }
 
+    /**
+     * Set tile at the position and update its display.
+     * @param x cell x
+     * @param y cell y
+     * @param t the new tile. `undefined`s are replaced with blank tiles
+     */
     setTile(x: number, y: number, t: Tile | undefined) {
         this.assertInBounds(x, y);
 
@@ -139,6 +159,13 @@ export class TileGrid implements Serializable {
         }
     }
 
+    /**
+     * Set tile at the position using a mapper function
+     * @param x cell x
+     * @param y cell y
+     * @param f a mapper function that takes the old tile and maps it to a new one
+     * @returns the new tile
+     */
     replaceTile(x: number, y: number, f: (t: Tile) => (Tile | undefined)) {
         this.assertInBounds(x, y);
         let t = f(this.tile(x, y)!);
@@ -184,6 +211,11 @@ export class TileGrid implements Serializable {
         this.passing = false;
     }
 
+    /**
+     * Takes a pixel {x, y} pair and converts it into a cell [x, y] pair
+     * @param param0 pixel coordinates
+     * @returns cell coordinates
+     */
     positionToCell({x, y}: PIXI.IPointData): [cellX: number, cellY: number] {
         const DELTA = this.cellSize + TileGrid.TILE_GAP;
         let [cx, cy] = [Math.floor(x / DELTA), Math.floor(y / DELTA)];
@@ -194,10 +226,22 @@ export class TileGrid implements Serializable {
         ];
     }
     
+    /**
+     * Check if rails can be placed on this type of tile
+     * @param t tile (`undefined` represents an OOB tile)
+     * @returns true if can be placed
+     */
     static canRail(t: Tile | undefined): boolean {
         return t instanceof Tile.Blank || t instanceof Tile.Rail;
     }
 
+    /**
+     * Get this tile's rendered PIXI container
+     * @param t the tile
+     * @param x its pixel x
+     * @param y its pixel y
+     * @returns the container holding the rendering
+     */
     #renderTile(t: Tile, x: number, y: number): PIXI.Container {
         let con: PIXI.Container;
         con = t.render(this.textures, this.cellSize);
@@ -206,7 +250,12 @@ export class TileGrid implements Serializable {
         return con;
     }
 
-    #createContainer(): PIXI.Container {
+    /**
+     * Generate the tile grid's rendered PIXI container
+     * Use this.container to fallback to cache if already created
+     * @returns the container
+     */
+    #renderContainer(): PIXI.Container {
         const TILE_GAP = TileGrid.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
         const GRID_SIZE = this.gridSize;
@@ -450,11 +499,6 @@ export class TileGrid implements Serializable {
             
         });
     }
-
-    /**
-     * What percentage of the tile from an edge you have to be at to be considered near the edge
-     */
-    static readonly EDGE_THRESHOLD = 0.25;
     
     /**
      * Find the nearest edge to a cell from a given point.
@@ -583,6 +627,11 @@ export class TileGrid implements Serializable {
         return {board, tiles};
     }
 
+    /**
+     * Create an initializer of a TileGrid from JSON serialized data
+     * @param o the serialized JSON
+     * @returns a function which accepts a size and texture parameter and gives out a TileGrid
+     */
     static fromJSON(o: {board: string[], tiles: {[x: number]: unknown}}) {
         let {board, tiles} = o;
         let length = board.length;
