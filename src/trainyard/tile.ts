@@ -64,6 +64,9 @@ export class TileGrid implements Serializable {
      */
     #editMode: EditMode = "rail";
 
+    #emEnterListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
+    #emExitListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
+
     /**
      * How many pixels separate each tile
      */
@@ -112,6 +115,19 @@ export class TileGrid implements Serializable {
         
         if (this.#c_container) {
             this.#c_container = this.#renderContainer();
+        }
+    }
+
+    get editMode(): EditMode { return this.#editMode; }
+    set editMode(em: EditMode) {
+        if (this.#editMode !== em) {
+            const exitListeners = this.#emExitListeners[this.#editMode] ??= [];
+            for (let f of exitListeners) f();
+
+            this.#editMode = em;
+
+            const enterListeners = this.#emEnterListeners[em] ??= [];
+            for (let f of enterListeners) f();
         }
     }
     /**
@@ -573,6 +589,26 @@ export class TileGrid implements Serializable {
         }
     }
     
+    /**
+     * Add a handler to apply effects when tile grid switches to the specified edit mode
+     * @param em specified edit mode
+     * @param handler handler to apply effects
+     */
+    onEnterEditMode(em: EditMode, handler: () => void) {
+        const listeners = this.#emEnterListeners[em] ??= [];
+        listeners.push(handler);
+    }
+    
+    /**
+     * Add a handler to apply effects when tile grid exits the specified edit mode
+     * @param em specified edit mode
+     * @param handler handler to apply effects
+     */
+    onExitEditMode(em: EditMode, handler: () => void) {
+        const listeners = this.#emExitListeners[em] ??= [];
+        listeners.push(handler);
+    }
+
     /**
      * Find the nearest edge to a cell from a given point.
      * @param param0 the point
