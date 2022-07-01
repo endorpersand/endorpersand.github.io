@@ -156,9 +156,6 @@ export class TileGrid implements Serializable {
     setTile(x: number, y: number, t: Tile | undefined) {
         this.assertInBounds(x, y);
 
-        // no need to create a new container for an identical tile
-        if (this.tile(x, y) === t) return;
-
         t ??= new Tile.Blank();
         this.#tiles[y] ??= [];
         this.#tiles[y][x] = t;
