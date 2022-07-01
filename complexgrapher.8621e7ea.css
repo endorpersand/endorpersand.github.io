@@ -1,0 +1,86 @@
+body {
+  margin: 0;
+}
+
+#wrapper {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  display: flex;
+}
+
+#controls {
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 5px;
+  display: flex;
+}
+
+.smallgap {
+  flex-direction: column;
+  gap: 3px;
+  display: flex;
+}
+
+canvas {
+  cursor: crosshair;
+}
+
+form {
+  display: inline;
+}
+
+.error {
+  color: red;
+}
+
+a {
+  color: #add8e6;
+}
+
+a:visited {
+  color: plum;
+}
+
+@media (max-width: 815px) {
+  #wrapper {
+    flex-direction: column-reverse;
+    padding: 8px;
+  }
+
+  #controls {
+    align-self: stretch;
+  }
+
+  #scaleControls {
+    display: none;
+  }
+
+  #funcControls, #zoomButtonControls {
+    align-self: center;
+  }
+
+  #zoomButtonControls {
+    padding-bottom: 8px;
+  }
+
+  #funcControls {
+    padding-top: 8px;
+  }
+
+  * {
+    font-size: 18px;
+  }
+
+  #zcoord {
+    font-size: 16px;
+  }
+
+  #zcoord * {
+    font-size: inherit;
+  }
+}
+
+/*# sourceMappingURL=complexgrapher.8621e7ea.css.map */
