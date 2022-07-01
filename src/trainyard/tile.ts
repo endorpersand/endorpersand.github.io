@@ -403,6 +403,9 @@ export class TileGrid implements Serializable {
         });
     }
 
+    /**
+     * What percentage of the tile from an edge you have to be at to be considered near the edge
+     */
     static readonly EDGE_THRESHOLD = 0.25;
     
     /**
