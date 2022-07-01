@@ -4,6 +4,11 @@ import * as PIXI from "pixi.js";
 type Edge   = [c1: [number, number], c2: [number, number]];
 type Center = [center: [number, number], _: undefined];
 type RailTouch = Edge | Center;
+type EditMode = 
+    | "readonly"  // Active while a simulation. You cannot edit any tiles.
+    | "rail"      // Active while solving. You can only draw rails.
+    | "railErase" // Active while solving (while erasing). You can only erase rails.
+    | "select"    // Active while level editing. Allows you to select and edit tiles.
 
 interface Serializable<J = any> {
     /**
@@ -48,6 +53,11 @@ export class TileGrid implements Serializable {
      * The texture resource
      */
     textures: Atlas;
+
+    /**
+     * Determines what can be edited on the grid
+     */
+    #editMode: EditMode = "rail";
 
     /**
      * How many pixels separate each tile
@@ -140,6 +150,9 @@ export class TileGrid implements Serializable {
      */
     setTile(x: number, y: number, t: Tile | undefined) {
         this.assertInBounds(x, y);
+
+        // no need to create a new container for an identical tile
+        if (this.tile(x, y) === t) return;
 
         t ??= new Tile.Blank();
         this.#tiles[y] ??= [];
@@ -302,10 +315,9 @@ export class TileGrid implements Serializable {
 
             con.interactive = true;
             this.#applyPointerEvents(con);
-            this.#applyHoverIndicator(con);
+            this.#applyRailIndicator(con);
         });
     }
-    
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -313,58 +325,75 @@ export class TileGrid implements Serializable {
     #applyPointerEvents(con: PIXI.Container) {
         let pointers = 0;
 
-        // <rail-mode>
-        // On pointer down, this can be the center or the edge
-        // Once you start moving though, it can only bind to edges
+        // In rail mode, this pointer is used to track the last pointed-to edge or center.
+        // On an initial click, this can be bound to an edge or a center.
+        // While dragging, this can only bind to edges.
         let cellPointer: RailTouch | undefined = undefined;
-        // </rail-mode>
 
         con.on("pointermove", (e: PIXI.InteractionEvent) => {
-            // <rail-mode>
             const pos = e.data.getLocalPosition(con);
             const cellPos = this.positionToCell(pos);
             
-            // If pointers != 1, things get funky, so only track if one pointer.
-            if (pointers == 1) {
-                // cellPointer can now only bind to edges, so ignore centers.
-                let edge = this.nearestEdge(pos, cellPos);
-                if (typeof edge === "undefined") return;
-                
-                let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
+            // pointer === 1 implies drag
+            if (pointers !== 1) {
+                // If pointers increases or decreases, then the cellPointer is useless.
+                cellPointer = undefined;
+            } else {
+                const editMode = this.#editMode;
 
-                // If cellPointer has not existed yet, just set it
-                // If it has, then we can try to create a rail
-                if (typeof cellPointer !== "undefined") {
-                    // If the cell pointers are in the same cell, we can try to create a rail
-
-                    let result = this.findSharedCell(cellPointer, nCellPointer);
-
-                    if (typeof result !== "undefined") {
-                        let [shared, me0, me1] = result;
-                        
-                        // edge + edge = make connection
-                        // center + edge = make straight line
-                        let e1 = me1!;
-                        let e0 = me0 ?? Dir.flip(e1);
-
-                        if (e0 !== e1) {
-                            this.replaceTile(...shared, t => {
-                                if (t instanceof Tile.Blank) {
-                                    return new Tile.SingleRail(e0, e1);
-                                } else if (t instanceof Tile.Rail) {
-                                    return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
-                                } else {
-                                    return t;
-                                }
-                            });
+                if (editMode === "rail") {
+                    // cellPointer can now only bind to edges, so ignore centers.
+                    let edge = this.nearestEdge(pos, cellPos);
+                    if (typeof edge === "undefined") return;
+                    
+                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
+    
+                    // If cellPointer has not existed yet, just set it
+                    // If it has, then we can try to create a rail
+                    if (typeof cellPointer !== "undefined") {
+                        // If the cell pointers are in the same cell, we can try to create a rail
+    
+                        let result = this.findSharedCell(cellPointer, nCellPointer);
+    
+                        if (typeof result !== "undefined") {
+                            let [shared, me0, me1] = result;
+                            
+                            // edge + edge = make connection
+                            // center + edge = make straight line
+                            let e1 = me1!;
+                            let e0 = me0 ?? Dir.flip(e1);
+    
+                            if (e0 !== e1) {
+                                this.replaceTile(...shared, t => {
+                                    if (t instanceof Tile.Blank) {
+                                        return new Tile.SingleRail(e0, e1);
+                                    } else if (t instanceof Tile.Rail) {
+                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                                    } else {
+                                        return t;
+                                    }
+                                });
+                            }
                         }
                     }
-                }
+    
+                    cellPointer = nCellPointer;
+                } else {
+                    // useless if not rail mode
+                    cellPointer = undefined;
 
-                cellPointer = nCellPointer;
-            } else {
-                // Drop stored pointer otherwise, because this information is useless.
-                cellPointer = undefined;
+                    if (editMode === "readonly") {
+                        return;
+                    } else if (editMode === "railErase") {
+                        this.replaceTile(...cellPos, t => {
+                            return t instanceof Tile.Rail ? undefined : t;
+                        });
+                    } else if (editMode === "select") {
+                        // TODO
+                    } else {
+                        let _: never = editMode;
+                    }
+                }
             }
         });
 
@@ -378,33 +407,53 @@ export class TileGrid implements Serializable {
             const pos = e.data.getLocalPosition(con);
             const cellPos = this.positionToCell(pos);
 
-            let edge = this.nearestEdge(pos, cellPos);
-            cellPointer = [
-                cellPos, 
-                typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
-            ];
-
-            // double tap to swap rails (on a double rail)
-
-            // first tap: if tile is dbl rail, store rail information
-            if (!dbtTile) {
-                if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
-                    dbtTile = cellPos;
-                    tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
+            const editMode = this.#editMode;
+            if (editMode === "rail") {
+                let edge = this.nearestEdge(pos, cellPos);
+                cellPointer = [
+                    cellPos, 
+                    typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+                ];
+    
+                // double tap to swap rails (on a double rail)
+    
+                // first tap: if tile is dbl rail, store rail information
+                if (!dbtTile) {
+                    if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
+                        dbtTile = cellPos;
+                        tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
+                    }
+                } else {
+                    // second tap (if done fast enough & same rail tapped), swap the rail
+                    if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
+                        clearTimeout(tdtTimeout);
+                        
+                        this.replaceTile(...dbtTile, t => {
+                            if (t instanceof Tile.DoubleRail) {
+                                t.paths.reverse();
+                            }
+                            return t;
+                        });
+    
+                        dbtTile = undefined;
+                    }
                 }
             } else {
-                // second tap (if done fast enough & same rail tapped), swap the rail
-                if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
-                    clearTimeout(tdtTimeout);
-                    
-                    this.replaceTile(...dbtTile, t => {
-                        if (t instanceof Tile.DoubleRail) {
-                            t.paths.reverse();
-                        }
-                        return t;
-                    });
+                // useless if not rail mode
+                dbtTile = undefined;
+                tdtTimeout = undefined;
+                cellPointer = undefined;
 
-                    dbtTile = undefined;
+                if (editMode === "railErase") {
+                    this.replaceTile(...cellPos, t => {
+                        return t instanceof Tile.Rail ? undefined : t;
+                    });
+                } else if (editMode === "readonly") {
+                    return;
+                } else if (editMode === "select") {
+                    // TODO
+                } else {
+                    let _: never = editMode;
                 }
             }
         });
@@ -420,7 +469,6 @@ export class TileGrid implements Serializable {
             pointers = 0;
             cellPointer = undefined;
         })
-        // </rail-mode>
     }
 
     /**
@@ -428,19 +476,19 @@ export class TileGrid implements Serializable {
      * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
      * @param con Container to apply to
      */
-    #applyHoverIndicator(con: PIXI.Container) {
+    #applyRailIndicator(con: PIXI.Container) {
         const TILE_GAP = TileGrid.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
-        
-        const hoverSquare = TileGraphics.hoverIndicator(this.textures);
-        hoverSquare.width = this.cellSize;
-        hoverSquare.height = this.cellSize;
-        hoverSquare.tint = Palette.Hover;
-        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
-        hoverSquare.visible = false;
-        hoverSquare.interactive = true;
-        hoverSquare.cursor = "grab";
-        con.addChild(hoverSquare);
+
+        const railMarker = TileGraphics.hoverIndicator(this.textures);
+        railMarker.width = this.cellSize;
+        railMarker.height = this.cellSize;
+        railMarker.tint = Palette.Hover;
+        railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
+        railMarker.visible = false;
+        railMarker.interactive = true;
+        railMarker.cursor = "grab";
+        con.addChild(railMarker);
 
         const enum Condition {
             IN_BOUNDS, MOUSE_UP, RAILABLE
@@ -449,9 +497,10 @@ export class TileGrid implements Serializable {
             true, true, true
         ];
         
-        function updateVisibility() {
-            hoverSquare.visible = visibility.every(t => t);
-        }
+        // this syntax is necessary to avoid scoping `this`
+        let updateVisibility = () => {
+            railMarker.visible = visibility.every(t => t) && this.#editMode === "rail";
+        };
 
         con.on("mousemove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
@@ -468,11 +517,11 @@ export class TileGrid implements Serializable {
                 // If you can place a rail on this tile, mark the tile on the nearest edge
                 if (TileGrid.canRail(tile)) {
                     visibility[Condition.RAILABLE] = true;
-                    hoverSquare.position.set(
-                        TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
-                        TILE_GAP + cellY * DELTA + hoverSquare.height / 2
+                    railMarker.position.set(
+                        TILE_GAP + cellX * DELTA + railMarker.width / 2, 
+                        TILE_GAP + cellY * DELTA + railMarker.height / 2
                     );
-                    hoverSquare.angle = -90 * dir;
+                    railMarker.angle = -90 * dir;
                 } else {
                     let neighborPos = Dir.shift(cellPos, dir);
                     let neighbor = this.tile(...neighborPos);
@@ -481,11 +530,11 @@ export class TileGrid implements Serializable {
                         visibility[Condition.RAILABLE] = true;
 
                         const [nx, ny] = neighborPos;
-                        hoverSquare.position.set(
-                            TILE_GAP + nx * DELTA + hoverSquare.width / 2, 
-                            TILE_GAP + ny * DELTA + hoverSquare.height / 2
+                        railMarker.position.set(
+                            TILE_GAP + nx * DELTA + railMarker.width / 2, 
+                            TILE_GAP + ny * DELTA + railMarker.height / 2
                         );
-                        hoverSquare.angle = -90 * Dir.flip(dir);
+                        railMarker.angle = -90 * Dir.flip(dir);
                     } else {
                         visibility[Condition.RAILABLE] = false;
                     }
