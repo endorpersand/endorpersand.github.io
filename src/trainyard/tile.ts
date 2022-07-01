@@ -146,7 +146,7 @@ export class TileGrid implements Serializable {
         ];
     }
     
-    canRail(t: Tile | undefined): boolean {
+    static canRail(t: Tile | undefined): boolean {
         return typeof t === "undefined" || t instanceof Tile.Rail;
     }
 
@@ -344,15 +344,35 @@ export class TileGrid implements Serializable {
 
                 let dir = this.nearestEdge(pos, cellPos);
 
-                if (typeof dir === "undefined" || !this.canRail(this.tile(...cellPos))) {
+                // center
+                if (typeof dir === "undefined") {
                     visibility[Condition.RAILABLE] = false;
                 } else {
-                    visibility[Condition.RAILABLE] = true;
-                    hoverSquare.position.set(
-                        TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
-                        TILE_GAP + cellY * DELTA + hoverSquare.height / 2
+                    let tile = this.tile(...cellPos);
+
+                    // If you can place a rail on this tile, mark the tile on the nearest edge
+                    if (TileGrid.canRail(tile)) {
+                        visibility[Condition.RAILABLE] = true;
+                        hoverSquare.position.set(
+                            TILE_GAP + cellX * DELTA + hoverSquare.width / 2, 
+                            TILE_GAP + cellY * DELTA + hoverSquare.height / 2
                         );
                         hoverSquare.angle = -90 * dir;
+                    } else {
+                        let neighborPos = Dir.shift(cellPos, dir);
+                        let neighbor = this.tile(...neighborPos);
+
+                        if (TileGrid.canRail(neighbor)) {
+                            visibility[Condition.RAILABLE] = true;
+
+                            const [nx, ny] = neighborPos;
+                            hoverSquare.position.set(
+                                TILE_GAP + nx * DELTA + hoverSquare.width / 2, 
+                                TILE_GAP + ny * DELTA + hoverSquare.height / 2
+                            );
+                            hoverSquare.angle = -90 * Dir.flip(dir);
+                        }
+                    }
                 }
                 hoverSquare.visible = visibility.every(t => t);
             })
