@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <div id="game"></div>
+    <div id="wrapper">
+        <div id="navbar">
+            hello
+        </div>
+        <div id="game"></div>
+        <div id="controls">
+            <div id="mistake-controls" class="split-column">
+                <button>Erase</button>
+                <button>Undo</button>
+            </div>
+            <div id="play-controls">
+                <div class="split-row">
+                    <button>Step</button>
+                    <button>Start</button>
+                </div>
+                <div id="speed-controls">
+                    <input type="range" class="slider">
+                    <input type="number" size="2">
+                </div>
+            </div>
+        </div>
+    </div>
     <script type="module" src="trainyard/frame.ts"></script>
 </body>

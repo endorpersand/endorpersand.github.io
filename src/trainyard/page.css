@@ -1,8 +1,92 @@
-#game {
+body {
+    background-color: #222;
     display: flex;
     justify-content: center;
+    align-items: stretch;
 }
 
-body {
-    background-color: #222
+#wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 10px;
+}
+
+#navbar {
+    height: 7vh;
+    background-color: #555;
+}
+
+#controls {
+    display: flex;
+    gap: 7px;
+    padding: 6px;
+    background-color: #555;
+}
+#controls > :first-child {
+    flex: 1 1 0;
+}
+#controls > :nth-child(2) {
+    flex: 2 1 0;
+}
+
+.split-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.split-column > * {
+    flex: 1 1 0;
+}
+.split-row {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+}
+.split-row > * {
+    flex: 1 1 0;
+}
+
+#mistake-controls {
+    align-items: stretch;
+}
+
+#play-controls {
+    display: flex;
+    flex-direction: column;
+}
+#play-controls > :first-child {
+    flex: 2 1 0;
+}
+#play-controls > :nth-child(2) {
+    flex: 1 1 0;
+}
+
+#speed-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#speed-controls > :first-child {
+    flex: 7 1 0;
+}
+#speed-controls > :nth-child(2) {
+    flex: 1 1 0;
+}
+
+button {
+    background-color: #333;
+    border: 3px solid black;
+    border-radius: 3px;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    font-size: 18px;
+    font-family: 'Fira Sans', sans-serif;
+}
+
+input {
+    width: 0px;
 }
