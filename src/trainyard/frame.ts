@@ -80,7 +80,9 @@ function applyButtons(grid: TileGrid) {
         if (em === "rail") grid.editMode = "railErase";
         else if (em === "railErase") grid.editMode = "rail";
     });
-
+    undo.addEventListener("click", () => {
+        grid.undo();
+    })
     start.addEventListener("click", () => {
         let em = grid.editMode;
 

@@ -10,6 +10,23 @@ type EditMode =
     | "railErase" // Active while solving (while erasing). You can only erase rails.
     | "select"    // Active while level editing. Allows you to select and edit tiles.
 
+type Action = {
+    /**
+     * Instant in time where this action was made
+     */
+    time: number;
+
+    /**
+     * The tile that was replaced by the action
+     */
+    replaced: Tile;
+
+    /**
+     * Cell position
+     */
+    cellPos: [x: number, y: number];
+};
+
 function arrEq<T extends unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((x, i) => x === arr2[i]);
@@ -64,8 +81,19 @@ export class TileGrid implements Serializable {
      */
     #editMode: EditMode = "rail";
 
+    /**
+     * Map keeping track of which listeners to trigger on entering an edit mode
+     */
     #emEnterListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
+    /**
+     * Map keeping track of which listeners to trigger on exiting an edit mode
+     */
     #emExitListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
+
+    /**
+     * Stack keeping track of all the past actions (allowing for undoing)
+     */
+    #actionStack: Action[] = [];
 
     /**
      * How many pixels separate each tile
@@ -77,6 +105,13 @@ export class TileGrid implements Serializable {
      */
      static readonly EDGE_THRESHOLD = 0.25;
      
+     /**
+      * When undoing, the grid will undo chunks of actions at a time. 
+      * If two actions are this many milliseconds apart,
+      * they are considered two different chunks.
+      */
+     static readonly UNDO_THRESHOLD_MS = 300;
+
     constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
         this.cellLength = cellLength;
@@ -112,7 +147,8 @@ export class TileGrid implements Serializable {
     get tiles(): Tile[][] { return this.#tiles; }
     set tiles(mat: (Tile | undefined)[][]) {
         this.#tiles = TileGrid.#normalizeTileMatrix(mat, this.cellLength);
-        
+        this.#actionStack = []; // the tiles got reset, so can't do undos from here
+
         if (this.#c_container) {
             this.#c_container = this.#renderContainer();
         }
@@ -168,9 +204,20 @@ export class TileGrid implements Serializable {
      * @param x cell x
      * @param y cell y
      * @param t the new tile. `undefined`s are replaced with blank tiles
+     * @param canUndo true if the action is undoable
      */
-    setTile(x: number, y: number, t: Tile | undefined) {
+    setTile(x: number, y: number, t: Tile | undefined, canUndo = true) {
         this.assertInBounds(x, y);
+
+        let current = this.tile(x, y)!;
+
+        // coooould be problematic but should be fine as long as modifications to the tile do not occur
+        if (current == t) {
+            return;
+        }
+        if (canUndo) {
+            this.#actionStack.push({time: performance.now(), replaced: current, cellPos: [x, y]});
+        }
 
         t ??= new Tile.Blank();
         this.#tiles[y] ??= [];
@@ -195,14 +242,33 @@ export class TileGrid implements Serializable {
      * @param x cell x
      * @param y cell y
      * @param f a mapper function that takes the old tile and maps it to a new one
+     * @param canUndo true if the action is undoable
      * @returns the new tile
      */
-    replaceTile(x: number, y: number, f: (t: Tile) => (Tile | undefined)) {
+    replaceTile(x: number, y: number, f: (t: Tile) => (Tile | undefined), canUndo = true) {
         this.assertInBounds(x, y);
         let t = f(this.tile(x, y)!);
 
-        this.setTile(x, y, t);
+        this.setTile(x, y, t, canUndo);
         return t;
+    }
+
+    undo() {
+        if (this.#actionStack.length == 0) return;
+        let actions: Action[] = [this.#actionStack.pop()!];
+        
+        while (this.#actionStack.length > 0) {
+            let fwd = actions.at(-1)!;
+            let rwd = this.#actionStack.at(-1)!;
+
+            if (Math.abs(fwd.time - rwd.time) > TileGrid.UNDO_THRESHOLD_MS) break;
+            actions.push(this.#actionStack.pop()!);
+        }
+
+        for (let action of actions) {
+            const {replaced, cellPos} = action;
+            this.setTile(...cellPos, replaced, false);
+        }
     }
 
     /**
@@ -466,7 +532,7 @@ export class TileGrid implements Serializable {
         });
 
         function pointerup(e: PIXI.InteractionEvent) {
-            pointers--;
+            pointers = Math.max(pointers - 1, 0);
             cellPointer = undefined;
         }
         con.on("pointerup", pointerup);
@@ -582,7 +648,7 @@ export class TileGrid implements Serializable {
             // double tap to swap rails (on a double rail)
             this.replaceTile(...dbtTile, t => {
                 if (t instanceof Tile.DoubleRail) {
-                    t.paths.reverse();
+                    return t.flipped();
                 }
                 return t;
             });
@@ -1385,6 +1451,14 @@ export namespace Tile {
 
                 con.addChild(...rails);
             });
+        }
+
+        /**
+         * @returns the flipped version of the double rail, where the other rail is on top
+         */
+        flipped() {
+            const [p0, p1] = this.paths;
+            return new DoubleRail([p1, p0]);
         }
 
         top() {
