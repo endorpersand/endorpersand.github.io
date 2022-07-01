@@ -10,6 +10,11 @@ type EditMode =
     | "railErase" // Active while solving (while erasing). You can only erase rails.
     | "select"    // Active while level editing. Allows you to select and edit tiles.
 
+function arrEq<T extends unknown[]>(arr1: T, arr2: T): boolean {
+    if (arr1.length !== arr2.length) return false;
+    return arr1.every((x, i) => x === arr2[i]);
+}
+
 interface Serializable<J = any> {
     /**
      * Designate how to convert this object into JSON.
@@ -398,14 +403,29 @@ export class TileGrid implements Serializable {
         });
 
         let dbtTile: [number, number] | undefined;
-        let tdtTimeout: NodeJS.Timeout | undefined;
-        const DT_TIMEOUT_MS = 1000;
+        let dbtTimeout: NodeJS.Timeout | undefined;
+        const DBT_TIMEOUT_MS = 1000;
 
         con.on("pointerdown", (e: PIXI.InteractionEvent) => {
             pointers++;
 
             const pos = e.data.getLocalPosition(con);
             const cellPos = this.positionToCell(pos);
+
+            // double tap check
+            if (!dbtTile) {
+                // tap 1
+                dbtTile = cellPos;
+                dbtTimeout = setTimeout(() => { dbtTile = undefined; }, DBT_TIMEOUT_MS);
+            } else {
+                // tap 2
+                if (arrEq(cellPos, dbtTile)) {
+                    clearTimeout(dbtTimeout);
+                    this.#onDoubleTap(dbtTile);
+                    dbtTile = undefined;
+                }
+            }
+            //
 
             const editMode = this.#editMode;
             if (editMode === "rail") {
@@ -414,34 +434,8 @@ export class TileGrid implements Serializable {
                     cellPos, 
                     typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
                 ];
-    
-                // double tap to swap rails (on a double rail)
-    
-                // first tap: if tile is dbl rail, store rail information
-                if (!dbtTile) {
-                    if (this.tile(...cellPos) instanceof Tile.DoubleRail) {
-                        dbtTile = cellPos;
-                        tdtTimeout = setTimeout(() => dbtTile = undefined, DT_TIMEOUT_MS);
-                    }
-                } else {
-                    // second tap (if done fast enough & same rail tapped), swap the rail
-                    if (cellPos[0] == dbtTile[0] && cellPos[1] == dbtTile[1]) {
-                        clearTimeout(tdtTimeout);
-                        
-                        this.replaceTile(...dbtTile, t => {
-                            if (t instanceof Tile.DoubleRail) {
-                                t.paths.reverse();
-                            }
-                            return t;
-                        });
-    
-                        dbtTile = undefined;
-                    }
-                }
             } else {
                 // useless if not rail mode
-                dbtTile = undefined;
-                tdtTimeout = undefined;
                 cellPointer = undefined;
 
                 if (editMode === "railErase") {
@@ -565,6 +559,23 @@ export class TileGrid implements Serializable {
             updateVisibility();
         });
     }
+
+    /**
+     * Handles what happens when a tile is double tapped
+     * @param dbtTile the tile that was double tapped
+     */
+    #onDoubleTap(dbtTile: [number, number]) {
+        if (this.#editMode === "rail") {
+            // double tap to swap rails (on a double rail)
+            this.replaceTile(...dbtTile, t => {
+                if (t instanceof Tile.DoubleRail) {
+                    t.paths.reverse();
+                }
+                return t;
+            });
+        }
+    }
+    
     /**
      * Find the nearest edge to a cell from a given point.
      * @param param0 the point
@@ -646,7 +657,7 @@ export class TileGrid implements Serializable {
                     const cj = ptr2[j];
                     if (typeof cj === "undefined") continue;
                     
-                    if (ci[0] == cj[0] && ci[1] == cj[1]) {
+                    if (arrEq(ci, cj)) {
                         match = ci;
                         others = [1 - i, 1 - j];
                         break;
