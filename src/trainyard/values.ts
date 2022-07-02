@@ -35,17 +35,19 @@ export namespace Color {
      * @param clrs the colors
      */
     export function mixMany(clrs: Color[]) {
-        // trivial cases
-        if (clrs.length === 0) throw new Error("Mix colors called with no arguments");
-        else if (clrs.length === 1) return mix(clrs[0], clrs[1]);
-    
-        // If the colors are all the same, return that color.
-        // Otherwise, return Brown.
-        let mixes = new Set(clrs);
-        if (mixes.size === 1) {
-            return [...mixes][0];
+        switch (clrs.length) {
+            case 0: throw new Error("Mix colors called with no arguments");
+            case 1: return clrs[0];
+            case 2: return mix(clrs[0], clrs[1]);
+            default:
+                // If the colors are all the same, return that color.
+                // Otherwise, return Brown.
+                let mixes = new Set(clrs);
+                if (mixes.size === 1) {
+                    return [...mixes][0];
+                }
+                return Color.Brown;
         }
-        return Color.Brown;
     }
 
     export function split(a: Color): [Color, Color] {
@@ -163,7 +165,7 @@ export class DirFlags {
     // only works given all inputs are valid and flags only has 2 dirs in it
     dirExcluding(dir: Dir) {
         let bits = this.#flags ^ (1 << dir);
-        return 32 - Math.clz32(bits);
+        return 31 - Math.clz32(bits);
     }
 
     equals(df: DirFlags) {
