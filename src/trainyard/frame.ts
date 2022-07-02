@@ -40,7 +40,7 @@ function setup() {
     let cellSpace = gridSize - TileGrid.TILE_GAP * (cellLength + 1);
     let cellSize = Math.floor(cellSpace / cellLength);
 
-    const tg = new TileGrid(cellSize, cellLength, textures,
+    const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer},
         [
             [,,, new Tile.Outlet(Dir.Down, [Color.Blue])],
             [],

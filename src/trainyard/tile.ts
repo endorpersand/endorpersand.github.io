@@ -242,6 +242,11 @@ namespace TileGraphics {
     }
 }
 
+type PIXIData = {
+    textures: Atlas,
+    renderer: PIXI.AbstractRenderer
+};
+
 /**
  A class which holds a grid of the current tiles on board.
  */
@@ -273,10 +278,11 @@ export class TileGrid implements Serializable {
      * Cache for this.container
      */
     #c_container: PIXI.Container | undefined;
+    
     /**
-     * The texture resource
+     * Object references coming from PIXI
      */
-    textures: Atlas;
+    pixi: PIXIData;
 
     /**
      * Determines what can be edited on the grid
@@ -314,12 +320,12 @@ export class TileGrid implements Serializable {
       */
      static readonly UNDO_THRESHOLD_MS = 300;
 
-    constructor(cellSize: number, cellLength: number, textures: Atlas, tiles: (Tile | undefined)[][]) {
+    constructor(cellSize: number, cellLength: number, pixi: PIXIData, tiles: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
         this.cellLength = cellLength;
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
-        this.textures = textures;
+        this.pixi = pixi;
 
         this.onEnterEditMode("readonly", () => {
             this.initSim();
@@ -599,7 +605,7 @@ export class TileGrid implements Serializable {
      */
     #renderTile(t: Tile, x: number, y: number): PIXI.Container {
         let con: PIXI.Container;
-        con = t.render(this.textures, this.cellSize);
+        con = t.render(this.pixi, this.cellSize);
 
         con.position.set(x, y);
         return con;
@@ -811,7 +817,7 @@ export class TileGrid implements Serializable {
         const TILE_GAP = TileGrid.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
 
-        const railMarker = TileGraphics.hoverIndicator(this.textures);
+        const railMarker = TileGraphics.hoverIndicator(this.pixi.textures);
         railMarker.width = this.cellSize;
         railMarker.height = this.cellSize;
         railMarker.tint = Palette.Hover;
@@ -1090,7 +1096,7 @@ export class TileGrid implements Serializable {
             })
         );
 
-        return (size: number, textures: Atlas) => new TileGrid(size, length, textures, newTiles);
+        return (size: number, pixi: PIXIData) => new TileGrid(size, length, pixi, newTiles);
     }
 
     static parse(s: string) {
@@ -1114,10 +1120,10 @@ export abstract class Tile {
 
     /**
      * Create the Container that displays this tile.
-     * @param textures The texture atlas that holds all assets
+     * @param pixi Rendering objects from PIXI
      * @param size Size of the tile
      */
-    abstract render(textures: Atlas, size: number): PIXI.Container;
+    abstract render(pixi: PIXIData, size: number): PIXI.Container;
 }
 
 type TileState = {
@@ -1241,7 +1247,7 @@ export namespace Tile {
             return new Outlet(outR, colorsR);
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
@@ -1320,7 +1326,7 @@ export namespace Tile {
             return new Goal(targetsR, entrances);
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
@@ -1381,7 +1387,7 @@ export namespace Tile {
             return new Painter(colorR, a1, a2);
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
@@ -1448,7 +1454,7 @@ export namespace Tile {
             return new Splitter(active);
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
@@ -1477,7 +1483,7 @@ export namespace Tile {
     export class Rock extends Tile {
         readonly serChar = "r";
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rock(textures));
             });
@@ -1568,7 +1574,7 @@ export namespace Tile {
             // invalid state: wipe truck from existence
         }
     
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rail(textures, ...this.actives));
             });
@@ -1625,7 +1631,7 @@ export namespace Tile {
             // invalid state: wipe truck from existence
         }
 
-        render(textures: Atlas, size: number): PIXI.Container {
+        render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
 
