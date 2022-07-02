@@ -59,15 +59,48 @@ namespace TileGraphics {
         return con;
     }
 
+    const Ratios = {
+        Box: {
+            OUTLINE: 1 / 16,
+            SPACE: 1 / 16
+        },
+
+        RAIL_WIDTH: 3 / 16,
+        ARROW_BASE: 2 / 16,
+        SYM_GAP: 1 / 32,
+    } as const;
+    
+    const SYM_TEXTURE_SCALE = 10;
+
     /**
      * Creates a box (which appears in tiles such as outlet and goal)
-     * @param textures reference to the textures
+     * @param renderer renderer
      * @returns the box, and the inner value designating the size of the box without outline
      */
-    export function box(textures: Atlas): [box: PIXI.Sprite, inner: number] {
-        const box = new PIXI.Sprite(textures["t_box.png"]);
+    export function box(
+        renderer: PIXI.AbstractRenderer, 
+        size: number = 32
+    ): [box: PIXI.Sprite, inner: number, outer: number] {
+        const OUTLINE = Math.floor(size * Ratios.Box.OUTLINE);
+        const SPACE   = Math.floor(size * Ratios.Box.SPACE);
+
+        const outer = size - 2 * SPACE;
+        const inner = size - 2 * (OUTLINE + SPACE);
+
+        const boxGraphics = new PIXI.Graphics()
+            .beginFill(Palette.Box.Outline, 1)
+            .drawRect(SPACE, SPACE, outer, outer)
+            .endFill()
+            .beginFill(Palette.Box.BG, 1)
+            .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
+            .endFill();
+        
+        const box = new PIXI.Sprite(
+            createRenderTexture(renderer, boxGraphics, size)
+        );
+        
         return [
-            box, box.width - 10
+            box, inner, outer
         ]
     }
 
@@ -114,9 +147,6 @@ namespace TileGraphics {
 
         return sprite;
     }
-
-    const SYM_GAP = 1;
-    const SYM_TEXTURE_SCALE = 10;
     
     /**
      * Create a render texture
@@ -154,12 +184,15 @@ namespace TileGraphics {
         symbol: (drawSize: number) => PIXI.Graphics
     ): PIXI.Container {
         const [boundsCenter, boundsSize] = bounds;
-        
+        const SYM_GAP = Math.floor(
+            boundsSize * Ratios.SYM_GAP / (1 - 2 * (Ratios.Box.OUTLINE + Ratios.Box.SPACE))
+        );
+
         const n = clrs.length;
         const rowN = Math.ceil(Math.sqrt(n));
 
         const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
-        const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
+        const cellSize = (boundsSize - (rowN + 3) * SYM_GAP) / rowN;
 
         const drawSize = cellSize * SYM_TEXTURE_SCALE;
         const rt = createRenderTexture(renderer, symbol(drawSize), drawSize);
@@ -169,8 +202,9 @@ namespace TileGraphics {
         for (let i = 0; i < n; i++) {
             let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
             let [centerX, centerY] = [
-                originX + SYM_GAP + cellX * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
-                originY + SYM_GAP + cellY * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
+                // origin > shift to top left pixel in cell > shift to center
+                (originX + 2 * SYM_GAP) + (cellX * (cellSize + SYM_GAP)) + (cellSize / 2),
+                (originY + 2 * SYM_GAP) + (cellY * (cellSize + SYM_GAP)) + (cellSize / 2),
             ]
             let clr = clrs[i];
 
@@ -666,14 +700,14 @@ export class TileGrid implements Serializable {
         return TileGraphics.sized(GRID_SIZE, con => {
             // bg
             const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
-            bg.tint = Palette.GridBG;
+            bg.tint = Palette.Grid.BG;
             bg.width = GRID_SIZE;
             bg.height = GRID_SIZE;
             con.addChild(bg);
 
             // grid
             const grid = new PIXI.Graphics()
-                .beginFill(Palette.Line);
+                .beginFill(Palette.Grid.Line);
 
             for (let i = 0; i <= this.cellLength; i++) {
                 let x = 0 + DELTA * i;
@@ -1291,7 +1325,7 @@ export namespace Tile {
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(textures);
+                const [box, inner] = TileGraphics.box(renderer);
                 con.addChild(box);
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
@@ -1361,7 +1395,7 @@ export namespace Tile {
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(textures);
+                const [box, inner] = TileGraphics.box(renderer);
                 con.addChild(box);
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
@@ -1418,12 +1452,11 @@ export namespace Tile {
             return new Painter(colorR, a1, a2);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(textures);
+                const [box] = TileGraphics.box(renderer);
                 con.addChild(box);
                 
-                const centerX = Math.floor(box.width / 2);
                 con.addChild(TileGraphics.painterSymbol(textures, this.color));
                 con.addChild(...[...this.actives]
                     .map(e => TileGraphics.activeSide(textures, e))
@@ -1485,9 +1518,9 @@ export namespace Tile {
             return new Splitter(active);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(textures);
+                const [box] = TileGraphics.box(renderer);
                 con.addChild(box);
                 
                 con.addChild(TileGraphics.splitterSymbol(textures, this.active));

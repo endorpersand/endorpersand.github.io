@@ -95,7 +95,7 @@ export namespace Dir {
         return rotate(d, 2);
     }
 
-    export function shift([x, y]: [number, number], d: Dir, n = 1): [number, number] {
+    export function shift([x, y]: readonly [number, number], d: Dir, n = 1): [number, number] {
         switch (d) {
             case Dir.Right: return [x + n, y]
             case Dir.Up:    return [x, y - n]
@@ -104,7 +104,7 @@ export namespace Dir {
         }
     }
 
-    export function difference([x1, y1]: [number, number], [x2, y2]: [number, number]): Dir | undefined {
+    export function difference([x1, y1]: readonly [number, number], [x2, y2]: [number, number]): Dir | undefined {
         const dx = x2 - x1;
         const dy = y2 - y1;
 
@@ -114,6 +114,10 @@ export namespace Dir {
         if (dx == 0 && dy > 0) return Dir.Down;
 
         return undefined;
+    }
+
+    export function edge(d: Dir, size = 1): [number, number] {
+        return shift([size / 2, size / 2], d, size / 2);
     }
 
     /**
@@ -205,10 +209,16 @@ export const Palette = {
         [Color.Brown]:  0x9C6D2F,
     },
     BG: 0x2F2F2F,
-    GridBG: 0x000000,
-    Line: 0x7F7F7F,
+    Grid: {
+        BG: 0x000000,
+        Line: 0x7F7F7F,
+    },
     Shadow: 0x7F7F7F,
     Hover: 0xD7FFE7,
-};
+    Box: {
+        BG: 0x000000,
+        Outline: 0xAFAFAF,
+    }
+} as const;
 
 export type Atlas = {[name: string]: Texture<Resource>};
