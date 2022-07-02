@@ -118,6 +118,13 @@ export class TileGrid implements Serializable {
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
         this.textures = textures;
+
+        this.onEnterEditMode("readonly", () => {
+            this.initSim();
+        });
+        this.onExitEditMode("readonly", () => {
+            this.exitSim();
+        });
     }
 
     /**
@@ -285,23 +292,72 @@ export class TileGrid implements Serializable {
      * @param train train to move
      */
     intoNeighbor(train: Train) {
-        this.#neighbor(train.dir)?.accept(this, train);
+        const nb = this.#neighbor(train.dir);
+        
+        if (typeof nb !== "undefined") {
+            nb.accept(this, train);
+        } else {
+            this.fail();
+        }
+    }
+
+    
+    /**
+     * Designates whether or not the grid is currently simulating a level.
+     * It is true if all tiles' states have been initialized.
+     */
+    simulating = false;
+
+    /**
+     * Iterator of all the stateful tiles in the grid.
+     */
+    *#statefulTiles() {
+        for (let y = 0; y < this.cellLength; y++) {
+            for (let x = 0; x < this.cellLength; x++) {
+                let tile = this.tile(x, y)!;
+
+                if (tile instanceof StatefulTile) {
+                    yield [[x, y], tile] as [[number, number], StatefulTile];
+                }
+            }
+        }
+    }
+
+    /**
+     * Initializes the simulation.
+     */
+    initSim() {
+        if (!this.simulating) {
+            for (let [_, tile] of this.#statefulTiles()) {
+                tile.initState();
+            }
+    
+            this.simulating = true;
+            this.passing = true;
+        }
     }
 
     /**
      * Iterate one step through the board.
      */
     step() {
-        for (let y = 0; y < this.cellLength; y++) {
-            for (let x = 0; x < this.cellLength; x++) {
-                let tile = this.tile(x, y)!;
+        this.initSim();
 
-                if (tile instanceof StatefulTile && tile.trains.length > 0) {
-                    this.#cursor = [x, y];
-                    tile.step(this);
-                }
-            }
+        for (let [pos, tile] of this.#statefulTiles()) {
+            this.#cursor = pos;
+            tile.step(this);
         }
+    }
+
+    /**
+     * Wipes all state. Resets simulating state.
+     */
+    exitSim() {
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.state = undefined;
+        }
+
+        this.simulating = false;
     }
 
     fail() {
@@ -814,7 +870,7 @@ export class TileGrid implements Serializable {
         let newTiles = Array.from({length}, (_, y) => 
             Array.from<unknown, Tile | undefined>({length}, (_, x) => {
                 let index = y * length + x;
-                let tileChar = board[y][x];
+                let tileChar: string = board[y][x];
 
                 type Values<T> = T[keyof T];
                 // @ts-ignore
@@ -995,11 +1051,19 @@ export abstract class Tile {
     abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
-export abstract class StatefulTile extends Tile {
+type TileState = {
     /**
      * A list of the trains currently on the tile.
      */
-    trains: Train[] = [];
+    trains: Train[];
+}
+
+export abstract class StatefulTile<S extends TileState = TileState> extends Tile {
+    /**
+     * Holds the state for the tile during simulation.
+     */
+    state: S | undefined;
+
     /**
      * The sides that trains can enter this tile through.
      * Note that if an active left side accepts right-facing trains.
@@ -1016,13 +1080,37 @@ export abstract class StatefulTile extends Tile {
         this.actives = new DirFlags(actives);
     }
 
+
     /**
-     * Adds this train to the tile's train storage (if the train passes through an active side)
+     * @returns a default state initialization, for any StatefulTile<TileState>
+     */
+    createDefaultState(this: StatefulTile<TileState>): TileState {
+        return {
+            trains: []
+        };
+    }
+
+    /**
+     * Create the state for the simulation.
+     * Classes that extend StatefulTile<TileState> can use `createDefaultState` as a default implementation.
+     */
+    abstract createState(): S;
+
+    /**
+     * Initializes the state using `createState`. This is called before a simulation begins.
+     */
+    initState() {
+        this.state = this.createState();
+    }
+
+    /**
+     * Adds this train to the tile's train storage (if the train passes through an active side).
+     * Should only be called during simulation.
      * @param train 
      */
     accept(grid: TileGrid, train: Train): void {
         if (this.actives.has(Dir.flip(train.dir))) {
-            this.trains.push(train);
+            this.state!.trains.push(train);
         } else {
             grid.fail();
         }
@@ -1030,6 +1118,7 @@ export abstract class StatefulTile extends Tile {
 
     /**
      * Indicates what this tile should do during the step (is only called if the tile has a train).
+     * Should only be called during simulation.
      * @param grid Grid that the tile is on
      */
     abstract step(grid: TileGrid): void;
@@ -1051,24 +1140,25 @@ export namespace Tile {
          */
         readonly colors: readonly Color[];
 
-        /**
-         * Number of trains released.
-         */
-        released: number = 0;
-
         readonly serChar = "+";
 
         constructor(out: Dir, colors: Color[]) {
             super();
             this.out = out;
             this.colors = colors;
-            this.trains = Array.from(colors, color => ({color, dir: out}));
+        }
+
+        createState() {
+            const {colors, out} = this;
+            
+            return {
+                trains: Array.from(colors, color => ({color, dir: out}))
+            };
         }
 
         step(grid: TileGrid): void {
             // While the outlet has trains, deploy one.
-            this.released += 1;
-            grid.intoNeighbor(this.trains.shift()!);
+            grid.intoNeighbor(this.state!.trains.shift()!);
         }
         
         toJSON() {
@@ -1107,14 +1197,20 @@ export namespace Tile {
         }
     }
     
+    type GoalState = TileState & {
+        /**
+         * The trains needed to complete the goal
+         */
+        remaining: Color[]
+    }
     /**
      * Tiles which trains must go to.
      */
-    export class Goal extends StatefulTile implements Serializable {
+    export class Goal extends StatefulTile<GoalState> implements Serializable {
         /**
          * The train colors this goal block wants. If met, the color is switched to undefined.
          */
-        targets: (Color | undefined)[];
+        readonly targets: readonly Color[];
         readonly serChar = "o";
 
         constructor(targets: Color[], entrances: Dir[]) {
@@ -1122,14 +1218,22 @@ export namespace Tile {
             this.targets = targets;
         }
     
+        createState(): GoalState {
+            return {
+                ...this.createDefaultState(),
+                remaining: [...this.targets]
+            };
+        }
+
         step(grid: TileGrid): void {
-            let trains = this.trains;
-            this.trains = [];
+            let {remaining, trains} = this.state!;
+            this.state!.trains = [];
 
             for (let train of trains) {
-                let i = this.targets.indexOf(train.color);
+                let i = remaining.indexOf(train.color);
                 if (i != -1) {
-                    this.targets[i] = undefined;
+                    remaining.splice(i, 1);
+                    // TODO: do displays with the index?
                 } else {
                     grid.fail();
                 }
@@ -1137,7 +1241,7 @@ export namespace Tile {
         }
     
         toJSON() {
-            return {targets: (this.targets as Color[]).map(c => Color[c]), actives: this.actives.bits};
+            return {targets: this.targets.map(c => Color[c]), actives: this.actives.bits};
         }
 
         static fromJSON({targets, actives}: {targets: string[], actives: number}) {
@@ -1154,7 +1258,7 @@ export namespace Tile {
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
                 const symbols = TileGraphics.symbolSet(
-                    this.targets as Color[], [center, inner],
+                    this.targets, [center, inner],
                     (cx, cy, s, clr, g) => g.beginFill(Palette.Train[clr])
                         .drawCircle(cx, cy, s / 2)
                 );
@@ -1179,9 +1283,13 @@ export namespace Tile {
             this.color = color;
         }
     
+        createState(): TileState {
+            return this.createDefaultState();
+        }
+
         step(grid: TileGrid): void {
             // Paint the train and output it.
-            let train = this.trains.shift()!;
+            let train = this.state!.trains.shift()!;
             // Get the output direction.
             let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
 
@@ -1191,15 +1299,6 @@ export namespace Tile {
             });
         }
         
-        accept(grid: TileGrid, train: Train): void {
-            // A train can only enter an outlet from the active side.
-            if (this.actives.has(Dir.flip(train.dir))) {
-                this.trains.push(train);
-            } else {
-                grid.fail();
-            }
-        }
-
         toJSON() {
             return {actives: this.actives.bits, color: Color[this.color]};
         }
@@ -1250,8 +1349,12 @@ export namespace Tile {
             ];
         }
 
+        createState(): TileState {
+            return this.createDefaultState();
+        }
+
         step(grid: TileGrid): void {
-            let train = this.trains.shift()!;
+            let train = this.state!.trains.shift()!;
     
             let [ldir, rdir] = this.sides;
     
@@ -1312,14 +1415,14 @@ export namespace Tile {
         }
     }
     
-    export abstract class Rail extends StatefulTile {
+    export abstract class Rail<S extends TileState = TileState> extends StatefulTile<S> {
         constructor(entrances: Dir[] | DirFlags) {
             super(...entrances);
         }
     
         step(grid: TileGrid): void {
-            let trains = this.trains;
-            this.trains = [];
+            let {trains} = this.state!;
+            this.state!.trains = [];
     
             // Figure out where all the trains are leaving
             let destTrains = trains
@@ -1380,6 +1483,10 @@ export namespace Tile {
             super([dir1, dir2]);
         }
     
+        createState(): TileState {
+            return this.createDefaultState();
+        }
+
         redirect(t: Train): Train | undefined {
             
             let {color, dir} = t;
@@ -1403,8 +1510,15 @@ export namespace Tile {
         }
     }
     
-    export class DoubleRail extends Rail {
-        paths: [DirFlags, DirFlags];
+    type DoubleRailState = TileState & {
+        /**
+         * The index of the path that's currently considered "the top"
+         */
+        topIndex: 0 | 1;
+    };
+
+    export class DoubleRail extends Rail<DoubleRailState> {
+        readonly paths: readonly [DirFlags, DirFlags];
         readonly #overlapping: boolean;
     
         constructor(paths: [DirFlags, DirFlags]) {
@@ -1417,6 +1531,12 @@ export namespace Tile {
             this.#overlapping = [...this.actives].length < 4;
         }
     
+        createState(): DoubleRailState {
+            return {
+                ...this.createDefaultState(),
+                topIndex: 0
+            };
+        }
         redirect(t: Train): Train | undefined {
             let {color, dir} = t;
             let enterDir = Dir.flip(dir);
@@ -1428,7 +1548,7 @@ export namespace Tile {
             if (rails.length > 0) {
                 // If the double rail merges at a point, then the primary and secondary rails swap.
                 if (this.#overlapping) {
-                    this.paths.push(this.paths.shift()!);
+                    this.state!.topIndex += (this.state!.topIndex + 1) % 2;
                 }
                 return { color, dir: rails[0].dirExcluding(enterDir) };
             }
