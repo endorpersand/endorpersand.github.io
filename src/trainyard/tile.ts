@@ -349,6 +349,10 @@ export class TileGrid implements Serializable {
      * Cache for this.container
      */
     #c_container: PIXI.Container | undefined;
+    /**
+     * Cache for the container that holds the tile containers
+     */
+    #c_tcells: PIXI.Container | undefined;
     
     /**
      * Object references coming from PIXI
@@ -417,6 +421,11 @@ export class TileGrid implements Serializable {
         return this.#c_container;
     }
 
+    get tileCells(): PIXI.Container {
+        this.container;
+        return this.#c_tcells!;
+    }
+
     /**
      * The total size this TileGrid encompasses. The TileGrid is [gridSize x gridSize] pixels.
      */
@@ -436,7 +445,9 @@ export class TileGrid implements Serializable {
         this.#actionStack = []; // the tiles got reset, so can't do undos from here
 
         if (this.#c_container) {
+            this.#c_container.destroy({children: true});
             this.#c_container = this.#renderContainer();
+            this.#c_tcells = this.#c_container.getChildByName("cells", false) as PIXI.Container;
         }
     }
 
@@ -509,18 +520,7 @@ export class TileGrid implements Serializable {
         this.#tiles[y] ??= [];
         this.#tiles[y][x] = t;
 
-        if (this.#c_container) {
-            const cells = this.container.getChildByName("cells", false) as PIXI.Container;
-            const index = y * this.cellLength + x;
-
-            const {x: lx, y: ly} = cells.getChildAt(index).position;
-    
-            const con: PIXI.Container = this.#renderTile(t, lx, ly);
-
-            // replace child at index:
-            cells.addChildAt(con, index);
-            cells.removeChildAt(index + 1).destroy();
-        }
+        this.rerenderTileInContainer(x, y);
     }
 
     /**
@@ -600,7 +600,9 @@ export class TileGrid implements Serializable {
         this.initSim();
 
         for (let [pos, tile] of this.#statefulTiles()) {
-            tile.step(new GridCursor(this, pos));
+            if (tile.state!.trains.length > 0) {
+                tile.step(new GridCursor(this, pos));
+            }
         }
     }
 
@@ -608,8 +610,9 @@ export class TileGrid implements Serializable {
      * Wipes all state. Resets simulating state.
      */
     exitSim() {
-        for (let [_, tile] of this.#statefulTiles()) {
+        for (let [pos, tile] of this.#statefulTiles()) {
             tile.state = undefined;
+            this.rerenderTileInContainer(...pos);
         }
 
         this.simulating = false;
@@ -706,6 +709,7 @@ export class TileGrid implements Serializable {
                     );
                 }
             }
+            this.#c_tcells = cellCon;
             con.addChild(cellCon);
 
             con.interactive = true;
@@ -713,6 +717,41 @@ export class TileGrid implements Serializable {
             this.#applyRailIndicator(con);
         });
     }
+
+    /**
+     * Get the PIXI container of the tile at the specified position
+     * @param x x coord
+     * @param y y coord
+     * @returns container
+     */
+    tileContainer(x: number, y: number) {
+        this.assertInBounds(x, y);
+
+        const cells = this.tileCells;
+        return cells.getChildAt(y * this.cellLength + x) as PIXI.Container;
+    }
+
+    /**
+     * Replace the container currently at the tile position with a rerendered version of the tile
+     * @param x x coord
+     * @param y y coord
+     */
+    rerenderTileInContainer(x: number, y: number) {
+        this.assertInBounds(x, y);
+
+        if (this.#c_container) {
+            const cells = this.tileCells;
+            const index = y * this.cellLength + x;
+
+            const {x: lx, y: ly} = cells.getChildAt(index).position;
+    
+            const con: PIXI.Container = this.#renderTile(this.tile(x, y)!, lx, ly);
+
+            cells.addChildAt(con, index);
+            cells.removeChildAt(index + 1).destroy({children: true});
+        }
+    }
+
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -1183,10 +1222,11 @@ class GridCursor {
         }
     }
 
+    /**
+     * @returns the container of the tile the cursor is pointing to
+     */
     container() {
-        const cells = this.#grid.container.getChildByName("cells", false) as PIXI.Container;
-        const [x, y] = this.#pos;
-        return cells.getChildAt(y * this.#grid.cellLength + x) as PIXI.Container;
+        return this.#grid.tileContainer(...this.#pos);
     }
 
     fail() {
@@ -1324,6 +1364,8 @@ export namespace Tile {
         step(cur: GridCursor): void {
             // While the outlet has trains, deploy one.
             cur.intoNeighbor(this.state!.trains.shift()!);
+            const symbols = cur.container().getChildByName("symbols", false) as PIXI.Container;
+            symbols.removeChildAt(0).destroy({children: true});
         }
         
         toJSON() {
@@ -1346,8 +1388,9 @@ export namespace Tile {
                 const symbols = TileGraphics.symbolSet(
                     renderer, this.colors, [center, inner], TileGraphics.plus
                 );
+                symbols.name = "symbols";
                 con.addChild(symbols);
-                
+
                 con.addChild(TileGraphics.passiveSide(textures, this.out));
             });
         }
@@ -1389,7 +1432,8 @@ export namespace Tile {
                 let i = remaining.indexOf(train.color);
                 if (i != -1) {
                     remaining.splice(i, 1);
-                    // TODO: do displays with the index?
+                    const targets = cur.container().getChildByName("targets", false) as PIXI.Container;
+                    targets.removeChildAt(i).destroy({children: true});
                 } else {
                     cur.fail();
                 }
@@ -1416,6 +1460,7 @@ export namespace Tile {
                 const symbols = TileGraphics.symbolSet(
                     renderer, this.targets, [center, inner], TileGraphics.circle
                 );
+                symbols.name = "targets";
                 con.addChild(symbols);
 
                 con.addChild(...[...this.actives]
@@ -1579,13 +1624,15 @@ export namespace Tile {
     
             // Figure out where all the trains are leaving
             let destTrains = trains
-                .map(this.redirect)
+                .map(this.redirect.bind(this))
                 .filter(t => typeof t !== "undefined") as Train[];
             
             // Merge exits and dispatch
             for (let t of Rail.collapseTrains(destTrains)) {
                 cur.intoNeighbor(t);
             }
+
+            this.updateContainer(cur);
         }
     
         /**
@@ -1628,6 +1675,10 @@ export namespace Tile {
         abstract redirect(t: Train): Train | undefined;
 
         abstract top(): SingleRail;
+
+        updateContainer(cur: GridCursor) {
+
+        }
     }
     
     export class SingleRail extends Rail {
@@ -1733,6 +1784,14 @@ export namespace Tile {
         top() {
             let [d1, d2] = this.paths[0];
             return new Tile.SingleRail(d1, d2);
+        }
+
+        updateContainer(cur: GridCursor): void {
+            const con = cur.container();
+            const [c1, c2] = con.children as PIXI.Sprite[];
+
+            [c1.tint, c2.tint] = [c2.tint, c1.tint];
+            con.swapChildren(c1, c2);
         }
     }
 
