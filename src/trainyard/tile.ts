@@ -116,19 +116,43 @@ namespace TileGraphics {
     }
 
     const SYM_GAP = 1;
+    const SYM_TEXTURE_SCALE = 10;
+    
+    /**
+     * Create a render texture
+     * @param renderer Renderer
+     * @param o Object to render onto texture
+     * @param size Dimensions of render texture
+     * @returns render texture
+     */
+    function createRenderTexture(
+        renderer: PIXI.AbstractRenderer, 
+        o: PIXI.DisplayObject, 
+        size: number,
+    ) {
+        const renderTexture = PIXI.RenderTexture.create({width: size, height: size});
+        renderer.render(o, {renderTexture});
+
+        return renderTexture;
+    }
 
     /**
      * Creates a sequence of symbols from a given symbol (e.g. circle, plus) and colors
+     * @param renderer Renderer to render graphics
      * @param clrs Colors of the symbols
      * @param bounds Center and size of the box these symbols need to be placed in
-     * @param symbol The symbol generator to create the symbol
-     * @returns 
+     * @param symbol A function that creates the symbol from a given size.
+     * The symbol should be [size x size] pixels, 
+     * centered at (size / 2, size / 2), and colored white.
+     * 
+     * @returns the container holding the symbol set
      */
     export function symbolSet(
+        renderer: PIXI.AbstractRenderer,
         clrs: readonly Color[], 
-        bounds: [center: [number, number], size: number], 
-        symbol: (cx: number, cy: number, s: number, clr: Color, graphics: PIXI.Graphics) => PIXI.Graphics
-    ): PIXI.Graphics {
+        bounds: readonly [center: readonly [number, number], size: number], 
+        symbol: (drawSize: number) => PIXI.Graphics
+    ): PIXI.Container {
         const [boundsCenter, boundsSize] = bounds;
         
         const n = clrs.length;
@@ -137,8 +161,10 @@ namespace TileGraphics {
         const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
         const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
 
-        const graphics = new PIXI.Graphics();
-        
+        const drawSize = cellSize * SYM_TEXTURE_SCALE;
+        const rt = createRenderTexture(renderer, symbol(drawSize), drawSize);
+
+        const con = new PIXI.Container();
 
         for (let i = 0; i < n; i++) {
             let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
@@ -146,17 +172,33 @@ namespace TileGraphics {
                 originX + SYM_GAP + cellX * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
                 originY + SYM_GAP + cellY * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
             ]
-            
-            symbol(
-                centerX, 
-                centerY, 
-                cellSize, 
-                clrs[i],
-                graphics
-            );
+            let clr = clrs[i];
+
+            let sym = new PIXI.Sprite(rt);
+            sym.scale.set(1 / SYM_TEXTURE_SCALE);
+            sym.position.set(centerX - cellSize / 2, centerY - cellSize / 2);
+            sym.tint = Palette.Train[clr];
+            con.addChild(sym);
         }
 
-        return graphics;
+        return con;
+    }
+
+    export function plus(size: number) {
+        const width = size;
+        const height = width / 2;
+
+        const [dx, dy] = [-width / 2, -height / 2];
+        return new PIXI.Graphics()
+            .beginFill(0xFFFFFF)
+            .drawRect(size / 2 + dx, size / 2 + dy, width, height)
+            .drawRect(size / 2 + dy, size / 2 + dx, height, width);
+    }
+
+    export function circle(size: number) {
+        return new PIXI.Graphics()
+        .beginFill(0xFFFFFF)
+        .drawCircle(size / 2, size / 2, size / 2);
     }
 
     /**
@@ -1247,23 +1289,14 @@ export namespace Tile {
             return new Outlet(outR, colorsR);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
                 
-                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
                 const symbols = TileGraphics.symbolSet(
-                    this.colors, [center, inner],
-                    (cx, cy, s, clr, g) => {
-                        const width = s;
-                        const height = width / 2;
-
-                        const [dx, dy] = [-width / 2, -height / 2];
-                        return g.beginFill(Palette.Train[clr])
-                            .drawRect(cx + dx, cy + dy, width, height)
-                            .drawRect(cx + dy, cy + dx, height, width);
-                    }
+                    renderer, this.colors, [center, inner], TileGraphics.plus
                 );
                 con.addChild(symbols);
                 
@@ -1326,16 +1359,14 @@ export namespace Tile {
             return new Goal(targetsR, entrances);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 const [box, inner] = TileGraphics.box(textures);
                 con.addChild(box);
                 
-                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as [number, number];
+                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
                 const symbols = TileGraphics.symbolSet(
-                    this.targets, [center, inner],
-                    (cx, cy, s, clr, g) => g.beginFill(Palette.Train[clr])
-                        .drawCircle(cx, cy, s / 2)
+                    renderer, this.targets, [center, inner], TileGraphics.circle
                 );
                 con.addChild(symbols);
 
