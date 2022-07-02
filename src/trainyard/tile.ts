@@ -341,11 +341,6 @@ export class TileGrid implements Serializable {
     cellLength: number;
 
     /**
-     * During a step, the cursor indicates which tile the tile grid is currently scanning on.
-     */
-    #cursor: [number, number] = [-1, -1];
-
-    /**
      * If false, a train crashed.
      */
     passing: boolean = true;
@@ -562,29 +557,6 @@ export class TileGrid implements Serializable {
         }
     }
 
-    /**
-     * Get the neighbor tile in a specific direction
-     * @param direction the direction
-     * @returns the neighbor tile
-     */
-    #neighbor(direction: Dir) {
-        return this.tile(...Dir.shift(this.#cursor, direction));
-    }
-
-    /**
-     * Push train into the neighbor that the train is expected to move into.
-     * @param train train to move
-     */
-    intoNeighbor(train: Train) {
-        const nb = this.#neighbor(train.dir);
-        
-        if (typeof nb !== "undefined") {
-            nb.accept(this, train);
-        } else {
-            this.fail();
-        }
-    }
-
     
     /**
      * Designates whether or not the grid is currently simulating a level.
@@ -628,8 +600,7 @@ export class TileGrid implements Serializable {
         this.initSim();
 
         for (let [pos, tile] of this.#statefulTiles()) {
-            this.#cursor = pos;
-            tile.step(this);
+            tile.step(new GridCursor(this, pos));
         }
     }
 
@@ -1180,6 +1151,49 @@ export class TileGrid implements Serializable {
     }
 }
 
+class GridCursor {
+    #grid: TileGrid;
+    #pos: readonly [number, number];
+
+    constructor(grid: TileGrid, pos: readonly [number, number]) {
+        this.#grid = grid;
+        this.#pos = pos;
+    }
+
+    /**
+     * Get the neighbor tile in a specific direction
+     * @param direction the direction
+     * @returns the neighbor tile
+     */
+        #neighbor(direction: Dir) {
+        return this.#grid.tile(...Dir.shift(this.#pos, direction));
+    }
+
+    /**
+     * Push train into the neighbor that the train is expected to move into.
+     * @param train train to move
+     */
+    intoNeighbor(train: Train) {
+        const nb = this.#neighbor(train.dir);
+        
+        if (typeof nb !== "undefined") {
+            nb.accept(this.#grid, train);
+        } else {
+            this.#grid.fail();
+        }
+    }
+
+    container() {
+        const cells = this.#grid.container.getChildByName("cells", false) as PIXI.Container;
+        const [x, y] = this.#pos;
+        return cells.getChildAt(y * this.#grid.cellLength + x) as PIXI.Container;
+    }
+
+    fail() {
+        this.#grid.fail();
+    }
+}
+
 export abstract class Tile {
     /**
      * Char this is represented with during serialization. If not serialized, serChar is " ".
@@ -1270,9 +1284,9 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
     /**
      * Indicates what this tile should do during the step (is only called if the tile has a train).
      * Should only be called during simulation.
-     * @param grid Grid that the tile is on
+     * @param cur Cursor that allows interaction with the tiles around
      */
-    abstract step(grid: TileGrid): void;
+    abstract step(cur: GridCursor): void;
 }
 
 export namespace Tile {
@@ -1307,9 +1321,9 @@ export namespace Tile {
             };
         }
 
-        step(grid: TileGrid): void {
+        step(cur: GridCursor): void {
             // While the outlet has trains, deploy one.
-            grid.intoNeighbor(this.state!.trains.shift()!);
+            cur.intoNeighbor(this.state!.trains.shift()!);
         }
         
         toJSON() {
@@ -1367,7 +1381,7 @@ export namespace Tile {
             };
         }
 
-        step(grid: TileGrid): void {
+        step(cur: GridCursor): void {
             let {remaining, trains} = this.state!;
             this.state!.trains = [];
 
@@ -1377,7 +1391,7 @@ export namespace Tile {
                     remaining.splice(i, 1);
                     // TODO: do displays with the index?
                 } else {
-                    grid.fail();
+                    cur.fail();
                 }
             }
         }
@@ -1427,13 +1441,13 @@ export namespace Tile {
             return this.createDefaultState();
         }
 
-        step(grid: TileGrid): void {
+        step(cur: GridCursor): void {
             // Paint the train and output it.
             let train = this.state!.trains.shift()!;
             // Get the output direction.
             let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
 
-            grid.intoNeighbor({
+            cur.intoNeighbor({
                 color: this.color,
                 dir: outDir
             });
@@ -1492,17 +1506,17 @@ export namespace Tile {
             return this.createDefaultState();
         }
 
-        step(grid: TileGrid): void {
+        step(cur: GridCursor): void {
             let train = this.state!.trains.shift()!;
     
             let [ldir, rdir] = this.sides;
     
             // Split train's colors, pass the new trains through the two passive sides.
             let [lclr, rclr] = Color.split(train.color);
-            grid.intoNeighbor({
+            cur.intoNeighbor({
                 color: lclr, dir: ldir
             });
-            grid.intoNeighbor({
+            cur.intoNeighbor({
                 color: rclr, dir: rdir
             });
         }
@@ -1559,7 +1573,7 @@ export namespace Tile {
             super(...entrances);
         }
     
-        step(grid: TileGrid): void {
+        step(cur: GridCursor): void {
             let {trains} = this.state!;
             this.state!.trains = [];
     
@@ -1570,7 +1584,7 @@ export namespace Tile {
             
             // Merge exits and dispatch
             for (let t of Rail.collapseTrains(destTrains)) {
-                grid.intoNeighbor(t);
+                cur.intoNeighbor(t);
             }
         }
     
