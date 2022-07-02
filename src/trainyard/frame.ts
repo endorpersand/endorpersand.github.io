@@ -75,6 +75,7 @@ function applyButtons(grid: TileGrid) {
     const start = wrapper.querySelector("button#b-start")!;
     const step  = wrapper.querySelector("button#b-step")!;
 
+    const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
     erase.addEventListener("click", () => {
         let em = grid.editMode;
         if (em === "rail") grid.editMode = "railErase";
@@ -94,8 +95,10 @@ function applyButtons(grid: TileGrid) {
 
         if (em !== "readonly") {
             grid.editMode = "readonly";
-            (document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement).value = "0";
         }
+
+        slider.value = "0";
+        grid.step();
     });
 
     grid.onEnterEditMode("railErase", () => {
