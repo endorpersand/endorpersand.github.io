@@ -196,8 +196,8 @@ export class DirFlags {
 }
 
 export type Train = {
-    color: Color,
-    dir: Dir
+    readonly color: Color,
+    readonly dir: Dir
 };
 
 export const Palette = {

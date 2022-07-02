@@ -599,6 +599,9 @@ export class TileGrid implements Serializable {
     step() {
         this.initSim();
 
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.prestep();
+        }
         for (let [pos, tile] of this.#statefulTiles()) {
             if (tile.state!.trains.length > 0) {
                 tile.step(new GridCursor(this, pos));
@@ -1261,6 +1264,11 @@ type TileState = {
      * A list of the trains currently on the tile.
      */
     trains: Train[];
+    
+    /**
+     * A list of trains that will be on the tile in the next step.
+     */
+    waitingTrains: Train[];
 }
 
 export abstract class StatefulTile<S extends TileState = TileState> extends Tile {
@@ -1291,7 +1299,8 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      */
     createDefaultState(this: StatefulTile<TileState>): TileState {
         return {
-            trains: []
+            trains: [],
+            waitingTrains: []
         };
     }
 
@@ -1315,10 +1324,20 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      */
     accept(grid: TileGrid, train: Train): void {
         if (this.actives.has(Dir.flip(train.dir))) {
-            this.state!.trains.push(train);
+            this.state!.waitingTrains.push(train);
         } else {
             grid.fail();
         }
+    }
+
+    /**
+     * The tile grid performs `prestep` for every tile before calling `step` of any tile.
+     */
+    prestep() {
+        const state = this.state!;
+
+        state.trains.push(...state.waitingTrains);
+        state.waitingTrains = [];
     }
 
     /**
@@ -1353,10 +1372,11 @@ export namespace Tile {
             this.colors = colors;
         }
 
-        createState() {
+        createState(): TileState {
             const {colors, out} = this;
             
             return {
+                ...this.createDefaultState(),
                 trains: Array.from(colors, color => ({color, dir: out}))
             };
         }
