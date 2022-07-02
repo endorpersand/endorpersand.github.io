@@ -296,7 +296,7 @@ export class TileGrid implements Serializable {
             for (let x = 0; x < this.cellLength; x++) {
                 let tile = this.tile(x, y)!;
 
-                if (tile.trains.length > 0) {
+                if (tile instanceof StatefulTile && tile.trains.length > 0) {
                     this.#cursor = [x, y];
                     tile.step(this);
                 }
@@ -975,6 +975,28 @@ namespace TileGraphics {
 
 export abstract class Tile {
     /**
+     * Char this is represented with during serialization. If not serialized, serChar is " ".
+     */
+    readonly serChar: string = " ";
+
+    /**
+     * Adds this train to the tile's train storage (if the train passes through an active side)
+     * @param train 
+     */
+    accept(grid: TileGrid, train: Train): void {
+        grid.fail();
+    }
+
+    /**
+     * Create the Container that displays this tile.
+     * @param textures The texture atlas that holds all assets
+     * @param size Size of the tile
+     */
+    abstract render(textures: Atlas, size: number): PIXI.Container;
+}
+
+export abstract class StatefulTile extends Tile {
+    /**
      * A list of the trains currently on the tile.
      */
     trains: Train[] = [];
@@ -990,6 +1012,7 @@ export abstract class Tile {
     readonly serChar: string = " ";
 
     constructor(...actives: Dir[]) {
+        super();
         this.actives = new DirFlags(actives);
     }
 
@@ -997,7 +1020,7 @@ export abstract class Tile {
      * Adds this train to the tile's train storage (if the train passes through an active side)
      * @param train 
      */
-        accept(grid: TileGrid, train: Train): void {
+    accept(grid: TileGrid, train: Train): void {
         if (this.actives.has(Dir.flip(train.dir))) {
             this.trains.push(train);
         } else {
@@ -1010,13 +1033,6 @@ export abstract class Tile {
      * @param grid Grid that the tile is on
      */
     abstract step(grid: TileGrid): void;
-
-    /**
-     * Create the Container that displays this tile.
-     * @param textures The texture atlas that holds all assets
-     * @param size Size of the tile
-     */
-    abstract render(textures: Atlas, size: number): PIXI.Container;
 }
 
 export namespace Tile {
@@ -1024,7 +1040,7 @@ export namespace Tile {
     /**
      * Tile which trains appear from.
      */
-    export class Outlet extends Tile implements Serializable {
+    export class Outlet extends StatefulTile implements Serializable {
         /**
          * The output side.
          */
@@ -1094,7 +1110,7 @@ export namespace Tile {
     /**
      * Tiles which trains must go to.
      */
-    export class Goal extends Tile implements Serializable {
+    export class Goal extends StatefulTile implements Serializable {
         /**
          * The train colors this goal block wants. If met, the color is switched to undefined.
          */
@@ -1154,7 +1170,7 @@ export namespace Tile {
     /**
     * Tiles which paint the train.
     */
-    export class Painter extends Tile implements Serializable {
+    export class Painter extends StatefulTile implements Serializable {
         readonly color: Color;
         readonly serChar = "p";
 
@@ -1214,7 +1230,7 @@ export namespace Tile {
     /**
      * Tiles which split the train into 2 trains.
      */
-    export class Splitter extends Tile implements Serializable {
+    export class Splitter extends StatefulTile implements Serializable {
         /**
          * The active side.
          * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
@@ -1279,17 +1295,7 @@ export namespace Tile {
     export class Blank extends Tile {
         readonly serChar = " ";
 
-        constructor() {
-            super();
-        }
-
-        step(grid: TileGrid): void {
-            // Unreachable state.
-            this.trains = [];
-            grid.fail();
-        }
-
-        render(textures: Atlas, size: number): PIXI.Container {
+        render(): PIXI.Container {
             const con = new PIXI.Container();
             con.visible = false;
             return con;
@@ -1299,16 +1305,6 @@ export namespace Tile {
     export class Rock extends Tile {
         readonly serChar = "r";
 
-        constructor() {
-            super();
-        }
-        
-        step(grid: TileGrid): void {
-            // Unreachable state.
-            this.trains = [];
-            grid.fail();
-        }
-
         render(textures: Atlas, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rock(textures));
@@ -1316,7 +1312,7 @@ export namespace Tile {
         }
     }
     
-    export abstract class Rail extends Tile {
+    export abstract class Rail extends StatefulTile {
         constructor(entrances: Dir[] | DirFlags) {
             super(...entrances);
         }
