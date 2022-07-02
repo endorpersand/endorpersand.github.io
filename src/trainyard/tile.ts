@@ -41,6 +41,208 @@ interface Serializable<J = any> {
 }
 
 /**
+ * Utility namespace to provide some shapes to build tile graphics with
+ */
+namespace TileGraphics {
+    /**
+     * Creates a PIXI container that upscales to the correct size.
+     * @param size Size to upscale
+     * @param f Function to add everything into container before upscaling
+     * @returns the new container
+     */
+    export function sized(size: number, f?: (c: PIXI.Container) => void): PIXI.Container {
+        const con = new PIXI.Container();
+        f?.(con);
+
+        con.width = size;
+        con.height = size;
+        return con;
+    }
+
+    /**
+     * Creates a box (which appears in tiles such as outlet and goal)
+     * @param textures reference to the textures
+     * @returns the box, and the inner value designating the size of the box without outline
+     */
+    export function box(textures: Atlas): [box: PIXI.Sprite, inner: number] {
+        const box = new PIXI.Sprite(textures["t_box.png"]);
+        return [
+            box, box.width - 10
+        ]
+    }
+
+    /**
+     * Reposition a sprite so that it rotates around the center of the sprite 
+     * and will appear correctly in a container.
+     * 
+     * Though, if the position is different than (0, 0) on a container, this doesn't really work.
+     * @param sprite Sprite to reposition
+     */
+    function pivotCenter(sprite: PIXI.Sprite) {
+        const [cx, cy] = [sprite.width / 2, sprite.height / 2];
+
+        sprite.pivot.set(cx, cy);
+        sprite.position.set(cx, cy);
+    }
+
+    /**
+     * Creates an active side indicator.
+     * @param textures reference to the textures
+     * @param d Direction the indicator points
+     * @returns the sprite holding the indicator
+     */
+    export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["s_active.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = -90 * d;
+
+        return sprite;
+    }
+
+    /**
+     * Creates a passive side indicator.
+     * @param textures reference to the textures
+     * @param d Direction the indicator points
+     * @returns the sprite holding the indicator
+     */
+    export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["s_passive.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = -90 * d;
+
+        return sprite;
+    }
+
+    const SYM_GAP = 1;
+
+    /**
+     * Creates a sequence of symbols from a given symbol (e.g. circle, plus) and colors
+     * @param clrs Colors of the symbols
+     * @param bounds Center and size of the box these symbols need to be placed in
+     * @param symbol The symbol generator to create the symbol
+     * @returns 
+     */
+    export function symbolSet(
+        clrs: readonly Color[], 
+        bounds: [center: [number, number], size: number], 
+        symbol: (cx: number, cy: number, s: number, clr: Color, graphics: PIXI.Graphics) => PIXI.Graphics
+    ): PIXI.Graphics {
+        const [boundsCenter, boundsSize] = bounds;
+        
+        const n = clrs.length;
+        const rowN = Math.ceil(Math.sqrt(n));
+
+        const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
+        const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
+
+        const graphics = new PIXI.Graphics();
+        
+
+        for (let i = 0; i < n; i++) {
+            let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
+            let [centerX, centerY] = [
+                originX + SYM_GAP + cellX * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
+                originY + SYM_GAP + cellY * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
+            ]
+            
+            symbol(
+                centerX, 
+                centerY, 
+                cellSize, 
+                clrs[i],
+                graphics
+            );
+        }
+
+        return graphics;
+    }
+
+    /**
+     * Creates a painter symbol sprite
+     * @param textures reference to textures
+     * @param c Color of the painter
+     * @returns the sprite
+     */
+    export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
+        sprite.tint = Palette.Train[c];
+        return sprite;
+    }
+
+    /**
+     * Creates a splitter symbol sprite
+     * @param textures reference to textures
+     * @param d Direction of the splitter symbol
+     * @returns the sprite
+     */
+    export function splitterSymbol(textures: Atlas, d: Dir): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["t_splitter.png"]);
+
+        pivotCenter(sprite);
+        sprite.angle = 180 - 90 * d;
+
+        return sprite;
+    }
+
+    /**
+     * Creates a rock sprite
+     * @param textures reference to textures
+     * @returns the sprite
+     */
+    export function rock(textures: Atlas): PIXI.Sprite { // TODO
+        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
+        
+        pivotCenter(sprite);
+        sprite.angle = 180;
+
+        return sprite;
+    }
+
+    /**
+     * Creates a SINGLE rail sprite
+     * @param textures reference to textures
+     * @param entrances the TWO entrances for the rail
+     * @returns the sprite
+     */
+    export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
+        let [e1, e2] = entrances;
+
+        let straight = !((e1 - e2) % 2);
+        
+        let sprite = new PIXI.Sprite(textures[straight ? "rail.png" : "rail2.png"]);
+        if (straight) {
+            sprite.angle = -90 * e1;
+        } else {
+            let d = ((e2 - e1) % 4 + 4) % 4;
+            if (d == 1) {
+                // difference of 1 means e1 is left of e2
+                sprite.angle = -90 * e1;
+            } else { // d == 3
+                // difference of 3 means e2 is left of e1
+                sprite.angle = -90 * e2;
+            }
+        }
+
+        pivotCenter(sprite);
+        return sprite;
+    }
+
+    /**
+     * Creates a hover indicator sprite
+     * @param textures reference to the textures
+     * @returns the sprite
+     */
+    export function hoverIndicator(textures: Atlas): PIXI.Sprite {
+        const sprite = new PIXI.Sprite(textures["hover.png"]);
+
+        pivotCenter(sprite);
+        return sprite;
+    }
+}
+
+/**
  A class which holds a grid of the current tiles on board.
  */
 export class TileGrid implements Serializable {
@@ -893,139 +1095,6 @@ export class TileGrid implements Serializable {
 
     static parse(s: string) {
         return TileGrid.fromJSON(JSON.parse(s));
-    }
-}
-
-namespace TileGraphics {
-    export function sized(size: number, f?: (c: PIXI.Container) => void): PIXI.Container {
-        const con = new PIXI.Container();
-        f?.(con);
-
-        con.width = size;
-        con.height = size;
-        return con;
-    }
-
-    export function box(textures: Atlas): [box: PIXI.Sprite, inner: number] {
-        const box = new PIXI.Sprite(textures["t_box.png"]);
-        return [
-            box, box.width - 10
-        ]
-    }
-
-    function pivotCenter(sprite: PIXI.Sprite) {
-        const [cx, cy] = [sprite.width / 2, sprite.height / 2];
-
-        sprite.pivot.set(cx, cy);
-        sprite.position.set(cx, cy);
-    }
-
-    export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
-        const sprite = new PIXI.Sprite(textures["s_active.png"]);
-
-        pivotCenter(sprite);
-        sprite.angle = -90 * d;
-
-        return sprite;
-    }
-
-    export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
-        const sprite = new PIXI.Sprite(textures["s_passive.png"]);
-
-        pivotCenter(sprite);
-        sprite.angle = -90 * d;
-
-        return sprite;
-    }
-
-    const SYM_GAP = 1;
-    export function symbolSet(
-        clrs: readonly Color[], 
-        bounds: [center: [number, number], size: number], 
-        symbol: (cx: number, cy: number, s: number, clr: Color, graphics: PIXI.Graphics) => PIXI.Graphics
-    ): PIXI.Graphics {
-        const [boundsCenter, boundsSize] = bounds;
-        
-        const n = clrs.length;
-        const rowN = Math.ceil(Math.sqrt(n));
-
-        const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
-        const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
-
-        const graphics = new PIXI.Graphics();
-        
-
-        for (let i = 0; i < n; i++) {
-            let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
-            let [centerX, centerY] = [
-                originX + SYM_GAP + cellX * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
-                originY + SYM_GAP + cellY * (cellSize + SYM_GAP) /* top left pixel in cell */ + cellSize / 2 /* shift to center */,
-            ]
-            
-            symbol(
-                centerX, 
-                centerY, 
-                cellSize, 
-                clrs[i],
-                graphics
-            );
-        }
-
-        return graphics;
-    }
-
-    export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
-        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
-        sprite.tint = Palette.Train[c];
-        return sprite;
-    }
-
-    export function splitterSymbol(textures: Atlas, d: Dir): PIXI.Sprite {
-        const sprite = new PIXI.Sprite(textures["t_splitter.png"]);
-
-        pivotCenter(sprite);
-        sprite.angle = 180 - 90 * d;
-
-        return sprite;
-    }
-
-    export function rock(textures: Atlas): PIXI.Sprite { // TODO
-        const sprite = new PIXI.Sprite(textures["t_painter.png"]);
-        
-        pivotCenter(sprite);
-        sprite.angle = 180;
-
-        return sprite;
-    }
-
-    export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
-        let [e1, e2] = entrances;
-
-        let straight = !((e1 - e2) % 2);
-        
-        let sprite = new PIXI.Sprite(textures[straight ? "rail.png" : "rail2.png"]);
-        if (straight) {
-            sprite.angle = -90 * e1;
-        } else {
-            let d = ((e2 - e1) % 4 + 4) % 4;
-            if (d == 1) {
-                // difference of 1 means e1 is left of e2
-                sprite.angle = -90 * e1;
-            } else { // d == 3
-                // difference of 3 means e2 is left of e1
-                sprite.angle = -90 * e2;
-            }
-        }
-
-        pivotCenter(sprite);
-        return sprite;
-    }
-
-    export function hoverIndicator(textures: Atlas): PIXI.Sprite {
-        const sprite = new PIXI.Sprite(textures["hover.png"]);
-
-        pivotCenter(sprite);
-        return sprite;
     }
 }
 
