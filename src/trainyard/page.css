@@ -96,10 +96,17 @@ button, .btn {
     border-radius: 3px;
     color: white;
     padding: 15px 0px;
-    text-align: center;
     font-size: 18px;
     font-family: 'Fira Sans', sans-serif;
+    text-align: center;
+    vertical-align: middle;
 }
+.btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 button:active {
     background-color: #343;
     border-color: #121;
@@ -135,5 +142,20 @@ body:not(.readonly-mode) #fail-display {
     display: none;
 }
 body.readonly-mode #mistake-controls {
+    display: none;
+}
+
+#fd-pass {
+    background-color: #131;
+    border-color: #020;
+}
+#fd-fail {
+    background-color: #311;
+    border-color: #200;
+}
+body.failed #fd-pass {
+    display: none;
+}
+body:not(.failed) #fd-fail {
     display: none;
 }

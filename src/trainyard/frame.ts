@@ -124,5 +124,10 @@ function applyButtons(grid: TileGrid) {
         document.body.classList.remove("readonly-mode");
         start.classList.remove("readonly-mode");
         start.textContent = "Start";
+        document.body.classList.remove("failed");
+    });
+
+    grid.on("fail", () => {
+        document.body.classList.add("failed");
     });
 }
