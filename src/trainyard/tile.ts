@@ -1228,22 +1228,8 @@ class GridCursor {
      * @param direction the direction
      * @returns the neighbor tile
      */
-        #neighbor(direction: Dir) {
+    neighbor(direction: Dir) {
         return this.#grid.tile(...Dir.shift(this.#pos, direction));
-    }
-
-    /**
-     * Push train into the neighbor that the train is expected to move into.
-     * @param train train to move
-     */
-    intoNeighbor(train: Train) {
-        const nb = this.#neighbor(train.dir);
-        
-        if (typeof nb !== "undefined") {
-            nb.accept(this.#grid, train);
-        } else {
-            this.#grid.fail();
-        }
     }
 
     /**
@@ -1292,7 +1278,11 @@ class TrainState {
     
             this.deployedTrains.set(preimage, image);
             for (let t of image) {
-                cur.intoNeighbor(t);
+                const nb = cur.neighbor(t.dir);
+                
+                if (nb?.accepts(t)) {
+                    nb.state!.trainState.#pendingTrains.push(t);
+                }
             }
         }
     }
@@ -1306,10 +1296,6 @@ class TrainState {
             this.deployOne(cur, f);
         }
     }
-
-    push(...t: Train[]) {
-        this.#pendingTrains.push(...t);
-    }
 }
 
 export abstract class Tile {
@@ -1319,11 +1305,12 @@ export abstract class Tile {
     readonly serChar: string = " ";
 
     /**
-     * Adds this train to the tile's train storage (if the train passes through an active side)
-     * @param train 
+     * Check if the specified train would be able to enter the tile.
+     * @param train
+     * @returns false
      */
-    accept(grid: TileGrid, train: Train): void {
-        grid.fail();
+    accepts(train: Train): this is StatefulTile {
+        return false;
     }
 
     /**
@@ -1387,16 +1374,12 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
     }
 
     /**
-     * Adds this train to the tile's train storage (if the train passes through an active side).
-     * Should only be called during simulation.
-     * @param train 
+     * Check if the specified train would be able to enter the tile.
+     * @param train
+     * @returns true if the train can enter
      */
-    accept(grid: TileGrid, train: Train): void {
-        if (this.actives.has(Dir.flip(train.dir))) {
-            this.state!.trainState.push(train);
-        } else {
-            grid.fail();
-        }
+    accepts(train: Train) {
+        return this.actives.has(Dir.flip(train.dir));
     }
 
     /**
