@@ -599,17 +599,23 @@ export class TileGrid implements Serializable {
         }
     }
 
+    #prestep() {
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.state!.trainState.prestep();
+        }
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.state!.trainState.deployedTrains.clear();
+        }
+    }
     /**
      * Iterate one step through the board.
      */
     step() {
         this.initSim();
+        this.#prestep();
 
-        for (let [_, tile] of this.#statefulTiles()) {
-            tile.prestep();
-        }
         for (let [pos, tile] of this.#statefulTiles()) {
-            if (tile.state!.trains.length > 0) {
+            if (tile.state!.trainState.length > 0) {
                 tile.step(new GridCursor(this, pos));
             }
         }
@@ -1252,6 +1258,60 @@ class GridCursor {
     }
 }
 
+class TrainState {
+    /**
+     * A list of the trains currently on the tile.
+     */
+    #trains: Train[];
+
+    /**
+     * A list of trains that will be on the tile in the next step.
+     */
+    #pendingTrains: Train[] = [];
+
+    deployedTrains: Map<Train, Train[]> = new Map();
+
+    constructor(iter: Iterable<Train> = []) {
+        this.#trains = Array.from(iter);
+    }
+
+    get length() {
+        return this.#trains.length;
+    }
+
+    prestep() {
+        // do train collapsing here
+        this.#trains.push(...this.#pendingTrains);
+        this.#pendingTrains = [];
+    }
+
+    #send(cur: GridCursor, preimage?: Train, f?: (t: Train) => void | Train | Train[]) {
+        if (preimage) {
+            let image = f ? (f(preimage) ?? []) : [preimage];
+            if (!(image instanceof Array)) image = [image];
+    
+            this.deployedTrains.set(preimage, image);
+            for (let t of image) {
+                cur.intoNeighbor(t);
+            }
+        }
+    }
+
+    deployOne(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
+        this.#send(cur, this.#trains.shift(), f);
+    }
+    
+    deployAll(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
+        while (this.#trains.length > 0) {
+            this.deployOne(cur, f);
+        }
+    }
+
+    push(...t: Train[]) {
+        this.#pendingTrains.push(...t);
+    }
+}
+
 export abstract class Tile {
     /**
      * Char this is represented with during serialization. If not serialized, serChar is " ".
@@ -1276,14 +1336,9 @@ export abstract class Tile {
 
 type TileState = {
     /**
-     * A list of the trains currently on the tile.
+     * The state of trains of the tile at the current step
      */
-    trains: Train[];
-    
-    /**
-     * A list of trains that will be on the tile in the next step.
-     */
-    waitingTrains: Train[];
+    trainState: TrainState;
 }
 
 export abstract class StatefulTile<S extends TileState = TileState> extends Tile {
@@ -1314,8 +1369,7 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      */
     createDefaultState(this: StatefulTile<TileState>): TileState {
         return {
-            trains: [],
-            waitingTrains: []
+            trainState: new TrainState(),
         };
     }
 
@@ -1339,20 +1393,10 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      */
     accept(grid: TileGrid, train: Train): void {
         if (this.actives.has(Dir.flip(train.dir))) {
-            this.state!.waitingTrains.push(train);
+            this.state!.trainState.push(train);
         } else {
             grid.fail();
         }
-    }
-
-    /**
-     * The tile grid performs `prestep` for every tile before calling `step` of any tile.
-     */
-    prestep() {
-        const state = this.state!;
-
-        state.trains.push(...state.waitingTrains);
-        state.waitingTrains = [];
     }
 
     /**
@@ -1387,18 +1431,19 @@ export namespace Tile {
             this.colors = colors;
         }
 
-        createState(): TileState {
+        createState() {
             const {colors, out} = this;
             
             return {
-                ...this.createDefaultState(),
-                trains: Array.from(colors, color => ({color, dir: out}))
+                trainState: new TrainState(
+                    Array.from(colors, color => ({color, dir: out}))
+                )
             };
         }
 
         step(cur: GridCursor): void {
             // While the outlet has trains, deploy one.
-            cur.intoNeighbor(this.state!.trains.shift()!);
+            this.state!.trainState.deployOne(cur);
             const symbols = cur.container().getChildByName("symbols", false) as PIXI.Container;
             symbols.removeChildAt(0).destroy({children: true});
         }
@@ -1460,10 +1505,9 @@ export namespace Tile {
         }
 
         step(cur: GridCursor): void {
-            let {remaining, trains} = this.state!;
-            this.state!.trains = [];
+            let {remaining, trainState} = this.state!;
 
-            for (let train of trains) {
+            trainState.deployAll(cur, train => {
                 let i = remaining.indexOf(train.color);
                 if (i != -1) {
                     remaining.splice(i, 1);
@@ -1472,7 +1516,7 @@ export namespace Tile {
                 } else {
                     cur.fail();
                 }
-            }
+            });
         }
     
         toJSON() {
@@ -1523,13 +1567,14 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             // Paint the train and output it.
-            let train = this.state!.trains.shift()!;
-            // Get the output direction.
-            let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
-
-            cur.intoNeighbor({
-                color: this.color,
-                dir: outDir
+            this.state!.trainState.deployAll(cur, train => {
+                // Get the output direction.
+                let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
+    
+                return {
+                    color: this.color,
+                    dir: outDir
+                };
             });
         }
         
@@ -1587,17 +1632,16 @@ export namespace Tile {
         }
 
         step(cur: GridCursor): void {
-            let train = this.state!.trains.shift()!;
-    
-            let [ldir, rdir] = this.sides;
-    
-            // Split train's colors, pass the new trains through the two passive sides.
-            let [lclr, rclr] = Color.split(train.color);
-            cur.intoNeighbor({
-                color: lclr, dir: ldir
-            });
-            cur.intoNeighbor({
-                color: rclr, dir: rdir
+            const [ldir, rdir] = this.sides;
+
+            this.state!.trainState.deployAll(cur, train => {
+                // Split train's colors, pass the new trains through the two passive sides.
+                const [lclr, rclr] = Color.split(train.color);
+
+                return [
+                    { color: lclr, dir: ldir },
+                    { color: rclr, dir: rdir }
+                ];
             });
         }
 
@@ -1654,19 +1698,7 @@ export namespace Tile {
         }
     
         step(cur: GridCursor): void {
-            let {trains} = this.state!;
-            this.state!.trains = [];
-    
-            // Figure out where all the trains are leaving
-            let destTrains = trains
-                .map(this.redirect.bind(this))
-                .filter(t => typeof t !== "undefined") as Train[];
-            
-            // Merge exits and dispatch
-            for (let t of Rail.collapseTrains(destTrains)) {
-                cur.intoNeighbor(t);
-            }
-
+            this.state!.trainState.deployAll(cur, this.redirect.bind(this));
             this.updateContainer(cur);
         }
     
