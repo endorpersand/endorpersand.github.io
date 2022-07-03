@@ -32,6 +32,14 @@ type Action = {
     cellPos: [x: number, y: number];
 };
 
+type GridConChildren = Partial<{
+    /**
+     * Container that holds all the cells
+     */
+    cells: PIXI.Container,
+    trains: PIXI.Container
+}>;
+
 function arrEq<T extends unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((x, i) => x === arr2[i]);
@@ -356,11 +364,11 @@ export class TileGrid implements Serializable {
     /**
      * Cache for this.container
      */
-    #c_container: PIXI.Container | undefined;
+    #c_container?: PIXI.Container;
     /**
-     * Cache for the container that holds the tile containers
+     * Cache that holds other useful containers inside the main one
      */
-    #c_tcells: PIXI.Container | undefined;
+    #c_cchildren: GridConChildren = {};
     
     /**
      * Object references coming from PIXI
@@ -418,16 +426,11 @@ export class TileGrid implements Serializable {
      * The PIXI container for this TileGrid
      */
     get container(): PIXI.Container {
-        if (!this.#c_container) {
-            this.#c_container = this.#renderContainer();
-        }
-        
-        return this.#c_container;
+        return this.#c_container ??= this.#renderContainer();
     }
 
-    get tileCells(): PIXI.Container {
-        this.container;
-        return this.#c_tcells!;
+    childContainer(t: keyof GridConChildren) {
+        return (this.#c_cchildren[t] ??= this.container.getChildByName(t, false) as PIXI.Container);
     }
 
     /**
@@ -451,7 +454,7 @@ export class TileGrid implements Serializable {
         if (this.#c_container) {
             this.#c_container.destroy({children: true});
             this.#c_container = this.#renderContainer();
-            this.#c_tcells = this.#c_container.getChildByName("cells", false) as PIXI.Container;
+            this.#c_cchildren = {};
         }
     }
 
@@ -621,6 +624,11 @@ export class TileGrid implements Serializable {
             this.rerenderTileInContainer(...pos);
         }
 
+        const trainCon = this.childContainer("trains");
+        while (trainCon.children[0]) {
+            trainCon.removeChild(trainCon.children[0]).destroy({children: true});
+        }
+
         this.simulating = false;
     }
 
@@ -716,8 +724,11 @@ export class TileGrid implements Serializable {
                     );
                 }
             }
-            this.#c_tcells = cellCon;
             con.addChild(cellCon);
+
+            const trainCon = new PIXI.Container();
+            trainCon.name = "trains";
+            con.addChild(trainCon);
 
             con.interactive = true;
             this.#applyPointerEvents(con);
@@ -734,7 +745,7 @@ export class TileGrid implements Serializable {
     tileContainer(x: number, y: number) {
         this.assertInBounds(x, y);
 
-        const cells = this.tileCells;
+        const cells = this.childContainer("cells");
         return cells.getChildAt(y * this.cellLength + x) as PIXI.Container;
     }
 
@@ -747,7 +758,7 @@ export class TileGrid implements Serializable {
         this.assertInBounds(x, y);
 
         if (this.#c_container) {
-            const cells = this.tileCells;
+            const cells = this.childContainer("cells");
             const index = y * this.cellLength + x;
 
             const {x: lx, y: ly} = cells.getChildAt(index).position;
