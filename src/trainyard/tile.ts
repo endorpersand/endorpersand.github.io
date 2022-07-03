@@ -9,6 +9,11 @@ type EditMode =
     | "rail"      // Active while solving. You can only draw rails.
     | "railErase" // Active while solving (while erasing). You can only erase rails.
     | "select"    // Active while level editing. Allows you to select and edit tiles.
+type Event =
+    | `exit${Capitalize<EditMode>}`
+    | `enter${Capitalize<EditMode>}`
+    | "fail"
+    | "win"
 
 type Action = {
     /**
@@ -30,6 +35,9 @@ type Action = {
 function arrEq<T extends unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((x, i) => x === arr2[i]);
+}
+function capitalize<S extends string>(str: S): Capitalize<S> {
+    return str.charAt(0).toUpperCase() + str.slice(1) as any;
 }
 
 interface Serializable<J = any> {
@@ -365,13 +373,9 @@ export class TileGrid implements Serializable {
     #editMode: EditMode = "rail";
 
     /**
-     * Map keeping track of which listeners to trigger on entering an edit mode
+     * Map keeping track of listeners listening to an event
      */
-    #emEnterListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
-    /**
-     * Map keeping track of which listeners to trigger on exiting an edit mode
-     */
-    #emExitListeners: Partial<{[E in EditMode]: Array<() => void>}> = {}
+    #eventListeners: Partial<{[E in Event]: Array<() => void>}> = {}
 
     /**
      * Stack keeping track of all the past actions (allowing for undoing)
@@ -402,10 +406,10 @@ export class TileGrid implements Serializable {
 
         this.pixi = pixi;
 
-        this.onEnterEditMode("readonly", () => {
+        this.on("enterReadonly", () => {
             this.initSim();
         });
-        this.onExitEditMode("readonly", () => {
+        this.on("exitReadonly", () => {
             this.exitSim();
         });
     }
@@ -454,15 +458,14 @@ export class TileGrid implements Serializable {
     get editMode(): EditMode { return this.#editMode; }
     set editMode(em: EditMode) {
         if (this.#editMode !== em) {
-            const exitListeners = this.#emExitListeners[this.#editMode] ??= [];
-            for (let f of exitListeners) f();
-
+            this.#dispatchEvent(`exit${capitalize(this.#editMode)}`);
+            
             this.#editMode = em;
-
-            const enterListeners = this.#emEnterListeners[em] ??= [];
-            for (let f of enterListeners) f();
+            
+            this.#dispatchEvent(`enter${capitalize(em)}`);
         }
     }
+
     /**
      * Determine if tile at specified position is in bounds
      * @param x cell x
@@ -623,6 +626,7 @@ export class TileGrid implements Serializable {
 
     fail() {
         this.passing = false;
+        this.#dispatchEvent("fail");
     }
 
     /**
@@ -1009,23 +1013,23 @@ export class TileGrid implements Serializable {
     }
     
     /**
-     * Add a handler to apply effects when tile grid switches to the specified edit mode
-     * @param em specified edit mode
-     * @param handler handler to apply effects
+     * Add a handler for when an event occurs
+     * @param event
+     * @param handler
      */
-    onEnterEditMode(em: EditMode, handler: () => void) {
-        const listeners = this.#emEnterListeners[em] ??= [];
+    on(event: Event, handler: () => void) {
+        const listeners = this.#eventListeners[event] ??= [];
         listeners.push(handler);
     }
-    
+
     /**
-     * Add a handler to apply effects when tile grid exits the specified edit mode
-     * @param em specified edit mode
-     * @param handler handler to apply effects
+     * Call all the event handlers for this event
+     * @param e event
      */
-    onExitEditMode(em: EditMode, handler: () => void) {
-        const listeners = this.#emExitListeners[em] ??= [];
-        listeners.push(handler);
+    #dispatchEvent(e: Event) {
+        const listeners = this.#eventListeners[e] ??= [];
+
+        for (let f of listeners) f();
     }
 
     /**

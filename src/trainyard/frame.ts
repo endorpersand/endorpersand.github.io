@@ -58,7 +58,6 @@ function setup() {
 
     const tgc = tg.container;
     tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
-    
     app.stage.addChild(tgc);
     applyButtons(tg);
 };
@@ -101,26 +100,26 @@ function applyButtons(grid: TileGrid) {
         grid.step();
     });
 
-    grid.onEnterEditMode("railErase", () => {
+    grid.on("enterRailErase", () => {
         // enable erase mode
         document.body.classList.add("erase-mode");
         erase.classList.add("erase-mode");
         erase.textContent = "Stop Erasing";
     });
-    grid.onExitEditMode("railErase", () => {
+    grid.on("exitRailErase", () => {
         // reset erase mode
         document.body.classList.remove("erase-mode");
         erase.classList.remove("erase-mode");
         erase.textContent = "Erase";
     });
 
-    grid.onEnterEditMode("readonly", () => {
+    grid.on("enterReadonly", () => {
         // set readonly mode active
         document.body.classList.add("readonly-mode");
         start.classList.add("readonly-mode");
         start.textContent = "Return";
     });
-    grid.onExitEditMode("readonly", () => {
+    grid.on("exitReadonly", () => {
         // reset readonly mode
         document.body.classList.remove("readonly-mode");
         start.classList.remove("readonly-mode");
