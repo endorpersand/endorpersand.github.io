@@ -18,7 +18,52 @@
         "Rainbow": null,
         "Innie Outie": null,
         "Around the Back": null,
-        "Multicolor": null,
+        "Multicolor": {
+            "board": [
+                "   +   ",
+                "       ",
+                "       ",
+                "+  o  +",
+                "       ",
+                "       ",
+                "   +   "
+            ],
+            "tiles": {
+                "3": {
+                    "out": 3,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "21": {
+                    "out": 0,
+                    "colors": [
+                        "Green"
+                    ]
+                },
+                "24": {
+                    "targets": [
+                        "Green",
+                        "Blue",
+                        "Red",
+                        "Yellow"
+                    ],
+                    "actives": 15
+                },
+                "27": {
+                    "out": 2,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "45": {
+                    "out": 1,
+                    "colors": [
+                        "Red"
+                    ]
+                }
+            }
+        },
         "Squiggle": null,
         "Two Two": null,
         "Crossover": null
