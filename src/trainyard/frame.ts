@@ -94,10 +94,11 @@ function applyButtons(grid: TileGrid) {
 
         if (em !== "readonly") {
             grid.editMode = "readonly";
+        } else {
+            grid.step();
         }
 
         slider.value = "0";
-        grid.step();
     });
 
     grid.on("enterRailErase", () => {
