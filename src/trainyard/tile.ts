@@ -1926,15 +1926,17 @@ export namespace Tile {
         redirect(t: Train): Train | undefined {
             let {color, dir} = t;
             let enterDir = Dir.flip(dir);
+            const state = this.state!;
     
             // Find which path the train is on. Pass the train onto the other side of the path.
-            let rails = this.paths
+            let rails = [state.topIndex, 1 - state.topIndex]
+                .map(i => this.paths[i])
                 .filter(r => r.has(enterDir));
     
             if (rails.length > 0) {
                 // If the double rail merges at a point, then the primary and secondary rails swap.
                 if (this.#overlapping) {
-                    this.state!.topIndex += (this.state!.topIndex + 1) % 2;
+                    state.topIndex = 1 - state.topIndex as 0 | 1;
                 }
                 return { color, dir: rails[0].dirExcluding(enterDir) };
             }
