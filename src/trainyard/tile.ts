@@ -599,9 +599,9 @@ export class TileGrid implements Serializable {
         }
     }
 
-    #prestep() {
+    #finalizeStep() {
         for (let [_, tile] of this.#statefulTiles()) {
-            tile.state!.trainState.prestep();
+            tile.state!.trainState.finalize();
         }
         for (let [_, tile] of this.#statefulTiles()) {
             tile.state!.trainState.deployedTrains.clear();
@@ -612,13 +612,14 @@ export class TileGrid implements Serializable {
      */
     step() {
         this.initSim();
-        this.#prestep();
 
         for (let [pos, tile] of this.#statefulTiles()) {
             if (tile.state!.trainState.length > 0) {
                 tile.step(new GridCursor(this, pos));
             }
         }
+
+        this.#finalizeStep();
     }
 
     /**
@@ -1265,7 +1266,10 @@ class TrainState {
         return this.#trains.length;
     }
 
-    prestep() {
+    /**
+     * After all the steps have been computed, this should be called.
+     */
+     finalize() {
         // do train collapsing here
         this.#trains.push(...this.#pendingTrains);
         this.#pendingTrains = [];
