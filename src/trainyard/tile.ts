@@ -1244,6 +1244,10 @@ class GridCursor {
     }
 }
 
+type TrainStateOptions = Partial<{
+    collapseTrains: boolean
+}>;
+
 class TrainState {
     /**
      * A list of the trains currently on the tile.
@@ -1257,8 +1261,15 @@ class TrainState {
 
     deployedTrains: Map<Train, Train[]> = new Map();
 
-    constructor(iter: Iterable<Train> = []) {
+    /**
+     * Do trains merge together in the prestep?
+     */
+    doTrainsCollapse: boolean;
+
+    constructor(iter: Iterable<Train> = [], options: TrainStateOptions = {}) {
         this.#trains = Array.from(iter);
+
+        this.doTrainsCollapse = options.collapseTrains ?? true;
     }
 
     get length() {
@@ -1269,6 +1280,26 @@ class TrainState {
         // do train collapsing here
         this.#trains.push(...this.#pendingTrains);
         this.#pendingTrains = [];
+
+        if (this.doTrainsCollapse) {
+            this.#trains = TrainState.#collapseTrains(this.#trains);
+        }
+    }
+
+    /**
+     * Combine trains into one expected output
+     * @param trains trains, uncombined
+     * @returns the combined trains
+     */
+    static #collapseTrains(trains: readonly Train[]) {
+        // merge all the colors of all the trains
+        let color = Color.mixMany(trains.map(t => t.color));
+
+        // get all train destinations
+        let dest = new Set(trains.map(t => t.dir));
+
+        // create one train per dest.
+        return Array.from(dest, dir => ({color, dir}));
     }
 
     #send(cur: GridCursor, preimage?: Train, f?: (t: Train) => void | Train | Train[]) {
@@ -1684,23 +1715,7 @@ export namespace Tile {
             this.state!.trainState.deployAll(cur, this.redirect.bind(this));
             this.updateContainer(cur);
         }
-    
-        /**
-         * Combine trains into one expected output
-         * @param trains trains, uncombined
-         * @returns the combined trains
-         */
-        static collapseTrains(trains: Train[]) {
-            // merge all the colors of all the trains going through the rail
-            let color = Color.mixMany(trains.map(t => t.color));
-    
-            // get all train destinations
-            let dest = new Set(trains.map(t => t.dir));
-    
-            // create one train per dest.
-            return [...dest].map(dir => ({color, dir}));
-        }
-    
+
         /**
          * Create a new rail from two single rails.
          * If they are the same rail, return a SingleRail, else create a joined DoubleRail.
