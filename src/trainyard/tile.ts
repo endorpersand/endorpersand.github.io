@@ -1419,7 +1419,7 @@ class TrainState {
     
     /**
      * Take out every train from the list of trains and send them to neighboring tiles.
-     * @param cur current curor
+     * @param cur current cursor
      * @param f  a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
      */
