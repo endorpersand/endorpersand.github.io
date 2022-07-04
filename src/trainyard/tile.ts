@@ -332,6 +332,15 @@ namespace TileGraphics {
         pivotCenter(sprite);
         return sprite;
     }
+
+    export function train(renderer: PIXI.AbstractRenderer) {
+        const graphics = new PIXI.Graphics()
+            .beginFill(0xFFFFFF)
+            .drawCircle(16, 16, 16);
+        
+        return new PIXI.Sprite(createRenderTexture(renderer, graphics, 32));
+    }
+
 }
 
 type PIXIData = {
@@ -389,6 +398,12 @@ export class TileGrid implements Serializable {
      * Stack keeping track of all the past actions (allowing for undoing)
      */
     #actionStack: Action[] = [];
+
+    /**
+     * A mapping keeping track of references of trains to their designated sprite on the stage.
+     * As steps occur, the train reference is replaced.
+     */
+    trainBodies: Map<Train, PIXI.Sprite> = new Map();
 
     /**
      * How many pixels separate each tile
@@ -590,8 +605,11 @@ export class TileGrid implements Serializable {
      */
     initSim() {
         if (!this.simulating) {
-            for (let [_, tile] of this.#statefulTiles()) {
+            for (let [pos, tile] of this.#statefulTiles()) {
                 tile.initState();
+                for (let t of tile.state!.trainState.trains) {
+                    this.#createBody(pos, t);
+                }
             }
     
             this.simulating = true;
@@ -599,14 +617,6 @@ export class TileGrid implements Serializable {
         }
     }
 
-    #finalizeStep() {
-        for (let [_, tile] of this.#statefulTiles()) {
-            tile.state!.trainState.finalize();
-        }
-        for (let [_, tile] of this.#statefulTiles()) {
-            tile.state!.trainState.deployedTrains.clear();
-        }
-    }
     /**
      * Iterate one step through the board.
      */
@@ -620,6 +630,81 @@ export class TileGrid implements Serializable {
         }
 
         this.#finalizeStep();
+    }
+
+    /**
+     * Run everything to complete the step.
+     */
+     #finalizeStep() {
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.state!.trainState.finalize();
+        }
+        for (let [pos, tile] of this.#statefulTiles()) {
+            this.#moveBodies(pos, tile.state!.trainState.deployedTrains);
+        }
+    }
+
+    /**
+     * Given the original position of a tile and a mapping from each train reference 
+     * from the tile into a list of the new train references that were deployed from that train,
+     * update the trainBodies field.
+     * @param preImagePos original cell position
+     * @param moves deployments
+     */
+    #moveBodies(preImagePos: [number, number], moves: Map<Train, Train[]>) {
+        const trainCon = this.childContainer("trains");
+
+        for (let [preimage, images] of moves) {
+            // pop trainBody
+            const trainBody = this.trainBodies.get(preimage);
+            this.trainBodies.delete(preimage);
+
+            if (trainBody) {
+                if (images.length == 0) {
+                    // trainBody should no longer exist. kill it.
+                    trainCon.removeChild(trainBody).destroy();
+                    continue;
+                }
+                
+                // assign trainBody to new train
+                let ref = images.shift()!;
+                this.trainBodies.set(ref, trainBody);
+                this.#redressBody(trainBody, Dir.shift(preImagePos, ref.dir), ref);
+            }
+
+            // create new bodies for the rest of the trains:
+            for (let t of images) {
+                this.#createBody(Dir.shift(preImagePos, t.dir), t);
+            }
+        }
+        moves.clear();
+    }
+
+    /**
+     * Fix the body's position, color, and direction
+     * @param body train sprite
+     * @param pos cell position
+     * @param param2 train data
+     */
+    #redressBody(body: PIXI.Sprite, pos: [number, number], {color, dir}: Train) {
+        body.position = this.cellToPosition(pos);
+        body.tint = Palette.Train[color];
+    }
+
+    /**
+     * Make a new sprite for a train and register it into trainBodies and the stage
+     * @param pos cell position
+     * @param t new train
+     * @returns the sprite
+     */
+    #createBody(pos: [number, number], t: Train) {
+        const body = TileGraphics.train(this.pixi.renderer);
+        const trainCon = this.childContainer("trains");
+        this.#redressBody(body, pos, t);
+        trainCon.addChild(body);
+        this.trainBodies.set(t, body);
+
+        return body;
     }
 
     /**
@@ -645,7 +730,7 @@ export class TileGrid implements Serializable {
     }
 
     /**
-     * Takes a pixel {x, y} pair and converts it into a cell [x, y] pair
+     * Takes a pixel position and converts it into a cell position
      * @param param0 pixel coordinates
      * @returns cell coordinates
      */
@@ -658,7 +743,26 @@ export class TileGrid implements Serializable {
             Math.max(0, Math.min(cy, this.cellLength - 1))
         ];
     }
-    
+
+    /**
+     * Takes a cell [x, y] pair and converts it into a pixel position.
+     * By default, this will point to the top left pixel of the tile, 
+     * but a shift parameter can be added to translate the pixel point.
+     * @param param0 cell coordinates
+     * @param shift a translation factor. note that [cellSize - 1, cellSize - 1] points to the bottom right of the tile.
+     * @returns 
+     */
+    cellToPosition([x, y]: [cellX: number, cellY: number], shift: [number, number] = [0, 0]): PIXI.IPointData {
+        const TILE_GAP = TileGrid.TILE_GAP;
+        const DELTA = this.cellSize + TILE_GAP;
+
+        const [dx, dy] = shift;
+        return {
+            x: TILE_GAP + DELTA * x + dx,
+            y: TILE_GAP + DELTA * y + dy,
+        };
+    }
+
     /**
      * Check if rails can be placed on this type of tile
      * @param t tile (`undefined` represents an OOB tile)
@@ -1252,10 +1356,14 @@ class TrainState {
     #trains: Train[];
 
     /**
-     * A list of trains that will be on the tile in the next step.
+     * A list of trains that will be on the tile after all step computations are complete.
      */
     #pendingTrains: Train[] = [];
 
+    /**
+     * A mapping keeping track of which trains moved to where during the step calculation.
+     * It is used during finalization to move train sprites on the stage.
+     */
     deployedTrains: Map<Train, Train[]> = new Map();
 
     constructor(iter: Iterable<Train> = []) {
@@ -1266,10 +1374,14 @@ class TrainState {
         return this.#trains.length;
     }
 
+    get trains(): readonly Train[] {
+        return this.#trains;
+    }
+    
     /**
      * After all the steps have been computed, this should be called.
      */
-     finalize() {
+    finalize() {
         // do train collapsing here
         this.#trains.push(...this.#pendingTrains);
         this.#pendingTrains = [];
@@ -1280,21 +1392,37 @@ class TrainState {
             let image = f ? (f(preimage) ?? []) : [preimage];
             if (!(image instanceof Array)) image = [image];
     
-            this.deployedTrains.set(preimage, image);
+            let deployedImages = [];
             for (let t of image) {
                 const nb = cur.neighbor(t.dir);
                 
                 if (nb?.accepts(t)) {
                     nb.state!.trainState.#pendingTrains.push(t);
+                    deployedImages.push(t);
+                } else {
+                    cur.fail();
                 }
             }
+            this.deployedTrains.set(preimage, deployedImages);
         }
     }
 
+    /**
+     * Take out one train from the list of trains and send it to a neighboring tile.
+     * @param cur current cursor
+     * @param f a function which modifies how the train exits the tile.
+     *     The direction of the train designates which neighbor the train goes to.
+     */
     deployOne(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
         this.#send(cur, this.#trains.shift(), f);
     }
     
+    /**
+     * Take out every train from the list of trains and send them to neighboring tiles.
+     * @param cur current curor
+     * @param f  a function which modifies how the train exits the tile.
+     *     The direction of the train designates which neighbor the train goes to.
+     */
     deployAll(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
         while (this.#trains.length > 0) {
             this.deployOne(cur, f);
