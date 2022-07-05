@@ -1349,6 +1349,10 @@ class GridCursor {
     }
 }
 
+type TrainStateOptions = Partial<{
+    mergeTrains: boolean
+}>;
+
 class TrainState {
     /**
      * A list of the trains currently on the tile.
@@ -1366,8 +1370,12 @@ class TrainState {
      */
     deployedTrains: Map<Train, Train[]> = new Map();
 
-    constructor(iter: Iterable<Train> = []) {
+    doTrainsMerge: boolean = true;
+
+    constructor(iter: Iterable<Train> = [], options: TrainStateOptions = {}) {
         this.#trains = Array.from(iter);
+
+        if (typeof options.mergeTrains !== "undefined") this.doTrainsMerge = options.mergeTrains;
     }
 
     get length() {
@@ -1387,24 +1395,48 @@ class TrainState {
         this.#pendingTrains = [];
     }
 
-    #send(cur: GridCursor, preimage?: Train, f?: (t: Train) => void | Train | Train[]) {
-        if (preimage) {
-            let image = f ? (f(preimage) ?? []) : [preimage];
-            if (!(image instanceof Array)) image = [image];
-    
-            let deployedImages = [];
-            for (let t of image) {
-                const nb = cur.neighbor(t.dir);
-                
-                if (nb?.accepts(t)) {
-                    nb.state!.trainState.#pendingTrains.push(t);
-                    deployedImages.push(t);
-                } else {
-                    cur.fail();
-                }
+    /**
+     * Take departuring trains and merge trains being deployed to the same place.
+     * @param trains trains, uncombined
+     * @returns the combined trains
+     */
+    static #mergeTrains(trains: Train[]): Train[] {
+        if (trains.length == 0) return trains;
+
+        // merge all the colors of all the trains going through the rail
+        let color = Color.mixMany(trains.map(t => t.color));
+
+        // get all train destinations
+        let dest = new Set(trains.map(t => t.dir));
+
+        // create one train per dest.
+        return Array.from(dest, dir => ({color, dir}));
+    }
+
+    #computeImage(preimage: Train, f?: (t: Train) => void | Train | Train[]): Train[] {
+        if (typeof f === "undefined") return [preimage];
+
+        let image = f(preimage) ?? [];
+        if (!(image instanceof Array)) image = [image];
+
+        return image;
+    }
+
+    #deployImage(cur: GridCursor, image: Train[]) {
+        let deployedImages = [];
+
+        for (let t of image) {
+            const nb = cur.neighbor(t.dir);
+            
+            if (nb?.accepts(t)) {
+                nb.state!.trainState.#pendingTrains.push(t);
+                deployedImages.push(t);
+            } else {
+                cur.fail();
             }
-            this.deployedTrains.set(preimage, deployedImages);
         }
+
+        return deployedImages;
     }
 
     /**
@@ -1414,7 +1446,16 @@ class TrainState {
      *     The direction of the train designates which neighbor the train goes to.
      */
     deployOne(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
-        this.#send(cur, this.#trains.shift(), f);
+        const preimage = this.#trains.shift()!;
+
+        if (preimage) {
+            // convert image result into Train[]
+            let image = this.#computeImage(preimage, f);
+    
+            this.deployedTrains.set(preimage,
+                this.#deployImage(cur, image)
+            );
+        }
     }
     
     /**
@@ -1424,9 +1465,47 @@ class TrainState {
      *     The direction of the train designates which neighbor the train goes to.
      */
     deployAll(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
-        while (this.#trains.length > 0) {
-            this.deployOne(cur, f);
+        // no merge is identical to this
+        if (!this.doTrainsMerge) {
+            while (this.#trains.length > 0) this.deployOne(cur, f);
+            return;
         }
+
+        // get image every preimage maps to
+        let images = this.#trains
+            .map(preimage => [preimage, this.#computeImage(preimage, f)] as [preimage: Train, image: Train[]]);
+
+        // merge the trains, there should be 1 train that exits per direction
+        console.log(images);
+        let mergedImage = TrainState.#mergeTrains(images.flatMap(([_, images]) => images));
+        let mimap = new Map(mergedImage.map(t => [t.dir, t]));
+
+        let assigned: Set<Dir> = new Set();
+        for (let [pre, t] of images) {
+            if (assigned.size == mergedImage.length) {
+                // everything has been assigned, so the train no longer exists
+                this.deployedTrains.set(pre, []);
+                continue;
+            }
+
+            // find the first direction that hasn't been assigned
+            let assignedDir = t.map(({dir}) => dir)
+                .find(d => !assigned.has(d));
+            
+                // if we find a direction, then assign the merged train
+                if (typeof assignedDir !== "undefined") {
+                    let image = [mimap.get(assignedDir)].filter((t): t is Train => typeof t !== "undefined");
+                    assigned.add(assignedDir);
+                    this.deployedTrains.set(pre, 
+                        this.#deployImage(cur, image)
+                    );
+            } else {
+                // if there no new direction, then it got merged, so we can throw it away
+                this.deployedTrains.set(pre, []);
+            }
+        }
+
+        this.#trains = [];
     }
 }
 
@@ -1815,22 +1894,6 @@ export namespace Tile {
         step(cur: GridCursor): void {
             this.state!.trainState.deployAll(cur, this.redirect.bind(this));
             this.updateContainer(cur);
-        }
-    
-        /**
-         * Combine trains into one expected output
-         * @param trains trains, uncombined
-         * @returns the combined trains
-         */
-        static collapseTrains(trains: Train[]) {
-            // merge all the colors of all the trains going through the rail
-            let color = Color.mixMany(trains.map(t => t.color));
-    
-            // get all train destinations
-            let dest = new Set(trains.map(t => t.dir));
-    
-            // create one train per dest.
-            return [...dest].map(dir => ({color, dir}));
         }
     
         /**

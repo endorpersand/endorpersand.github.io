@@ -21,13 +21,16 @@ export namespace Color {
      * @returns the resultant color
      */
     export function mix(a: Color, b: Color) {
+        a &= 0b1111;
+        b &= 0b1111;
+
         // C + C = C (for any color C)
         if (a === b) return a;
     
         // S + C = Brown (for any color C, any secondary color S)
         if ((a & 0b1000) || (b & 0b1000)) return Color.Brown;
     
-        return (0b1000 | a | b) & 0b1111 as Color;
+        return (0b1000 | a | b) as Color;
     }
 
     /**
