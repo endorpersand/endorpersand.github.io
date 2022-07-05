@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js'
 // @ts-ignore
 import assets from '../../static/*'
-import { Tile, TileGrid } from './tile';
+import { Tile, TileGrid } from './logic';
 import { Atlas, Color, Dir, Palette } from "./values";
 
 const loader = PIXI.Loader.shared,
