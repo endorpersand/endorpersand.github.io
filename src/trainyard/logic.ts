@@ -2,8 +2,8 @@ import { Atlas, Color, Dir, DirFlags, Palette, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 
-type Edge   = [c1: [number, number], c2: [number, number]];
-type Center = [center: [number, number], _: undefined];
+type Edge   = [c1: CellPos, c2: CellPos];
+type Center = [center: CellPos, _: undefined];
 type RailTouch = Edge | Center;
 type EditMode = 
     | "readonly"  // Active while a simulation. You cannot edit any tiles.
@@ -30,7 +30,7 @@ type Action = {
     /**
      * Cell position
      */
-    cellPos: [x: number, y: number];
+    cellPos: CellPos;
 };
 
 type GridConChildren = Partial<{
@@ -41,7 +41,10 @@ type GridConChildren = Partial<{
     trains: PIXI.Container
 }>;
 
-function arrEq<T extends unknown[]>(arr1: T, arr2: T): boolean {
+type CellPos = readonly [cellX: number, cellY: number]
+type PixelPos = readonly [pixX: number, pixY: number]
+
+function arrEq<T extends readonly unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((x, i) => x === arr2[i]);
 }
@@ -308,7 +311,7 @@ export class TileGrid implements Serializable {
                 let tile = this.tile(x, y)!;
 
                 if (tile instanceof StatefulTile) {
-                    yield [[x, y], tile] as [[number, number], StatefulTile];
+                    yield [[x, y], tile] as [CellPos, StatefulTile];
                 }
             }
         }
@@ -365,7 +368,7 @@ export class TileGrid implements Serializable {
      * @param preImagePos original cell position
      * @param moves deployments
      */
-    #moveBodies(preImagePos: [number, number], moves: Map<Train, Train[]>) {
+    #moveBodies(preImagePos: CellPos, moves: Map<Train, Train[]>) {
         const trainCon = this.childContainer("trains");
 
         for (let [preimage, images] of moves) {
@@ -400,7 +403,7 @@ export class TileGrid implements Serializable {
      * @param pos cell position
      * @param param2 train data
      */
-    #redressBody(body: PIXI.Sprite, pos: [number, number], {color, dir}: Train) {
+    #redressBody(body: PIXI.Sprite, pos: CellPos, {color, dir}: Train) {
         body.position = this.cellToPosition(pos);
         body.tint = Palette.Train[color];
     }
@@ -411,7 +414,7 @@ export class TileGrid implements Serializable {
      * @param t new train
      * @returns the sprite
      */
-    #createBody(pos: [number, number], t: Train) {
+    #createBody(pos: CellPos, t: Train) {
         const body = TileGraphics.train(this.pixi.renderer);
         const trainCon = this.childContainer("trains");
         this.#redressBody(body, pos, t);
@@ -448,7 +451,7 @@ export class TileGrid implements Serializable {
      * @param param0 pixel coordinates
      * @returns cell coordinates
      */
-    positionToCell({x, y}: PIXI.IPointData): [cellX: number, cellY: number] {
+    positionToCell({x, y}: PIXI.IPointData): CellPos {
         const DELTA = this.cellSize + TileGrid.TILE_GAP;
         let [cx, cy] = [Math.floor(x / DELTA), Math.floor(y / DELTA)];
 
@@ -466,7 +469,7 @@ export class TileGrid implements Serializable {
      * @param shift a translation factor. note that [cellSize - 1, cellSize - 1] points to the bottom right of the tile.
      * @returns 
      */
-    cellToPosition([x, y]: [cellX: number, cellY: number], shift: [number, number] = [0, 0]): PIXI.IPointData {
+    cellToPosition([x, y]: CellPos, shift: PixelPos = [0, 0]): PIXI.IPointData {
         const TILE_GAP = TileGrid.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
 
@@ -674,7 +677,7 @@ export class TileGrid implements Serializable {
             }
         });
 
-        let dbtTile: [number, number] | undefined;
+        let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
         const DBT_TIMEOUT_MS = 1000;
 
@@ -836,7 +839,7 @@ export class TileGrid implements Serializable {
      * Handles what happens when a tile is double tapped
      * @param dbtTile the tile that was double tapped
      */
-    #onDoubleTap(dbtTile: [number, number]) {
+    #onDoubleTap(dbtTile: CellPos) {
         if (this.#editMode === "rail") {
             // double tap to swap rails (on a double rail)
             this.replaceTile(...dbtTile, t => {
@@ -875,7 +878,7 @@ export class TileGrid implements Serializable {
      * @returns a direction, if near enough to an edge, 
      *     or undefined if close to the center or far away from the cell
      */
-    nearestEdge({x, y}: PIXI.IPointData, [cellX, cellY]: [x: number, y: number]): Dir | undefined {
+    nearestEdge({x, y}: PIXI.IPointData, [cellX, cellY]: CellPos): Dir | undefined {
         const TILE_GAP = TileGrid.TILE_GAP;
         const EDGE_THRESHOLD = this.cellSize * TileGrid.EDGE_THRESHOLD;
         const DELTA = this.cellSize + TILE_GAP;
@@ -905,14 +908,14 @@ export class TileGrid implements Serializable {
             return near[0];
         } else if (near.length > 1) {
             const [halfX, halfY] = [(minX + maxX) / 2, (minY + maxY) / 2];
-            let edges = [
+            let edges: PixelPos[] = [
                 [halfX, maxY], // right
                 [minX, halfY], // up
                 [halfX, minY], // left
                 [maxX, halfY], // down
             ];
 
-            let [nearestDir] = near.map(i => [i, edges[i]] as [Dir, [number, number]]) // map near into [index: edge] pair
+            let [nearestDir] = near.map(i => [i, edges[i]] as [Dir, PixelPos]) // map near into [index: edge] pair
                 .map(([i, [ex, ey]]) => [i, Math.hypot(x - ex, y - ey)] as [Dir, number]) // convert points into distances
                 .reduce(([ai, ad], [ci, cd]) => { // find minimum distance
                     if (ad > cd) {
@@ -937,9 +940,9 @@ export class TileGrid implements Serializable {
     findSharedCell(
         ptr1: RailTouch, 
         ptr2: RailTouch
-        ): [shared: [number, number], edge1: Dir | undefined, edge2: Dir | undefined] | undefined {
+        ): [shared: CellPos, edge1: Dir | undefined, edge2: Dir | undefined] | undefined {
             // find the shared cell
-            let match: [number, number] | undefined;
+            let match: CellPos | undefined;
             let others: [number, number] = [-1, -1]; // indexes of the values that aren't the shared cell
             for (let i = 0; i < 2; i++) {
                 const ci = ptr1[i];
@@ -1035,9 +1038,9 @@ export class TileGrid implements Serializable {
 
 class GridCursor {
     #grid: TileGrid;
-    #pos: readonly [number, number];
+    #pos: CellPos;
 
-    constructor(grid: TileGrid, pos: readonly [number, number]) {
+    constructor(grid: TileGrid, pos: CellPos) {
         this.#grid = grid;
         this.#pos = pos;
     }

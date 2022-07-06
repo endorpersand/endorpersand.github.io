@@ -100,7 +100,10 @@ export namespace Dir {
         return rotate(d, 2);
     }
 
-    export function shift([x, y]: readonly [number, number], d: Dir, n = 1): [number, number] {
+    export function shift(
+        [x, y]: readonly [number, number], 
+        d: Dir, n = 1
+    ): readonly [number, number] {
         switch (d) {
             case Dir.Right: return [x + n, y]
             case Dir.Up:    return [x, y - n]
@@ -109,7 +112,10 @@ export namespace Dir {
         }
     }
 
-    export function difference([x1, y1]: readonly [number, number], [x2, y2]: [number, number]): Dir | undefined {
+    export function difference(
+        [x1, y1]: readonly [number, number], 
+        [x2, y2]: readonly [number, number]
+    ): Dir | undefined {
         const dx = x2 - x1;
         const dy = y2 - y1;
 
@@ -121,7 +127,7 @@ export namespace Dir {
         return undefined;
     }
 
-    export function edge(d: Dir, size = 1): [number, number] {
+    export function edge(d: Dir, size = 1): readonly [number, number] {
         return shift([size / 2, size / 2], d, size / 2);
     }
 
