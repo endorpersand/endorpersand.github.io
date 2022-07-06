@@ -1,7 +1,7 @@
 import { Atlas, CellPos, Color, Dir, DirFlags, Grids, Palette, PixelPos, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
-import { GridContainer } from "./graphics/grid";
+import { GridContainer, TrainContainer } from "./graphics/grid";
 
 type Edge   = [c1: CellPos, c2: CellPos];
 type Center = [center: CellPos, _: undefined];
@@ -33,14 +33,6 @@ type Action = {
      */
     cellPos: CellPos;
 };
-
-type GridConChildren = Partial<{
-    /**
-     * Container that holds all the cells
-     */
-    cells: PIXI.Container,
-    trains: PIXI.Container
-}>;
 
 function arrEq<T extends readonly unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
@@ -89,11 +81,8 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Cache for this.container
      */
     #c_container?: GridContainer;
-    /**
-     * Cache that holds other useful containers inside the main one
-     */
-    #c_cchildren: GridConChildren = {};
-    
+    #trainCon?: TrainContainer;
+
     /**
      * Object references coming from PIXI
      */
@@ -113,12 +102,6 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Stack keeping track of all the past actions (allowing for undoing)
      */
     #actionStack: Action[] = [];
-
-    /**
-     * A mapping keeping track of references of trains to their designated sprite on the stage.
-     * As steps occur, the train reference is replaced.
-     */
-    trainBodies: Map<Train, PIXI.Sprite> = new Map();
 
     /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
@@ -154,10 +137,6 @@ export class TileGrid implements Serializable, Grids.Grid {
         return this.#c_container ??= this.#renderContainer();
     }
 
-    childContainer(t: keyof GridConChildren) {
-        return (this.#c_cchildren[t] ??= this.container.getChildByName(t, false) as PIXI.Container);
-    }
-
     static #normalizeTileMatrix(mat: (Tile | undefined)[][], length: number): Tile[][] {
         return Array.from({length}, (_, y) => 
             Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
@@ -172,7 +151,6 @@ export class TileGrid implements Serializable, Grids.Grid {
         if (this.#c_container) {
             this.#c_container.destroy({children: true});
             this.#c_container = this.#renderContainer();
-            this.#c_cchildren = {};
         }
     }
 
@@ -292,7 +270,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             for (let [pos, tile] of this.#statefulTiles()) {
                 tile.initState();
                 for (let t of tile.state!.trainState.trains) {
-                    this.#createBody(pos, t);
+                    this.#trainCon!.createBody(pos, t);
                 }
             }
     
@@ -324,71 +302,8 @@ export class TileGrid implements Serializable, Grids.Grid {
             tile.state!.trainState.finalize();
         }
         for (let [pos, tile] of this.#statefulTiles()) {
-            this.#moveBodies(pos, tile.state!.trainState.deployedTrains);
+            this.#trainCon!.moveBodies(pos, tile.state!.trainState.deployedTrains);
         }
-    }
-
-    /**
-     * Given the original position of a tile and a mapping from each train reference 
-     * from the tile into a list of the new train references that were deployed from that train,
-     * update the trainBodies field.
-     * @param preImagePos original cell position
-     * @param moves deployments
-     */
-    #moveBodies(preImagePos: CellPos, moves: Map<Train, Train[]>) {
-        const trainCon = this.childContainer("trains");
-
-        for (let [preimage, images] of moves) {
-            // pop trainBody
-            const trainBody = this.trainBodies.get(preimage);
-            this.trainBodies.delete(preimage);
-
-            if (trainBody) {
-                if (images.length == 0) {
-                    // trainBody should no longer exist. kill it.
-                    trainCon.removeChild(trainBody).destroy();
-                    continue;
-                }
-                
-                // assign trainBody to new train
-                let ref = images.shift()!;
-                this.trainBodies.set(ref, trainBody);
-                this.#redressBody(trainBody, Dir.shift(preImagePos, ref.dir), ref);
-            }
-
-            // create new bodies for the rest of the trains:
-            for (let t of images) {
-                this.#createBody(Dir.shift(preImagePos, t.dir), t);
-            }
-        }
-        moves.clear();
-    }
-
-    /**
-     * Fix the body's position, color, and direction
-     * @param body train sprite
-     * @param pos cell position
-     * @param param2 train data
-     */
-    #redressBody(body: PIXI.Sprite, pos: CellPos, {color, dir}: Train) {
-        body.position = Grids.cellToPosition(this, pos);
-        body.tint = Palette.Train[color];
-    }
-
-    /**
-     * Make a new sprite for a train and register it into trainBodies and the stage
-     * @param pos cell position
-     * @param t new train
-     * @returns the sprite
-     */
-    #createBody(pos: CellPos, t: Train) {
-        const body = TileGraphics.train(this.pixi.renderer);
-        const trainCon = this.childContainer("trains");
-        this.#redressBody(body, pos, t);
-        trainCon.addChild(body);
-        this.trainBodies.set(t, body);
-
-        return body;
     }
 
     /**
@@ -400,11 +315,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             this.rerenderTileInContainer(...pos);
         }
 
-        const trainCon = this.childContainer("trains");
-        while (trainCon.children[0]) {
-            trainCon.removeChild(trainCon.children[0]).destroy({children: true});
-        }
-
+        this.#trainCon!.clearBodies();
         this.simulating = false;
     }
 
@@ -448,7 +359,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             )
         );
 
-        const trainCon = new PIXI.Container();
+        const trainCon = this.#trainCon = new TrainContainer(this);
         trainCon.name = "trains";
         con.addChild(trainCon);
 
