@@ -544,7 +544,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             IN_BOUNDS, MOUSE_UP, RAILABLE
         };
         let visibility = [
-            true, true, true
+            false, true, false
         ];
         
         // this syntax is necessary to avoid scoping `this`
@@ -974,7 +974,6 @@ class TrainState {
             .map(preimage => [preimage, this.#computeImage(preimage, f)] as [preimage: Train, image: Train[]]);
 
         // merge the trains, there should be 1 train that exits per direction
-        console.log(images);
         let mergedImage = TrainState.#mergeTrains(images.flatMap(([_, images]) => images));
         let mimap = new Map(mergedImage.map(t => [t.dir, t]));
 
