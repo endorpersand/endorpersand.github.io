@@ -107,6 +107,8 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     #actionStack: Action[] = [];
 
+    simulation?: Simulation;
+
     /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
      */
@@ -127,10 +129,11 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.pixi = pixi;
 
         this.on("enterReadonly", () => {
-            this.initSim();
+            this.startSim();
         });
         this.on("exitReadonly", () => {
-            this.exitSim();
+            this.simulation?.close();
+            this.simulation = undefined;
         });
     }
 
@@ -146,6 +149,8 @@ export class TileGrid implements Serializable, Grids.Grid {
             Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
         );
     }
+
+    get maybeContainer(): GridContainer | undefined { return this.#c_container; }
 
     get tiles(): Tile[][] { return this.#tiles; }
     set tiles(mat: (Tile | undefined)[][]) {
@@ -253,17 +258,10 @@ export class TileGrid implements Serializable, Grids.Grid {
         }
     }
 
-    
-    /**
-     * Designates whether or not the grid is currently simulating a level.
-     * It is true if all tiles' states have been initialized.
-     */
-    simulating = false;
-
     /**
      * Iterator of all the stateful tiles in the grid.
      */
-    *#statefulTiles() {
+    *statefulTiles() {
         for (let y = 0; y < this.cellLength; y++) {
             for (let x = 0; x < this.cellLength; x++) {
                 let tile = this.tile(x, y)!;
@@ -278,62 +276,13 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Initializes the simulation.
      */
-    initSim() {
-        if (!this.simulating) {
-            for (let [pos, tile] of this.#statefulTiles()) {
-                tile.initState();
-                for (let t of tile.state!.trainState.trains) {
-                    this.#trainCon!.createBody(pos, t);
-                }
-            }
-    
-            this.simulating = true;
-            this.passing = true;
-        }
+    startSim() {
+        this.simulation?.close();
+        this.simulation = new Simulation(this, this.#trainCon!);
     }
 
-    /**
-     * Iterate one step through the board.
-     */
-    step() {
-        this.initSim();
 
-        for (let [pos, tile] of this.#statefulTiles()) {
-            if (tile.state!.trainState.length > 0) {
-                tile.step(new GridCursor(this, pos));
-            }
-        }
-
-        this.#finalizeStep();
-    }
-
-    /**
-     * Run everything to complete the step.
-     */
-     #finalizeStep() {
-        for (let [_, tile] of this.#statefulTiles()) {
-            tile.state!.trainState.finalize();
-        }
-        for (let [pos, tile] of this.#statefulTiles()) {
-            this.#trainCon!.moveBodies(pos, tile.state!.trainState.deployedTrains);
-        }
-    }
-
-    /**
-     * Wipes all state. Resets simulating state.
-     */
-    exitSim() {
-        for (let [pos, tile] of this.#statefulTiles()) {
-            tile.state = undefined;
-            this.rerenderTileInContainer(...pos);
-        }
-
-        this.#trainCon!.clearBodies();
-        this.simulating = false;
-    }
-
-    fail() {
-        this.passing = false;
+    dispatchFailEvent() {
         this.#dispatchEvent("fail");
     }
 
@@ -853,7 +802,74 @@ class GridCursor {
     }
 
     fail() {
-        this.#grid.fail();
+        this.#grid.simulation!.fail();
+    }
+}
+
+class Simulation {
+    #grid: TileGrid;
+    passing: boolean = true;
+    #trainCon?: TrainContainer;
+
+    constructor(grid: TileGrid, tc: TrainContainer) {
+        this.#grid = grid;
+        this.#trainCon = tc;
+
+        for (let [pos, tile] of this.#statefulTiles()) {
+            tile.initState();
+            for (let t of tile.state!.trainState.trains) {
+                this.#trainCon!.createBody(pos, t);
+            }
+        }
+    }
+
+    #statefulTiles() {
+        return this.#grid.statefulTiles();
+    }
+
+    /**
+     * Iterate one step through the board.
+     */
+    step() {
+        for (let [pos, tile] of this.#statefulTiles()) {
+            if (tile.state!.trainState.length > 0) {
+                tile.step(new GridCursor(this.#grid, pos));
+            }
+        }
+
+        this.#finalizeStep();
+    }
+
+    /**
+     * Run everything to complete the step.
+     */
+    #finalizeStep() {
+        for (let [_, tile] of this.#statefulTiles()) {
+            tile.state!.trainState.finalize();
+        }
+        for (let [pos, tile] of this.#statefulTiles()) {
+            this.#trainCon!.moveBodies(pos, tile.state!.trainState.deployedTrains);
+        }
+    }
+
+    /**
+     * Wipes all state. Resets simulating state.
+     */
+    close() {
+        for (let [pos, tile] of this.#statefulTiles()) {
+            tile.state = undefined;
+            this.#grid.rerenderTileInContainer(...pos);
+        }
+
+        this.#trainCon!.clearBodies();
+        this.#grid.simulation = undefined;
+    }
+
+    fail() {
+        if (this.passing) {
+            this.passing = false;
+            this.#grid.dispatchFailEvent();
+        }
     }
 }
 

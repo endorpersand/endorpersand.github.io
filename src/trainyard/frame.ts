@@ -83,7 +83,7 @@ function applyButtons(grid: TileGrid) {
         if (em !== "readonly") {
             grid.editMode = "readonly";
         } else {
-            grid.step();
+            grid.simulation?.step();
         }
 
         slider.value = "0";
