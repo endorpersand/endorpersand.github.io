@@ -232,11 +232,11 @@ export const Palette = {
     }
 } as const;
 
+export type CellPos  = readonly [cx: number, cy: number];
+export type PixelPos = readonly [px: number, py: number];
+
 export namespace Grids {
     export const TILE_GAP = 1;
-
-    type CellPos  = readonly [cx: number, cy: number];
-    type PixelPos = readonly [px: number, py: number];
 
     export interface Grid {
         /**

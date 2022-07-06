@@ -1,6 +1,7 @@
-import { Atlas, Color, Dir, DirFlags, Grids, Palette, Train } from "./values";
+import { Atlas, CellPos, Color, Dir, DirFlags, Grids, Palette, PixelPos, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
+import { GridContainer } from "./graphics/grid";
 
 type Edge   = [c1: CellPos, c2: CellPos];
 type Center = [center: CellPos, _: undefined];
@@ -40,9 +41,6 @@ type GridConChildren = Partial<{
     cells: PIXI.Container,
     trains: PIXI.Container
 }>;
-
-type CellPos = readonly [cellX: number, cellY: number]
-type PixelPos = readonly [pixX: number, pixY: number]
 
 function arrEq<T extends readonly unknown[]>(arr1: T, arr2: T): boolean {
     if (arr1.length !== arr2.length) return false;
@@ -90,7 +88,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Cache for this.container
      */
-    #c_container?: PIXI.Container;
+    #c_container?: GridContainer;
     /**
      * Cache that holds other useful containers inside the main one
      */
@@ -152,7 +150,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * The PIXI container for this TileGrid
      */
-    get container(): PIXI.Container {
+    get container(): GridContainer {
         return this.#c_container ??= this.#renderContainer();
     }
 
@@ -426,17 +424,12 @@ export class TileGrid implements Serializable, Grids.Grid {
 
     /**
      * Get this tile's rendered PIXI container
-     * @param t the tile
-     * @param x its pixel x
-     * @param y its pixel y
+     * @param x cell x
+     * @param y cell y
      * @returns the container holding the rendering
      */
-    #renderTile(t: Tile, x: number, y: number): PIXI.Container {
-        let con: PIXI.Container;
-        con = t.render(this.pixi, this.cellSize);
-
-        con.position.set(x, y);
-        return con;
+    #renderTileAt(x: number, y: number): PIXI.Container {
+        return this.tile(x, y)!.render(this.pixi, this.cellSize);
     }
 
     /**
@@ -444,72 +437,26 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Use this.container to fallback to cache if already created
      * @returns the container
      */
-    #renderContainer(): PIXI.Container {
-        const TILE_GAP = Grids.TILE_GAP;
-        const DELTA = this.cellSize + TILE_GAP;
-        const GRID_SIZE = Grids.gridSize(this);
+    #renderContainer(): GridContainer {
+        const length = this.cellLength;
+        const con = new GridContainer(this);
+        con.loadCells(
+            Array.from({length}, (_, y) => 
+                Array.from({length}, (_, x) =>
+                    this.#renderTileAt(x, y)
+                )
+            )
+        );
 
-        return TileGraphics.sized(GRID_SIZE, con => {
-            // bg
-            const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
-            bg.tint = Palette.Grid.BG;
-            bg.width = GRID_SIZE;
-            bg.height = GRID_SIZE;
-            con.addChild(bg);
+        const trainCon = new PIXI.Container();
+        trainCon.name = "trains";
+        con.addChild(trainCon);
 
-            // grid
-            const grid = new PIXI.Graphics()
-                .beginFill(Palette.Grid.Line);
+        con.interactive = true;
+        this.#applyPointerEvents(con);
+        this.#applyRailIndicator(con);
 
-            for (let i = 0; i <= this.cellLength; i++) {
-                let x = 0 + DELTA * i;
-                grid.drawRect(x, 0, TILE_GAP, GRID_SIZE);
-            }
-            for (let j = 0; j <= this.cellLength; j++) {
-                let y = 0 + DELTA * j;
-                grid.drawRect(0, y, GRID_SIZE, TILE_GAP);
-            }
-            con.addChild(grid);
-
-            // each cell
-            const cellCon = new PIXI.Container();
-            cellCon.name = "cells";
-
-            for (let y = 0; y < this.cellLength; y++) {
-                for (let x = 0; x < this.cellLength; x++) {
-                    const [lx, ly] = [
-                        TILE_GAP + x * DELTA,
-                        TILE_GAP + y * DELTA
-                    ];
-
-                    cellCon.addChild(
-                        this.#renderTile( this.tile(x, y)!, lx, ly )
-                    );
-                }
-            }
-            con.addChild(cellCon);
-
-            const trainCon = new PIXI.Container();
-            trainCon.name = "trains";
-            con.addChild(trainCon);
-
-            con.interactive = true;
-            this.#applyPointerEvents(con);
-            this.#applyRailIndicator(con);
-        });
-    }
-
-    /**
-     * Get the PIXI container of the tile at the specified position
-     * @param x x coord
-     * @param y y coord
-     * @returns container
-     */
-    tileContainer(x: number, y: number) {
-        Grids.assertInBounds(this, x, y);
-
-        const cells = this.childContainer("cells");
-        return cells.getChildAt(y * this.cellLength + x) as PIXI.Container;
+        return con;
     }
 
     /**
@@ -518,19 +465,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y y coord
      */
     rerenderTileInContainer(x: number, y: number) {
-        Grids.assertInBounds(this, x, y);
-
-        if (this.#c_container) {
-            const cells = this.childContainer("cells");
-            const index = y * this.cellLength + x;
-
-            const {x: lx, y: ly} = cells.getChildAt(index).position;
-    
-            const con: PIXI.Container = this.#renderTile(this.tile(x, y)!, lx, ly);
-
-            cells.addChildAt(con, index);
-            cells.removeChildAt(index + 1).destroy({children: true});
-        }
+        this.#c_container?.replaceCell([x, y], this.#renderTileAt(x, y));
     }
 
     /**
@@ -993,7 +928,7 @@ class GridCursor {
      * @returns the container of the tile the cursor is pointing to
      */
     container() {
-        return this.#grid.tileContainer(...this.#pos);
+        return this.#grid.container.cellAt(this.#pos);
     }
 
     fail() {
