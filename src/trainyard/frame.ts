@@ -3,7 +3,7 @@ import * as PIXI from 'pixi.js'
 import assets from '../../static/*'
 import { Tile, TileGrid } from './logic';
 import { Atlas, Color, Dir, Grids, Palette } from "./values";
-import levels from "./levels.json";
+import Levels from "./levels.json";
 
 const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
@@ -42,7 +42,7 @@ function setup() {
     let cellSize = Math.floor(cellSpace / cellLength);
 
     const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(levels.Calgary.Multicolor);
+        .load(Levels.Calgary.Multicolor);
 
     const tgc = tg.container;
     tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
@@ -119,4 +119,14 @@ function applyButtons(grid: TileGrid) {
     grid.on("fail", () => {
         document.body.classList.add("failed");
     });
+}
+
+namespace TestLevels {
+    function repeat<T>(t: T, length: number): T[] {
+        return Array.from({length}, () => t);
+    }
+
+    export const TextureLoadTest = Array.from({length: 7}, (_, y) => Array.from({length: 7}, (_, x) => {
+        return new Tile.Outlet(Dir.Down, repeat(Color.Red, y * 7 + x + 1));
+    }));
 }
