@@ -2,7 +2,8 @@
     "extends": "@parcel/config-default",
     "resolvers": ["@parcel/resolver-glob", "..."],
     "transformers": {
-        "*.json": ["@parcel/transformer-raw"]
+        "*.json": ["..."],
+        "*.atlas.json": ["@parcel/transformer-raw"]
     },
     "reporters": ["parcel-reporter-static-files-copy", "..."]
 }

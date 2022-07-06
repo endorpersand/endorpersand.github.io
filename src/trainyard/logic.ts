@@ -50,10 +50,14 @@ interface Serializable<J = any> {
     // static fromJSON(o: J): this;
 }
 
-type PIXIData = {
+interface PIXIData {
     textures: Atlas,
     renderer: PIXI.AbstractRenderer
 };
+interface GridJSON {
+    board: string[], 
+    tiles: {[x: number]: unknown}
+}
 
 /**
  A class which holds a grid of the current tiles on board.
@@ -115,7 +119,7 @@ export class TileGrid implements Serializable, Grids.Grid {
       */
      static readonly UNDO_THRESHOLD_MS = 300;
 
-    constructor(cellSize: number, cellLength: number, pixi: PIXIData, tiles: (Tile | undefined)[][]) {
+    constructor(cellSize: number, cellLength: number, pixi: PIXIData, tiles?: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
         this.cellLength = cellLength;
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
@@ -137,7 +141,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         return this.#c_container ??= this.#renderContainer();
     }
 
-    static #normalizeTileMatrix(mat: (Tile | undefined)[][], length: number): Tile[][] {
+    static #normalizeTileMatrix(mat: (Tile | undefined)[][] | undefined, length: number): Tile[][] {
         return Array.from({length}, (_, y) => 
             Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
         );
@@ -152,6 +156,15 @@ export class TileGrid implements Serializable, Grids.Grid {
             this.#c_container.destroy({children: true});
             this.#c_container = this.#renderContainer();
         }
+    }
+
+    load(tiles: (Tile | undefined)[][] | GridJSON): this {
+        if ("board" in tiles) {
+            [tiles, this.cellLength] = TileGrid.#tilesFromJSON(tiles);
+        }
+
+        this.tiles = tiles;
+        return this;
     }
 
     get editMode(): EditMode { return this.#editMode; }
@@ -784,12 +797,12 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param o the serialized JSON
      * @returns a function which accepts a size and texture parameter and gives out a TileGrid
      */
-    static fromJSON(o: {board: string[], tiles: {[x: number]: unknown}}) {
+    static #tilesFromJSON(o: GridJSON) {
         let {board, tiles} = o;
         let length = board.length;
 
         let newTiles = Array.from({length}, (_, y) => 
-            Array.from<unknown, Tile | undefined>({length}, (_, x) => {
+            Array.from<unknown, Tile>({length}, (_, x) => {
                 let index = y * length + x;
                 let tileChar: string = board[y][x];
 
@@ -805,15 +818,12 @@ export class TileGrid implements Serializable, Grids.Grid {
                     // @ts-ignore
                     return TileType.fromJSON(tileData);
                 }
-                return undefined;
+
+                return new Tile.Blank();
             })
         );
 
-        return (size: number, pixi: PIXIData) => new TileGrid(size, length, pixi, newTiles);
-    }
-
-    static parse(s: string) {
-        return TileGrid.fromJSON(JSON.parse(s));
+        return [newTiles, length] as [Tile[][], number];
     }
 }
 

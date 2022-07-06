@@ -3,6 +3,7 @@ import * as PIXI from 'pixi.js'
 import assets from '../../static/*'
 import { Tile, TileGrid } from './logic';
 import { Atlas, Color, Dir, Grids, Palette } from "./values";
+import levels from "./levels.json";
 
 const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
@@ -27,34 +28,21 @@ app.renderer.backgroundColor = Palette.BG;
 app.renderer.plugins.interaction.moveWhenInside = true;
 
 loader
-    .add(assets["trainyard.json"])
+    .add(assets["trainyard.atlas.json"])
     .load(setup);
 
 let textures: Atlas;
 
 function setup() {
-    textures = resources[assets["trainyard.json"]].textures!;
+    textures = resources[assets["trainyard.atlas.json"]].textures!;
 
     let gridSize = app.renderer.width;
     let cellLength = defaults.cellLength;
     let cellSpace = gridSize - Grids.TILE_GAP * (cellLength + 1);
     let cellSize = Math.floor(cellSpace / cellLength);
 
-    const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer},
-        [
-            [,,, new Tile.Outlet(Dir.Down, [Color.Blue])],
-            [],
-            [],
-            [
-                new Tile.Outlet(Dir.Right, [Color.Green]),,,
-                new Tile.Goal([Color.Green, Color.Blue, Color.Red, Color.Yellow], [Dir.Up, Dir.Left, Dir.Down, Dir.Right]),,,
-                new Tile.Outlet(Dir.Left, [Color.Yellow])
-            ],
-            [],
-            [],
-            [,,, new Tile.Outlet(Dir.Up, [Color.Red])],
-        ]
-    );
+    const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
+        .load(levels.Calgary.Multicolor);
 
     const tgc = tg.container;
     tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
