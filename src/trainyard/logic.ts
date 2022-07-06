@@ -1,4 +1,4 @@
-import { Atlas, Color, Dir, DirFlags, Palette, Train } from "./values";
+import { Atlas, Color, Dir, DirFlags, Grids, Palette, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 
@@ -68,7 +68,7 @@ type PIXIData = {
 /**
  A class which holds a grid of the current tiles on board.
  */
-export class TileGrid implements Serializable {
+export class TileGrid implements Serializable, Grids.Grid {
     /**
      * The tiles.
      */
@@ -123,11 +123,6 @@ export class TileGrid implements Serializable {
     trainBodies: Map<Train, PIXI.Sprite> = new Map();
 
     /**
-     * How many pixels separate each tile
-     */
-     static readonly TILE_GAP = 1;
-
-    /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
      */
      static readonly EDGE_THRESHOLD = 0.25;
@@ -165,13 +160,6 @@ export class TileGrid implements Serializable {
         return (this.#c_cchildren[t] ??= this.container.getChildByName(t, false) as PIXI.Container);
     }
 
-    /**
-     * The total size this TileGrid encompasses. The TileGrid is [gridSize x gridSize] pixels.
-     */
-    get gridSize(): number {
-        return this.cellSize * this.cellLength + TileGrid.TILE_GAP * (this.cellLength + 1);
-    }
-
     static #normalizeTileMatrix(mat: (Tile | undefined)[][], length: number): Tile[][] {
         return Array.from({length}, (_, y) => 
             Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
@@ -202,25 +190,6 @@ export class TileGrid implements Serializable {
     }
 
     /**
-     * Determine if tile at specified position is in bounds
-     * @param x cell x
-     * @param y cell y
-     * @returns true if in bounds
-     */
-    inBounds(x: number, y: number): boolean {
-        return [x, y].every(t => 0 <= t && t < this.cellLength);
-    }
-
-    /**
-     * Error if tile at specified position is not in bounds
-     * @param x cell x
-     * @param y cell y
-     */
-    assertInBounds(x: number, y: number) {
-        if (!this.inBounds(x, y)) throw new Error(`Position is not located within tile: (${x}, ${y})`);
-    }
-
-    /**
      * Get the tile at the specified position
      * @param x cell x
      * @param y cell y
@@ -229,7 +198,7 @@ export class TileGrid implements Serializable {
     tile(x: number, y: number) {
         const tile = this.#tiles?.[y]?.[x];
         if (typeof tile === "undefined") {
-            return this.inBounds(x, y) ? new Tile.Blank() : undefined;
+            return Grids.inBounds(this, x, y) ? new Tile.Blank() : undefined;
         }
         return tile;
     }
@@ -242,7 +211,7 @@ export class TileGrid implements Serializable {
      * @param canUndo true if the action is undoable
      */
     setTile(x: number, y: number, t: Tile | undefined, canUndo = true) {
-        this.assertInBounds(x, y);
+        Grids.assertInBounds(this, x, y);
 
         let current = this.tile(x, y)!;
 
@@ -270,7 +239,7 @@ export class TileGrid implements Serializable {
      * @returns the new tile
      */
     replaceTile(x: number, y: number, f: (t: Tile) => (Tile | undefined), canUndo = true) {
-        this.assertInBounds(x, y);
+        Grids.assertInBounds(this, x, y);
         let t = f(this.tile(x, y)!);
 
         this.setTile(x, y, t, canUndo);
@@ -404,7 +373,7 @@ export class TileGrid implements Serializable {
      * @param param2 train data
      */
     #redressBody(body: PIXI.Sprite, pos: CellPos, {color, dir}: Train) {
-        body.position = this.cellToPosition(pos);
+        body.position = Grids.cellToPosition(this, pos);
         body.tint = Palette.Train[color];
     }
 
@@ -447,40 +416,6 @@ export class TileGrid implements Serializable {
     }
 
     /**
-     * Takes a pixel position and converts it into a cell position
-     * @param param0 pixel coordinates
-     * @returns cell coordinates
-     */
-    positionToCell({x, y}: PIXI.IPointData): CellPos {
-        const DELTA = this.cellSize + TileGrid.TILE_GAP;
-        let [cx, cy] = [Math.floor(x / DELTA), Math.floor(y / DELTA)];
-
-        return [
-            Math.max(0, Math.min(cx, this.cellLength - 1)),
-            Math.max(0, Math.min(cy, this.cellLength - 1))
-        ];
-    }
-
-    /**
-     * Takes a cell [x, y] pair and converts it into a pixel position.
-     * By default, this will point to the top left pixel of the tile, 
-     * but a shift parameter can be added to translate the pixel point.
-     * @param param0 cell coordinates
-     * @param shift a translation factor. note that [cellSize - 1, cellSize - 1] points to the bottom right of the tile.
-     * @returns 
-     */
-    cellToPosition([x, y]: CellPos, shift: PixelPos = [0, 0]): PIXI.IPointData {
-        const TILE_GAP = TileGrid.TILE_GAP;
-        const DELTA = this.cellSize + TILE_GAP;
-
-        const [dx, dy] = shift;
-        return {
-            x: TILE_GAP + DELTA * x + dx,
-            y: TILE_GAP + DELTA * y + dy,
-        };
-    }
-
-    /**
      * Check if rails can be placed on this type of tile
      * @param t tile (`undefined` represents an OOB tile)
      * @returns true if can be placed
@@ -510,9 +445,9 @@ export class TileGrid implements Serializable {
      * @returns the container
      */
     #renderContainer(): PIXI.Container {
-        const TILE_GAP = TileGrid.TILE_GAP;
+        const TILE_GAP = Grids.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
-        const GRID_SIZE = this.gridSize;
+        const GRID_SIZE = Grids.gridSize(this);
 
         return TileGraphics.sized(GRID_SIZE, con => {
             // bg
@@ -571,7 +506,7 @@ export class TileGrid implements Serializable {
      * @returns container
      */
     tileContainer(x: number, y: number) {
-        this.assertInBounds(x, y);
+        Grids.assertInBounds(this, x, y);
 
         const cells = this.childContainer("cells");
         return cells.getChildAt(y * this.cellLength + x) as PIXI.Container;
@@ -583,7 +518,7 @@ export class TileGrid implements Serializable {
      * @param y y coord
      */
     rerenderTileInContainer(x: number, y: number) {
-        this.assertInBounds(x, y);
+        Grids.assertInBounds(this, x, y);
 
         if (this.#c_container) {
             const cells = this.childContainer("cells");
@@ -612,7 +547,7 @@ export class TileGrid implements Serializable {
 
         con.on("pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
-            const cellPos = this.positionToCell(pos);
+            const cellPos = Grids.positionToCell(this, pos);
             
             // pointer === 1 implies drag
             if (pointers !== 1) {
@@ -685,7 +620,7 @@ export class TileGrid implements Serializable {
             pointers++;
 
             const pos = e.data.getLocalPosition(con);
-            const cellPos = this.positionToCell(pos);
+            const cellPos = Grids.positionToCell(this, pos);
 
             // double tap check
             if (!dbtTile) {
@@ -746,7 +681,7 @@ export class TileGrid implements Serializable {
      * @param con Container to apply to
      */
     #applyRailIndicator(con: PIXI.Container) {
-        const TILE_GAP = TileGrid.TILE_GAP;
+        const TILE_GAP = Grids.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
 
         const railMarker = TileGraphics.hoverIndicator(this.pixi.textures);
@@ -773,7 +708,7 @@ export class TileGrid implements Serializable {
 
         con.on("mousemove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
-            const cellPos = this.positionToCell(pos);
+            const cellPos = Grids.positionToCell(this, pos);
             const [cellX, cellY] = cellPos;
 
             let dir = this.nearestEdge(pos, cellPos);
@@ -879,7 +814,7 @@ export class TileGrid implements Serializable {
      *     or undefined if close to the center or far away from the cell
      */
     nearestEdge({x, y}: PIXI.IPointData, [cellX, cellY]: CellPos): Dir | undefined {
-        const TILE_GAP = TileGrid.TILE_GAP;
+        const TILE_GAP = Grids.TILE_GAP;
         const EDGE_THRESHOLD = this.cellSize * TileGrid.EDGE_THRESHOLD;
         const DELTA = this.cellSize + TILE_GAP;
 

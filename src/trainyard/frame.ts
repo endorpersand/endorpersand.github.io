@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js'
 // @ts-ignore
 import assets from '../../static/*'
 import { Tile, TileGrid } from './logic';
-import { Atlas, Color, Dir, Palette } from "./values";
+import { Atlas, Color, Dir, Grids, Palette } from "./values";
 
 const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
@@ -14,7 +14,7 @@ const defaults = {
     cellSize: 72,
     cellLength: 7
 };
-const defaultWidth = defaults.cellSize * defaults.cellLength + TileGrid.TILE_GAP * (defaults.cellLength + 1);
+const defaultWidth = defaults.cellSize * defaults.cellLength + Grids.TILE_GAP * (defaults.cellLength + 1);
 const gridSize = Math.min(clientWidth - 16, clientHeight - 16, defaultWidth);
 const app = new PIXI.Application({
     width: gridSize,
@@ -37,7 +37,7 @@ function setup() {
 
     let gridSize = app.renderer.width;
     let cellLength = defaults.cellLength;
-    let cellSpace = gridSize - TileGrid.TILE_GAP * (cellLength + 1);
+    let cellSpace = gridSize - Grids.TILE_GAP * (cellLength + 1);
     let cellSize = Math.floor(cellSpace / cellLength);
 
     const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer},

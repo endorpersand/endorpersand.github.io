@@ -1,4 +1,4 @@
-import { Resource, Texture } from "pixi.js";
+import { IPointData, Resource, Texture } from "pixi.js";
 
 export enum Color {
     // primaries
@@ -231,5 +231,91 @@ export const Palette = {
         Outline: 0xAFAFAF,
     }
 } as const;
+
+export namespace Grids {
+    export const TILE_GAP = 1;
+
+    type CellPos  = readonly [cx: number, cy: number];
+    type PixelPos = readonly [px: number, py: number];
+
+    export interface Grid {
+        /**
+         * Describes the pixel size of each cell in this grid.
+         * Each cell is [size x size] pixels big.
+         */
+        cellSize: number;
+        /**
+         * Describes the number of cells each dimension spans in this grid.
+         * There are [length x length] cells in the grid.
+         */
+        cellLength: number;
+    };
+
+    /**
+     * The total size this grid encompasses in pixels. The grid is [gridSize x gridSize] pixels.
+     * @param param0 the grid to compute grid size on
+     * @returns the grid size
+     */
+    export function gridSize({cellSize, cellLength}: Grid): number {
+        return cellSize * cellLength + TILE_GAP * (cellLength + 1);
+    }
+
+    /**
+     * Takes a pixel position and converts it into a cell position
+     * @param param0 grid to compute coordinates on
+     * @param param1 pixel coordinates
+     * @returns cell coordinates
+     */
+    export function positionToCell({cellSize, cellLength}: Grid, {x, y}: IPointData): CellPos {
+        const DELTA = cellSize + TILE_GAP;
+        let [cx, cy] = [Math.floor(x / DELTA), Math.floor(y / DELTA)];
+
+        return [
+            Math.max(0, Math.min(cx, cellLength - 1)),
+            Math.max(0, Math.min(cy, cellLength - 1))
+        ];
+    }
+
+    /**
+     * Takes a cell [x, y] pair and converts it into a pixel position.
+     * By default, this will point to the top left pixel of the tile, 
+     * but a shift parameter can be added to translate the pixel point.
+     * @param param0 grid to compute coordinates on
+     * @param param1 cell coordinates
+     * @param shift a translation factor. note that [cellSize - 1, cellSize - 1] points to the bottom right of the tile.
+     * @returns pixel coordinates
+     */
+    export function cellToPosition({cellSize}: Grid, [x, y]: CellPos, shift: PixelPos = [0, 0]): IPointData {
+        const DELTA = cellSize + TILE_GAP;
+
+        const [dx, dy] = shift;
+        return {
+            x: TILE_GAP + DELTA * x + dx,
+            y: TILE_GAP + DELTA * y + dy,
+        };
+    }
+
+
+    /**
+     * Determine if tile at specified position is in bounds
+     * @param param0 grid to compute bounds on
+     * @param x cell x
+     * @param y cell y
+     * @returns true if in bounds
+     */
+    export function inBounds({cellLength}: Grid, x: number, y: number): boolean {
+        return [x, y].every(t => 0 <= t && t < cellLength);
+    }
+
+    /**
+     * Error if tile at specified position is not in bounds
+     * @param grid grid to compute bounds on
+     * @param x cell x
+     * @param y cell y
+     */
+    export function assertInBounds(grid: Grid, x: number, y: number) {
+        if (!inBounds(grid, x, y)) throw new Error(`Position is not located within tile: (${x}, ${y})`);
+    }
+}
 
 export type Atlas = {[name: string]: Texture<Resource>};
