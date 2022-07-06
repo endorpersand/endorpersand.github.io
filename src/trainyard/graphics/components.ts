@@ -281,7 +281,12 @@ export function hoverIndicator(textures: Atlas): PIXI.Sprite {
 export function train(renderer: PIXI.AbstractRenderer) {
     const graphics = new PIXI.Graphics()
         .beginFill(0xFFFFFF)
-        .drawCircle(16, 16, 16);
+        .drawRect(0, 8, 28, 16)
+        .beginFill(0x7F7F7F)
+        .drawRect(28, 8, 4, 16)
     
-    return new PIXI.Sprite(createRenderTexture(renderer, graphics, 32));
+    const rt = createRenderTexture(renderer, graphics, 32);
+    const sprite = new PIXI.Sprite(rt);
+    pivotCenter(sprite);
+    return sprite;
 }

@@ -162,7 +162,10 @@ export class TrainContainer extends AbsGriddedContainer {
      * @param param2 train data
      */
     #redressBody(body: PIXI.Sprite, pos: CellPos, {color, dir}: Train) {
-        body.position = Grids.cellToPosition(this, pos);
+        const shift = [this.cellSize / 2, this.cellSize / 2] as const;
+        
+        body.position = Grids.cellToPosition(this, pos, shift);
+        body.angle = -90 * dir;
         body.tint = Palette.Train[color];
     }
 
