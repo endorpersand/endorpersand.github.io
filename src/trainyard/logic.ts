@@ -106,7 +106,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
      */
-     static readonly EDGE_THRESHOLD = 0.25;
+     static readonly EDGE_THRESHOLD = 0.2;
      
      /**
       * When undoing, the grid will undo chunks of actions at a time. 
