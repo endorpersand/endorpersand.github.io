@@ -99,7 +99,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     #actionStack: Action[] = [];
 
-    simulation?: Simulation;
+    simulation?: Simulation.Simulator;
 
     /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
@@ -273,7 +273,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     startSim() {
         this.simulation?.close();
-        this.simulation = new Simulation(this, this.#trainCon!);
+        this.simulation = new Simulation.Simulator(this, this.#trainCon!);
     }
 
 
@@ -797,99 +797,6 @@ class GridCursor {
     }
 }
 
-type GridMoves = {[i: number]: Move[]};
-class Simulation implements IterableIterator<GridMoves> {
-    #grid: TileGrid;
-    passing: boolean = true;
-    #trainCon?: TrainContainer;
-
-    constructor(grid: TileGrid, tc: TrainContainer) {
-        this.#grid = grid;
-        this.#trainCon = tc;
-
-        for (let [pos, tile] of this.#statefulTiles()) {
-            tile.initState();
-            for (let t of tile.state!.trainState.trains) {
-                this.#trainCon!.createBody(pos, t);
-            }
-        }
-    }
-
-    #statefulTiles() {
-        return this.#grid.statefulTiles();
-    }
-
-    /**
-     * Iterate one step through the board.
-     */
-    step() {
-        this.next();
-    }
-
-    /**
-     * Run everything to complete the step.
-     */
-    #finalizeStep() {
-        for (let [_, tile] of this.#statefulTiles()) {
-            tile.state!.trainState.finalize();
-        }
-        for (let [pos, tile] of this.#statefulTiles()) {
-            const deployedTrains = tile.state!.trainState.deployedTrains;
-
-            if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
-            this.#trainCon!.moveBodies(pos, deployedTrains);
-        }
-    }
-
-    /**
-     * Wipes all state. Resets simulating state.
-     */
-    close() {
-        for (let [pos, tile] of this.#statefulTiles()) {
-            tile.state = undefined;
-            this.#grid.rerenderTileInContainer(...pos);
-        }
-
-        this.#trainCon!.clearBodies();
-        this.#grid.simulation = undefined;
-    }
-
-    fail() {
-        if (this.passing) {
-            this.passing = false;
-            this.#grid.dispatchFailEvent();
-        }
-    }
-
-    next() {
-        let deploys: GridMoves = {};
-
-        for (let [pos, tile] of this.#statefulTiles()) {
-            const trainState = tile.state!.trainState;
-            if (trainState.length > 0) {
-                tile.step(new GridCursor(this.#grid, pos));
-                deploys[Grids.cellToIndex(this.#grid, pos)] = [...trainState.deployedTrains];
-            }
-        }
-
-        let done = Object.keys(deploys).length == 0;
-        if (done) {
-            this.close();
-            return {value: undefined, done};
-        }
-
-        this.#finalizeStep();
-        return {value: deploys, done};
-    }
-
-    [Symbol.iterator]() {
-        return this;
-    }
-}
-
-type TrainStateOptions = Partial<{
-    mergeTrains: boolean
-}>;
 
 export namespace Move {
     export interface Destroy {
@@ -917,7 +824,146 @@ export namespace Move {
     }
 }
 
+/**
+ * Possible ways a train can be modified in a tile.
+ */
 export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
+
+type GridStep = {[i: number]: Move[]};
+
+namespace Simulation {
+    export class Simulator {
+        iterator: Iterator;
+        #grid: TileGrid;
+        #trainCon?: TrainContainer;
+        #peeked: GridStep[] = [];
+        passing: boolean = true;
+
+        constructor(grid: TileGrid, tc: TrainContainer) {
+            this.#grid = grid;
+            this.#trainCon = tc;
+    
+            for (let [pos, tile] of this.#grid.statefulTiles()) {
+                tile.initState();
+
+                // render trains
+                for (let t of tile.state!.trainState.trains) {
+                    this.#trainCon!.createBody(pos, t);
+                }
+            }
+
+            this.iterator = new Iterator(this.#grid);
+        }
+
+        /**
+         * Peek at a future move, and do not render it.
+         * @param advance Number of moves to look forward. By default, 1.
+         */
+        peek(advance = 1) {
+            while (this.#peeked.length < advance && !this.iterator.done) {
+                const ent = this.iterator.next();
+                if (ent.done) return undefined;
+
+                this.#peeked.push(ent.value);
+            }
+
+            return this.#peeked[advance - 1];
+        }
+
+        /**
+         * Move to the next move and render it.
+         */
+        step() {
+            const moves = this.#peeked.shift() ?? this.iterator.next().value;
+
+            if (typeof moves !== "undefined") {
+                this.render(moves);
+            }
+        }
+
+        /**
+         * Render a set of grid moves.
+         */
+        render(step: GridStep) {
+            for (let [i, deployedTrains] of Object.entries(step)) {
+                const pos = Grids.indexToCell(this.#grid, +i);
+
+                if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
+                this.#trainCon!.moveBodies(pos, deployedTrains);
+            }
+        }
+
+        /**
+         * Cause a fail.
+         */
+        fail() {
+            if (this.passing) {
+                this.passing = false;
+                this.#grid.dispatchFailEvent();
+            }
+        }
+
+        /**
+         * Wipes all state. Resets simulating state.
+         */
+        close() {
+            for (let [pos, tile] of this.#grid.statefulTiles()) {
+                tile.state = undefined;
+                this.#grid.rerenderTileInContainer(...pos);
+            }
+
+            this.#trainCon!.clearBodies();
+            this.#grid.simulation = undefined;
+        }
+    }
+
+    class Iterator implements IterableIterator<GridStep> {
+        #grid: TileGrid;
+        done: boolean = false;
+    
+        constructor(grid: TileGrid) {
+            this.#grid = grid;
+        }
+    
+        next() {
+            let deploys: GridStep = {};
+    
+            for (let [pos, tile] of this.#grid.statefulTiles()) {
+                const trainState = tile.state!.trainState;
+    
+                if (trainState.length > 0) {
+                    const cur = new GridCursor(this.#grid, pos);
+                    const i = Grids.cellToIndex(this.#grid, pos);
+    
+                    tile.step(cur);
+                    deploys[i] = [...trainState.deployedTrains];
+                }
+            }
+    
+            let done = Object.keys(deploys).length == 0;
+            if (done) {
+                this.done = true;
+                return {value: undefined, done};
+            }
+    
+            // merge pendingTrains into trains
+            for (let [_, tile] of this.#grid.statefulTiles()) {
+                tile.state!.trainState.finalize();
+            }
+    
+            return {value: deploys, done};
+        }
+    
+        [Symbol.iterator]() {
+            return this;
+        }
+    }
+}
+
+
+type TrainStateOptions = Partial<{
+    mergeTrains: boolean
+}>;
 
 const TRAIN_CRASH = Symbol("train crashed");
 type TrainDeploy = (t: Train) => void | typeof TRAIN_CRASH | Train | Train[];
