@@ -31,6 +31,74 @@ namespace Symbols {
 }
 
 /**
+ * Sprite class that adds a second anchor. 
+ * The original anchor is used as the rotation anchor, 
+ * while the new anchor (`posAnchor`) is used as the translational anchor.
+ */
+export class TwoAnchorSprite extends PIXI.Sprite {
+    #posAnchor: PIXI.ObservablePoint;
+    #position: PIXI.ObservablePoint;
+
+    constructor(texture: PIXI.Texture) {
+        super(texture);
+        this.#posAnchor = this.#makePoint(0, 0);
+        this.#position = this.#makePoint(this.transform.position.x, this.transform.position.y);
+        
+        const anchorCB = this._anchor.cb;
+        this._anchor.cb = function() {
+            anchorCB();
+            this.#updatePosition();
+        }
+    }
+
+    /**
+     * Creates a TwoAnchorSprite that rotates around its center
+     */
+    static centered(texture: PIXI.Texture) {
+        const sprite = new TwoAnchorSprite(texture);
+        sprite.anchor.set(0.5, 0.5);
+        return sprite;
+    }
+
+    #updatePosition() {
+        const panchor = this.#panchor;
+        const anchor = this.anchor;
+        
+        const dx = (panchor.x - anchor.x) * this.width;
+        const dy = (panchor.y - anchor.y) * this.height;
+
+        // dx, dy = -16, -16
+        // panchor is 16, 16 up/left from anchor
+
+        const {x, y} = this.#position;
+        this.transform.position.set(x - dx, y - dy);
+    }
+
+    #makePoint(x: number, y: number) {
+        return new PIXI.ObservablePoint( this.#updatePosition, this, x, y );
+    }
+
+    get #panchor() {
+        return this.#posAnchor ?? this._anchor;
+    }
+
+    /** The positional origin point of the sprite */
+    get posAnchor(): PIXI.ObservablePoint {
+        return this.#posAnchor;
+    }
+    set posAnchor(v: PIXI.ObservablePoint) {
+        this.#posAnchor.copyFrom(v);
+    }
+
+    get position(): PIXI.ObservablePoint {
+        return this.#position;
+    }
+    set position(v: PIXI.IPointData) {
+        this.#position.copyFrom(v);
+    }
+}
+
+/**
  * Creates a PIXI container that upscales to the correct size.
  * @param size Size to upscale
  * @param f Function to add everything into container before upscaling
@@ -91,31 +159,14 @@ export function box(
 }
 
 /**
- * Reposition a sprite so that it rotates around the center of the sprite 
- * and will appear correctly in a container.
- * 
- * Though, if the position is different than (0, 0) on a container, this doesn't really work.
- * @param sprite Sprite to reposition
- */
-function pivotCenter(sprite: PIXI.Sprite) {
-    const [cx, cy] = [sprite.width / 2, sprite.height / 2];
-
-    sprite.pivot.set(cx, cy);
-    sprite.position.set(cx, cy);
-}
-
-/**
  * Creates an active side indicator.
  * @param textures reference to the textures
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
-    const sprite = new PIXI.Sprite(textures["s_active.png"]);
-
-    pivotCenter(sprite);
+export function activeSide(textures: Atlas, d: Dir): TwoAnchorSprite {
+    const sprite = TwoAnchorSprite.centered(textures["s_active.png"]);
     sprite.angle = -90 * d;
-
     return sprite;
 }
 
@@ -125,12 +176,9 @@ export function activeSide(textures: Atlas, d: Dir): PIXI.Sprite {
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
-    const sprite = new PIXI.Sprite(textures["s_passive.png"]);
-
-    pivotCenter(sprite);
+export function passiveSide(textures: Atlas, d: Dir): TwoAnchorSprite {
+    const sprite = TwoAnchorSprite.centered(textures["s_passive.png"]);
     sprite.angle = -90 * d;
-
     return sprite;
 }
 
@@ -239,12 +287,9 @@ export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
  * @param d Direction of the splitter symbol
  * @returns the sprite
  */
-export function splitterSymbol(textures: Atlas, d: Dir): PIXI.Sprite {
-    const sprite = new PIXI.Sprite(textures["t_splitter.png"]);
-
-    pivotCenter(sprite);
+export function splitterSymbol(textures: Atlas, d: Dir): TwoAnchorSprite {
+    const sprite = TwoAnchorSprite.centered(textures["t_splitter.png"]);
     sprite.angle = 180 - 90 * d;
-
     return sprite;
 }
 
@@ -253,12 +298,9 @@ export function splitterSymbol(textures: Atlas, d: Dir): PIXI.Sprite {
  * @param textures reference to textures
  * @returns the sprite
  */
-export function rock(textures: Atlas): PIXI.Sprite { // TODO
-    const sprite = new PIXI.Sprite(textures["t_painter.png"]);
-    
-    pivotCenter(sprite);
+export function rock(textures: Atlas): TwoAnchorSprite { // TODO
+    const sprite = TwoAnchorSprite.centered(textures["t_painter.png"]);
     sprite.angle = 180;
-
     return sprite;
 }
 
@@ -268,12 +310,12 @@ export function rock(textures: Atlas): PIXI.Sprite { // TODO
  * @param entrances the TWO entrances for the rail
  * @returns the sprite
  */
-export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
+export function rail(textures: Atlas, ...entrances: Dir[]): TwoAnchorSprite {
     let [e1, e2] = entrances;
 
     let straight = !((e1 - e2) % 2);
     
-    let sprite = new PIXI.Sprite(textures[straight ? "rail.png" : "rail2.png"]);
+    let sprite = TwoAnchorSprite.centered(textures[straight ? "rail.png" : "rail2.png"]);
     if (straight) {
         sprite.angle = -90 * e1;
     } else {
@@ -287,7 +329,6 @@ export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
         }
     }
 
-    pivotCenter(sprite);
     return sprite;
 }
 
@@ -296,11 +337,8 @@ export function rail(textures: Atlas, ...entrances: Dir[]): PIXI.Sprite {
  * @param textures reference to the textures
  * @returns the sprite
  */
-export function hoverIndicator(textures: Atlas): PIXI.Sprite {
-    const sprite = new PIXI.Sprite(textures["hover.png"]);
-
-    pivotCenter(sprite);
-    return sprite;
+export function hoverIndicator(textures: Atlas): TwoAnchorSprite {
+    return TwoAnchorSprite.centered(textures["hover.png"]);
 }
 
 export function train(renderer: PIXI.AbstractRenderer) {
@@ -311,7 +349,6 @@ export function train(renderer: PIXI.AbstractRenderer) {
             .beginFill(0x7F7F7F)
             .drawRect(28, 8, 4, 16)
     });
-    const sprite = new PIXI.Sprite(rt);
-    pivotCenter(sprite);
-    return sprite;
+    
+    return TwoAnchorSprite.centered(rt);
 }

@@ -530,8 +530,8 @@ export class TileGrid implements Serializable, Grids.Grid {
                 if (TileGrid.canRail(tile)) {
                     visibility[Condition.RAILABLE] = true;
                     railMarker.position.set(
-                        TILE_GAP + cellX * DELTA + railMarker.width / 2, 
-                        TILE_GAP + cellY * DELTA + railMarker.height / 2
+                        TILE_GAP + cellX * DELTA, 
+                        TILE_GAP + cellY * DELTA
                     );
                     railMarker.angle = -90 * dir;
                 } else {
@@ -543,8 +543,8 @@ export class TileGrid implements Serializable, Grids.Grid {
 
                         const [nx, ny] = neighborPos;
                         railMarker.position.set(
-                            TILE_GAP + nx * DELTA + railMarker.width / 2, 
-                            TILE_GAP + ny * DELTA + railMarker.height / 2
+                            TILE_GAP + nx * DELTA, 
+                            TILE_GAP + ny * DELTA
                         );
                         railMarker.angle = -90 * Dir.flip(dir);
                     } else {

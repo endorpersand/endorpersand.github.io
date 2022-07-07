@@ -199,7 +199,8 @@ export class TrainContainer extends AbsGriddedContainer {
      */
     createBody(pos: CellPos, t: Train) {
         const body = TileGraphics.train(this.pixi.renderer);
-
+        body.posAnchor.set(0.5, 0.5);
+        
         this.#redressBody(body, pos, t);
         this.addChild(body);
         this.trainBodies.set(t, body);
