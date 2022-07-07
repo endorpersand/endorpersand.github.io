@@ -803,7 +803,8 @@ class GridCursor {
     }
 }
 
-class Simulation {
+type GridMoves = {[i: number]: Move[]};
+class Simulation implements IterableIterator<GridMoves> {
     #grid: TileGrid;
     passing: boolean = true;
     #trainCon?: TrainContainer;
@@ -828,13 +829,7 @@ class Simulation {
      * Iterate one step through the board.
      */
     step() {
-        for (let [pos, tile] of this.#statefulTiles()) {
-            if (tile.state!.trainState.length > 0) {
-                tile.step(new GridCursor(this.#grid, pos));
-            }
-        }
-
-        this.#finalizeStep();
+        this.next();
     }
 
     /**
@@ -867,6 +862,31 @@ class Simulation {
             this.passing = false;
             this.#grid.dispatchFailEvent();
         }
+    }
+
+    next() {
+        let deploys: GridMoves = {};
+
+        for (let [pos, tile] of this.#statefulTiles()) {
+            const trainState = tile.state!.trainState;
+            if (trainState.length > 0) {
+                tile.step(new GridCursor(this.#grid, pos));
+                deploys[Grids.cellToIndex(this.#grid, pos)] = [...trainState.deployedTrains];
+            }
+        }
+
+        let done = Object.keys(deploys).length == 0;
+        if (done) {
+            this.close();
+            return {value: undefined, done};
+        }
+
+        this.#finalizeStep();
+        return {value: deploys, done};
+    }
+
+    [Symbol.iterator]() {
+        return this;
     }
 }
 

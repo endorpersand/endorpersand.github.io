@@ -295,6 +295,13 @@ export namespace Grids {
         };
     }
 
+    export function cellToIndex({cellLength}: Grid, [x, y]: CellPos) {
+        return y * cellLength + x;
+    }
+
+    export function indexToCell({cellLength}: Grid, i: number): CellPos {
+        return [i % cellLength, Math.floor(i / cellLength)];
+    }
 
     /**
      * Determine if tile at specified position is in bounds
