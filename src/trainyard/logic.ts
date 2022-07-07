@@ -2,6 +2,7 @@ import { Atlas, CellPos, Color, Dir, DirFlags, Grids, Palette, PixelPos, Train }
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
+import "./ext/array";
 
 type Edge   = [c1: CellPos, c2: CellPos];
 type Center = [center: CellPos, _: undefined];
@@ -34,10 +35,6 @@ type Action = {
     cellPos: CellPos;
 };
 
-function arrEq<T extends readonly unknown[]>(arr1: T, arr2: T): boolean {
-    if (arr1.length !== arr2.length) return false;
-    return arr1.every((x, i) => x === arr2[i]);
-}
 function capitalize<S extends string>(str: S): Capitalize<S> {
     return str.charAt(0).toUpperCase() + str.slice(1) as any;
 }
@@ -437,7 +434,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                 dbtTimeout = setTimeout(() => { dbtTile = undefined; }, DBT_TIMEOUT_MS);
             } else {
                 // tap 2
-                if (arrEq(cellPos, dbtTile)) {
+                if (cellPos.equals(dbtTile)) {
                     clearTimeout(dbtTimeout);
                     this.#onDoubleTap(dbtTile);
                     dbtTile = undefined;
@@ -695,7 +692,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                     const cj = ptr2[j];
                     if (typeof cj === "undefined") continue;
                     
-                    if (arrEq(ci, cj)) {
+                    if (ci.equals(cj)) {
                         match = ci;
                         others = [1 - i, 1 - j];
                         break;
