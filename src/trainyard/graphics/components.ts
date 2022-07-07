@@ -5,6 +5,31 @@
 import * as PIXI from 'pixi.js'
 import { Atlas, Color, Dir, Palette } from '../values';
 
+const SpriteCache: {
+    [name: string]: {
+        [size: number]: PIXI.RenderTexture
+    }
+} = {};
+
+namespace Symbols {
+    export function circle(size: number) {
+        return new PIXI.Graphics()
+        .beginFill(0xFFFFFF)
+        .drawCircle(size / 2, size / 2, size / 2);
+    }
+
+    export function plus(size: number) {
+        const width = size;
+        const height = width / 2;
+    
+        const [dx, dy] = [-width / 2, -height / 2];
+        return new PIXI.Graphics()
+            .beginFill(0xFFFFFF)
+            .drawRect(size / 2 + dx, size / 2 + dy, width, height)
+            .drawRect(size / 2 + dy, size / 2 + dx, height, width);
+    }
+}
+
 /**
  * Creates a PIXI container that upscales to the correct size.
  * @param size Size to upscale
@@ -48,17 +73,17 @@ export function box(
     const outer = size - 2 * SPACE;
     const inner = size - 2 * (OUTLINE + SPACE);
 
-    const boxGraphics = new PIXI.Graphics()
-        .beginFill(Palette.Box.Outline, 1)
-        .drawRect(SPACE, SPACE, outer, outer)
-        .endFill()
-        .beginFill(Palette.Box.BG, 1)
-        .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
-        .endFill();
-    
-    const box = new PIXI.Sprite(
-        createRenderTexture(renderer, boxGraphics, size)
-    );
+    const rt = loadRenderTexture(renderer, "box", size, () => {
+        return new PIXI.Graphics()
+            .beginFill(Palette.Box.Outline, 1)
+            .drawRect(SPACE, SPACE, outer, outer)
+            .endFill()
+            .beginFill(Palette.Box.BG, 1)
+            .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
+            .endFill();
+    });
+
+    const box = new PIXI.Sprite(rt);
     
     return [
         box, inner, outer
@@ -109,13 +134,7 @@ export function passiveSide(textures: Atlas, d: Dir): PIXI.Sprite {
     return sprite;
 }
 
-/**
- * Create a render texture
- * @param renderer Renderer
- * @param o Object to render onto texture
- * @param size Dimensions of render texture
- * @returns render texture
- */
+
 function createRenderTexture(
     renderer: PIXI.AbstractRenderer, 
     o: PIXI.DisplayObject, 
@@ -123,8 +142,24 @@ function createRenderTexture(
 ) {
     const renderTexture = PIXI.RenderTexture.create({width: size, height: size});
     renderer.render(o, {renderTexture});
-
     return renderTexture;
+}
+
+/**
+ * Load a render texture from cache or create one with the fallback callback if not in cache
+ * @param renderer Renderer
+ * @param name Name of the render texture
+ * @param size Size of the render texture
+ * @param fallback Callback to create a display object to render if not in cache
+ * @returns display texture
+ */
+function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: number, fallback: () => PIXI.DisplayObject) {
+    const cached = SpriteCache[name]?.[size];
+
+    if (cached) return cached;
+    const rt = createRenderTexture(renderer, fallback(), size);
+    (SpriteCache[name] ??= {})[size] = rt;
+    return rt;
 }
 
 /**
@@ -142,7 +177,7 @@ export function symbolSet(
     renderer: PIXI.AbstractRenderer,
     clrs: readonly Color[], 
     bounds: readonly [center: readonly [number, number], size: number], 
-    symbol: (drawSize: number) => PIXI.Graphics
+    symbol: keyof typeof Symbols | [name: string, cb: (drawSize: number) => PIXI.Graphics]
 ): PIXI.Container {
     const [boundsCenter, boundsSize] = bounds;
     const SYM_GAP = Math.floor(
@@ -156,8 +191,15 @@ export function symbolSet(
     const cellSize = (boundsSize - (rowN + 3) * SYM_GAP) / rowN;
 
     const drawSize = cellSize * SYM_TEXTURE_SCALE;
-    const rt = createRenderTexture(renderer, symbol(drawSize), drawSize);
 
+    let symName: string, s: (n: number) => PIXI.Graphics;
+    if (typeof symbol === "string") {
+        [symName, s] = [symbol, Symbols[symbol]];
+    } else {
+        [symName, s] = symbol;
+    }
+
+    const rt = loadRenderTexture(renderer, symName, drawSize, () => s(drawSize));
     const con = new PIXI.Container();
 
     for (let i = 0; i < n; i++) {
@@ -177,23 +219,6 @@ export function symbolSet(
     }
 
     return con;
-}
-
-export function plus(size: number) {
-    const width = size;
-    const height = width / 2;
-
-    const [dx, dy] = [-width / 2, -height / 2];
-    return new PIXI.Graphics()
-        .beginFill(0xFFFFFF)
-        .drawRect(size / 2 + dx, size / 2 + dy, width, height)
-        .drawRect(size / 2 + dy, size / 2 + dx, height, width);
-}
-
-export function circle(size: number) {
-    return new PIXI.Graphics()
-    .beginFill(0xFFFFFF)
-    .drawCircle(size / 2, size / 2, size / 2);
 }
 
 /**
@@ -279,13 +304,13 @@ export function hoverIndicator(textures: Atlas): PIXI.Sprite {
 }
 
 export function train(renderer: PIXI.AbstractRenderer) {
-    const graphics = new PIXI.Graphics()
-        .beginFill(0xFFFFFF)
-        .drawRect(0, 8, 28, 16)
-        .beginFill(0x7F7F7F)
-        .drawRect(28, 8, 4, 16)
-    
-    const rt = createRenderTexture(renderer, graphics, 32);
+    const rt = loadRenderTexture(renderer, "train", 32, () => {
+        return new PIXI.Graphics()
+            .beginFill(0xFFFFFF)
+            .drawRect(0, 8, 28, 16)
+            .beginFill(0x7F7F7F)
+            .drawRect(28, 8, 4, 16)
+    });
     const sprite = new PIXI.Sprite(rt);
     pivotCenter(sprite);
     return sprite;

@@ -1224,7 +1224,7 @@ export namespace Tile {
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
                 const symbols = TileGraphics.symbolSet(
-                    renderer, this.colors, [center, inner], TileGraphics.plus
+                    renderer, this.colors, [center, inner], "plus"
                 );
                 symbols.name = "symbols";
                 con.addChild(symbols);
@@ -1295,7 +1295,7 @@ export namespace Tile {
                 
                 const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
                 const symbols = TileGraphics.symbolSet(
-                    renderer, this.targets, [center, inner], TileGraphics.circle
+                    renderer, this.targets, [center, inner], "circle"
                 );
                 symbols.name = "targets";
                 con.addChild(symbols);
