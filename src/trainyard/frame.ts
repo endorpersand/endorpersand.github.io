@@ -125,8 +125,134 @@ namespace TestLevels {
     function repeat<T>(t: T, length: number): T[] {
         return Array.from({length}, () => t);
     }
+    function array2DFrom<X, Y, R>(itx: Iterable<X> | ArrayLike<X>, ity: Iterable<Y> | ArrayLike<Y>, mapfn: (t: [X, Y], i: [number, number]) => R) {
+        return Array.from(ity, (y, j) => Array.from(itx, (x, i) => mapfn([x, y], [i, j])));
+    }
+    function gridFrom<R>(length: number, mapfn: (x: number, y: number) => R) {
+        return array2DFrom({length}, {length}, (_, i) => mapfn(...i));
+    }
 
-    export const TextureLoadTest = Array.from({length: 7}, (_, y) => Array.from({length: 7}, (_, x) => {
+    export const CachePerfTest = gridFrom(7, (x, y) => {
         return new Tile.Outlet(Dir.Down, repeat(Color.Red, y * 7 + x + 1));
-    }));
+    });
+    export const SixBySix = gridFrom(6, () => {
+        return new Tile.Outlet(Dir.Down, [Color.Red]);
+    });
+
+    const tilesToLoad = [
+        new Tile.Outlet(Dir.Right, repeat(Color.Red, 1)),
+        new Tile.Outlet(Dir.Up,    repeat(Color.Orange, 2)),
+        new Tile.Outlet(Dir.Left,  repeat(Color.Yellow, 3)),
+        new Tile.Outlet(Dir.Down,  repeat(Color.Green, 4)),
+
+        new Tile.Splitter(Dir.Right),
+        new Tile.Splitter(Dir.Up),
+        new Tile.Splitter(Dir.Left),
+        new Tile.Splitter(Dir.Down),
+
+        new Tile.Painter(Color.Red,    Dir.Right, Dir.Up),
+        new Tile.Painter(Color.Orange, Dir.Right, Dir.Left),
+        new Tile.Painter(Color.Yellow, Dir.Right, Dir.Down),
+        new Tile.Painter(Color.Green,  Dir.Up,    Dir.Left),
+        new Tile.Painter(Color.Blue,   Dir.Up,    Dir.Down),
+        new Tile.Painter(Color.Purple, Dir.Left,  Dir.Down),
+
+        new Tile.Rock(),
+        new Tile.Blank(),
+
+        new Tile.Goal(repeat(Color.Red,    1),  []),
+        new Tile.Goal(repeat(Color.Orange, 2),  [Dir.Right]),
+        new Tile.Goal(repeat(Color.Yellow, 3),  [Dir.Up]),
+        new Tile.Goal(repeat(Color.Green,  4),  [Dir.Up, Dir.Right]),
+        new Tile.Goal(repeat(Color.Blue,   5),  [Dir.Left]),
+        new Tile.Goal(repeat(Color.Purple, 6),  [Dir.Left, Dir.Right]),
+        new Tile.Goal(repeat(Color.Brown,  7),  [Dir.Left, Dir.Up]),
+        new Tile.Goal(repeat(Color.Red,    8),  [Dir.Left, Dir.Up, Dir.Right]),
+        new Tile.Goal(repeat(Color.Orange, 9),  [Dir.Down]),
+        new Tile.Goal(repeat(Color.Yellow, 10), [Dir.Down, Dir.Right]),
+        new Tile.Goal(repeat(Color.Green,  11), [Dir.Down, Dir.Up]),
+        new Tile.Goal(repeat(Color.Blue,   12), [Dir.Down, Dir.Up, Dir.Right]),
+        new Tile.Goal(repeat(Color.Purple, 13), [Dir.Down, Dir.Left]),
+        new Tile.Goal(repeat(Color.Brown,  14), [Dir.Down, Dir.Left, Dir.Right]),
+        new Tile.Goal(repeat(Color.Red,    15), [Dir.Down, Dir.Left, Dir.Up]),
+        new Tile.Goal(repeat(Color.Orange, 16), [Dir.Down, Dir.Left, Dir.Up, Dir.Right]),
+
+        new Tile.SingleRail(Dir.Right, Dir.Up),
+        new Tile.SingleRail(Dir.Right, Dir.Left),
+        new Tile.SingleRail(Dir.Right, Dir.Down),
+        new Tile.SingleRail(Dir.Up,    Dir.Left),
+        new Tile.SingleRail(Dir.Up,    Dir.Down),
+        new Tile.SingleRail(Dir.Left,  Dir.Down),
+        new Tile.Blank(),
+        new Tile.Blank(),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Up),
+            new Tile.SingleRail(Dir.Right, Dir.Left)
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Up),
+            new Tile.SingleRail(Dir.Right, Dir.Down)
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Up),
+            new Tile.SingleRail(Dir.Up,    Dir.Left)
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Up),
+            new Tile.SingleRail(Dir.Up,    Dir.Down)
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Up),
+            new Tile.SingleRail(Dir.Left,  Dir.Down)
+        ),
+        
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Left),
+            new Tile.SingleRail(Dir.Right, Dir.Down),
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Left),
+            new Tile.SingleRail(Dir.Up,    Dir.Left),
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Left),
+            new Tile.SingleRail(Dir.Up,    Dir.Down),
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Left),
+            new Tile.SingleRail(Dir.Left,  Dir.Down),
+        ),
+
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Down),
+            new Tile.SingleRail(Dir.Up,    Dir.Left),
+            
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Down),
+            new Tile.SingleRail(Dir.Up,    Dir.Down),
+            
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Right, Dir.Down),
+            new Tile.SingleRail(Dir.Left,  Dir.Down),
+            
+        ),
+
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Up,    Dir.Left),
+            new Tile.SingleRail(Dir.Up,    Dir.Down),
+        ),
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Up,    Dir.Left),
+            new Tile.SingleRail(Dir.Left,  Dir.Down),
+        ),
+        
+        Tile.Rail.of(
+            new Tile.SingleRail(Dir.Up,    Dir.Down),
+            new Tile.SingleRail(Dir.Left,  Dir.Down),
+        ),
+
+    ];
+    export const TextureLoadTest = gridFrom(8, (x, y) => tilesToLoad[y * 8 + x]);
 }

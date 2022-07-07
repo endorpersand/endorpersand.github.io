@@ -260,6 +260,11 @@ export namespace Grids {
         return cellSize * cellLength + TILE_GAP * (cellLength + 1);
     }
 
+    export function optimalCellSize({cellLength}: Grid, gridSize: number) {
+        const cellSpace = gridSize - TILE_GAP * (cellLength + 1);
+        return Math.floor(cellSpace / cellLength);
+    }
+
     /**
      * Takes a pixel position and converts it into a cell position
      * @param param0 grid to compute coordinates on

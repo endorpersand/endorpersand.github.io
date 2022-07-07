@@ -162,9 +162,12 @@ export class TileGrid implements Serializable, Grids.Grid {
 
     load(tiles: (Tile | undefined)[][] | GridJSON): this {
         if ("board" in tiles) {
-            [tiles, this.cellLength] = TileGrid.#tilesFromJSON(tiles);
+            tiles = TileGrid.#tilesFromJSON(tiles);
         }
-
+        const gridSize = Grids.gridSize(this);
+        
+        this.cellLength = tiles.length;
+        this.cellSize = Grids.optimalCellSize(this, gridSize);
         this.tiles = tiles;
         return this;
     }
@@ -769,7 +772,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             })
         );
 
-        return [newTiles, length] as [Tile[][], number];
+        return newTiles;
     }
 }
 
@@ -1320,9 +1323,8 @@ export namespace Tile {
                 symbols.name = "targets";
                 con.addChild(symbols);
 
-                con.addChild(...[...this.actives]
-                    .map(e => TileGraphics.activeSide(textures, e))
-                )
+                let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(textures, e));
+                if (activeSides.length > 0) con.addChild(...activeSides);
             });
         }
     }
@@ -1375,9 +1377,9 @@ export namespace Tile {
                 con.addChild(box);
                 
                 con.addChild(TileGraphics.painterSymbol(textures, this.color));
-                con.addChild(...[...this.actives]
-                    .map(e => TileGraphics.activeSide(textures, e))
-                )
+                con.addChild(
+                    ...Array.from(this.actives, e => TileGraphics.activeSide(textures, e))
+                );
             });
         }
     }
