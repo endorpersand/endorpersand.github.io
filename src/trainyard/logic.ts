@@ -74,11 +74,6 @@ export class TileGrid implements Serializable, Grids.Grid {
     cellLength: number;
 
     /**
-     * If false, a train crashed.
-     */
-    passing: boolean = true;
-
-    /**
      * Cache for this.container
      */
     #c_container?: GridContainer;
@@ -800,10 +795,6 @@ class GridCursor {
     container() {
         return this.#grid.container.cellAt(this.#pos);
     }
-
-    fail() {
-        this.#grid.simulation!.fail();
-    }
 }
 
 type GridMoves = {[i: number]: Move[]};
@@ -843,7 +834,10 @@ class Simulation implements IterableIterator<GridMoves> {
             tile.state!.trainState.finalize();
         }
         for (let [pos, tile] of this.#statefulTiles()) {
-            this.#trainCon!.moveBodies(pos, tile.state!.trainState.deployedTrains);
+            const deployedTrains = tile.state!.trainState.deployedTrains;
+
+            if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
+            this.#trainCon!.moveBodies(pos, deployedTrains);
         }
     }
 
@@ -900,7 +894,8 @@ type TrainStateOptions = Partial<{
 export namespace Move {
     export interface Destroy {
         move: "destroy",
-        preimage: Train
+        preimage: Train,
+        crashed: boolean
     }
 
     export interface Pass {
@@ -921,7 +916,11 @@ export namespace Move {
         image: Train
     }
 }
+
 export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
+
+const TRAIN_CRASH = Symbol("train crashed");
+type TrainDeploy = (t: Train) => void | typeof TRAIN_CRASH | Train | Train[];
 
 class TrainState {
     /**
@@ -983,14 +982,39 @@ class TrainState {
         return Array.from(dest, dir => ({color, dir}));
     }
 
+    #trackCrash(preimage: Train) {
+        this.deployedTrains.push({
+            move: "destroy",
+            preimage,
+            crashed: true
+        });
+    }
+    #trackMerge(preimage: Train[], image: Train) {
+        // if only 1 preimage, this is just an extension of the previous move
+        if (preimage.length == 1) {
+            const im = this.deployedTrains.find((m): m is Move.Pass => m.move == "pass" && m.image == preimage[0]);
+            if (im) {
+                im.image = image;
+            } else {
+                this.#trackMove(preimage[0], [image]);
+            }
+        } else {
+            this.deployedTrains.push({
+                move: "merge",
+                preimage,
+                image
+            });
+        }
+    }
     #trackMove(preimage: Train, image: Train[]) {
         let move: Move;
 
         if (image.length == 0) {
             move = {
                 move: "destroy",
-                preimage
-            }
+                preimage,
+                crashed: false
+            };
         } else if (image.length == 1) {
             move = {
                 move: "pass",
@@ -1008,12 +1032,16 @@ class TrainState {
         if (move) this.deployedTrains.push(move);
     }
 
-    #computeImage(preimage: Train, f?: (t: Train) => void | Train | Train[]): Train[] {
+    #computeImage(preimage: Train, f?: TrainDeploy): Train[] {
         if (typeof f === "undefined") return [preimage];
 
         let image = f(preimage) ?? [];
-        if (!(image instanceof Array)) image = [image];
+        if (image === TRAIN_CRASH) {
+            this.#trackCrash(preimage);
+            return [];
+        };
 
+        if (!(image instanceof Array)) image = [image];
         return image;
     }
 
@@ -1024,8 +1052,7 @@ class TrainState {
             if (nb?.accepts(t)) {
                 nb.state!.trainState.#pendingTrains.push(t);
             } else {
-                cur.fail();
-                this.#trackMove(t, []);
+                this.#trackCrash(t);
             }
         }
     }
@@ -1036,7 +1063,7 @@ class TrainState {
      * @param f a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
      */
-    deployOne(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
+    deployOne(cur: GridCursor, f?: TrainDeploy) {
         const preimage = this.#trains.shift()!;
 
         if (preimage) {
@@ -1054,7 +1081,7 @@ class TrainState {
      * @param f  a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
      */
-    deployAll(cur: GridCursor, f?: (t: Train) => void | Train | Train[]) {
+    deployAll(cur: GridCursor, f?: TrainDeploy) {
         // no merge is identical to this
         if (!this.doTrainsMerge) {
             while (this.#trains.length > 0) this.deployOne(cur, f);
@@ -1084,11 +1111,7 @@ class TrainState {
         }
 
         for (let t of mergedImage) {
-            this.deployedTrains.push({
-                move: "merge",
-                preimage: imageMap.get(t.dir)!,
-                image: t
-            });
+            this.#trackMerge(imageMap.get(t.dir)!, t);
         }
         this.#deployImage(cur, mergedImage);
 
@@ -1295,7 +1318,7 @@ export namespace Tile {
                     const targets = cur.container().getChildByName("targets", false) as PIXI.Container;
                     targets.removeChildAt(i).destroy({children: true});
                 } else {
-                    cur.fail();
+                    return TRAIN_CRASH;
                 }
             });
         }
