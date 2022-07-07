@@ -1,6 +1,8 @@
 import * as PIXI from "pixi.js";
+import { Move } from "../logic";
 import { Atlas, CellPos, Dir, Grids, Palette, Train } from "../values";
 import * as TileGraphics from "./components";
+import "../ext/map";
 
 type PIXIData = {
     textures: Atlas,
@@ -128,31 +130,51 @@ export class TrainContainer extends AbsGriddedContainer {
      * @param preImagePos original cell position
      * @param moves deployments
      */
-    moveBodies(preImagePos: CellPos, moves: Map<Train, Train[]>) {
-        for (let [preimage, images] of moves) {
-            // pop trainBody
-            const trainBody = this.trainBodies.get(preimage);
-            this.trainBodies.delete(preimage);
+    moveBodies(preImagePos: CellPos, moves: Move[]) {
+        for (let m of moves) {
+            if (m.move == "destroy") {
+                const {preimage} = m;
+                const trainBody = this.trainBodies.popItem(preimage);
 
-            if (trainBody) {
-                if (images.length == 0) {
-                    // trainBody should no longer exist. kill it.
-                    this.removeChild(trainBody).destroy();
-                    continue;
-                }
+                if (trainBody) this.removeChild(trainBody).destroy();
+            } else if (m.move == "pass") {
+                const {preimage, image} = m;
+                const trainBody = this.trainBodies.popItem(preimage);
+
+                this.#passBody(trainBody, preImagePos, image);
+            } else if (m.move == "split") {
+                const {preimage, image} = m;
+                const trainBody = this.trainBodies.popItem(preimage);
                 
-                // assign trainBody to new train
-                let ref = images.shift()!;
-                this.trainBodies.set(ref, trainBody);
-                this.#redressBody(trainBody, Dir.shift(preImagePos, ref.dir), ref);
-            }
+                if (trainBody) {
+                    this.#passBody(trainBody, preImagePos, image.shift()!);
 
-            // create new bodies for the rest of the trains:
-            for (let t of images) {
-                this.createBody(Dir.shift(preImagePos, t.dir), t);
+                    for (let t of image) {
+                        this.createBody(Dir.shift(preImagePos, t.dir), t);
+                    }
+                }
+            } else if (m.move == "merge") {
+                const {preimage, image} = m;
+                const trainBody = this.trainBodies.popItem(preimage.shift()!);
+
+                this.trainBodies.set(image, trainBody!);
+
+                for (let t of preimage) {
+                    const trainBody = this.trainBodies.popItem(t);
+                    if (trainBody) this.removeChild(trainBody).destroy();
+                }
+            } else {
+                let _: never = m;
             }
         }
-        moves.clear();
+        moves.length = 0;
+    }
+
+    #passBody(body: PIXI.Sprite | undefined, preImagePos: CellPos, t: Train) {
+        if (body) {
+            this.trainBodies.set(t, body);
+            this.#redressBody(body, Dir.shift(preImagePos, t.dir), t);
+        }
     }
 
     /**
@@ -191,4 +213,10 @@ export class TrainContainer extends AbsGriddedContainer {
             this.removeChild(this.children[0]).destroy({children: true});
         }
     }
+}
+
+function pop<K, V>(map: Map<K, V>, k: K): V | undefined {
+    const v = map.get(k);
+    map.delete(k);
+    return v;
 }

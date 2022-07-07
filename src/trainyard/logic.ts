@@ -874,6 +874,32 @@ type TrainStateOptions = Partial<{
     mergeTrains: boolean
 }>;
 
+export namespace Move {
+    export interface Destroy {
+        move: "destroy",
+        preimage: Train
+    }
+
+    export interface Pass {
+        move: "pass",
+        preimage: Train,
+        image: Train
+    }
+
+    export interface Split {
+        move: "split",
+        preimage: Train,
+        image: Train[]
+    }
+
+    export interface Merge {
+        move: "merge",
+        preimage: Train[],
+        image: Train
+    }
+}
+export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
+
 class TrainState {
     /**
      * A list of the trains currently on the tile.
@@ -889,7 +915,7 @@ class TrainState {
      * A mapping keeping track of which trains moved to where during the step calculation.
      * It is used during finalization to move train sprites on the stage.
      */
-    deployedTrains: Map<Train, Train[]> = new Map();
+    deployedTrains: Move[] = [];
 
     doTrainsMerge: boolean = true;
 
@@ -934,6 +960,31 @@ class TrainState {
         return Array.from(dest, dir => ({color, dir}));
     }
 
+    #trackMove(preimage: Train, image: Train[]) {
+        let move: Move;
+
+        if (image.length == 0) {
+            move = {
+                move: "destroy",
+                preimage
+            }
+        } else if (image.length == 1) {
+            move = {
+                move: "pass",
+                preimage,
+                image: image[0]
+            };
+        } else {
+            move = {
+                move: "split",
+                preimage,
+                image
+            };
+        }
+
+        if (move) this.deployedTrains.push(move);
+    }
+
     #computeImage(preimage: Train, f?: (t: Train) => void | Train | Train[]): Train[] {
         if (typeof f === "undefined") return [preimage];
 
@@ -944,20 +995,16 @@ class TrainState {
     }
 
     #deployImage(cur: GridCursor, image: Train[]) {
-        let deployedImages = [];
-
         for (let t of image) {
             const nb = cur.neighbor(t.dir);
             
             if (nb?.accepts(t)) {
                 nb.state!.trainState.#pendingTrains.push(t);
-                deployedImages.push(t);
             } else {
                 cur.fail();
+                this.#trackMove(t, []);
             }
         }
-
-        return deployedImages;
     }
 
     /**
@@ -973,9 +1020,8 @@ class TrainState {
             // convert image result into Train[]
             let image = this.#computeImage(preimage, f);
     
-            this.deployedTrains.set(preimage,
-                this.#deployImage(cur, image)
-            );
+            this.#trackMove(preimage, image);
+            this.#deployImage(cur, image);
         }
     }
     
@@ -993,37 +1039,35 @@ class TrainState {
         }
 
         // get image every preimage maps to
-        let images = this.#trains
-            .map(preimage => [preimage, this.#computeImage(preimage, f)] as [preimage: Train, image: Train[]]);
+        let imageTrains = this.#trains
+            .flatMap(preimage => {
+                const image = this.#computeImage(preimage, f);
+                this.#trackMove(preimage, image);
+                return image;
+            });
 
         // merge the trains, there should be 1 train that exits per direction
-        let mergedImage = TrainState.#mergeTrains(images.flatMap(([_, images]) => images));
-        let mimap = new Map(mergedImage.map(t => [t.dir, t]));
+        let mergedImage = TrainState.#mergeTrains(imageTrains);
 
-        let assigned: Set<Dir> = new Set();
-        for (let [pre, t] of images) {
-            if (assigned.size == mergedImage.length) {
-                // everything has been assigned, so the train no longer exists
-                this.deployedTrains.set(pre, []);
-                continue;
-            }
+        let imageMap = new Map<Dir, Train[]>();
 
-            // find the first direction that hasn't been assigned
-            let assignedDir = t.map(({dir}) => dir)
-                .find(d => !assigned.has(d));
-            
-                // if we find a direction, then assign the merged train
-                if (typeof assignedDir !== "undefined") {
-                    let image = [mimap.get(assignedDir)].filter((t): t is Train => typeof t !== "undefined");
-                    assigned.add(assignedDir);
-                    this.deployedTrains.set(pre, 
-                        this.#deployImage(cur, image)
-                    );
+        for (let t of imageTrains) {
+            const {dir} = t;
+            if (imageMap.has(dir)) {
+                imageMap.get(dir)!.push(t);
             } else {
-                // if there no new direction, then it got merged, so we can throw it away
-                this.deployedTrains.set(pre, []);
+                imageMap.set(dir, [t]);
             }
         }
+
+        for (let t of mergedImage) {
+            this.deployedTrains.push({
+                move: "merge",
+                preimage: imageMap.get(t.dir)!,
+                image: t
+            });
+        }
+        this.#deployImage(cur, mergedImage);
 
         this.#trains = [];
     }
