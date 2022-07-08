@@ -2,18 +2,23 @@ import { IPointData, Resource, Texture } from "pixi.js";
 
 export enum Color {
     // primaries
-    Red    = 0b0001, 
-    Yellow = 0b0010, 
-    Blue   = 0b0100, 
+    Red    = 0b001, 
+    Yellow = 0b010, 
+    Blue   = 0b100, 
 
     // secondaries
-    Orange = 0b1011, 
-    Green  = 0b1110,
-    Purple = 0b1101, 
-    Brown  = 0b1111
+    Orange = 0b011, 
+    Green  = 0b110,
+    Purple = 0b101, 
+    Brown  = 0b111
 }
 
 export namespace Color {
+    function isSecondary(c: Color) {
+        // https://stackoverflow.com/a/600306
+        return !!(c & (c - 1));
+    }
+
     /**
      * Get the result of mixing two train colors together
      * @param a color 1
@@ -21,16 +26,16 @@ export namespace Color {
      * @returns the resultant color
      */
     export function mix(a: Color, b: Color) {
-        a &= 0b1111;
-        b &= 0b1111;
+        a &= 0b111;
+        b &= 0b111;
 
         // C + C = C (for any color C)
         if (a === b) return a;
     
         // S + C = Brown (for any color C, any secondary color S)
-        if ((a & 0b1000) || (b & 0b1000)) return Color.Brown;
+        if (isSecondary(a) || isSecondary(b)) return Color.Brown;
     
-        return (0b1000 | a | b) as Color;
+        return (a | b) as Color;
     }
 
     /**
