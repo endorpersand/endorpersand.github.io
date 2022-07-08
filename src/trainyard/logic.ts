@@ -985,7 +985,7 @@ class TrainState {
      */
     deployedTrains: Move[] = [];
 
-    doTrainsMerge: boolean = true;
+    doTrainsMerge: boolean = false;
 
     constructor(iter: Iterable<Train> = [], options: TrainStateOptions = {}) {
         this.#trains = Array.from(iter);
@@ -1588,7 +1588,9 @@ export namespace Tile {
         }
     
         createState(): TileState {
-            return this.createDefaultState();
+            return {
+                trainState: new TrainState([], { mergeTrains: true })
+            };
         }
 
         redirect(t: Train): Train | undefined {
@@ -1637,7 +1639,7 @@ export namespace Tile {
     
         createState(): DoubleRailState {
             return {
-                ...this.createDefaultState(),
+                trainState: new TrainState([], { mergeTrains: this.crossesOver }),
                 topIndex: 0
             };
         }
@@ -1688,6 +1690,15 @@ export namespace Tile {
             return new Tile.SingleRail(d1, d2);
         }
 
+        get crossesOver() {
+            if (this.#overlapping) return true;
+
+            const [[a1, a2], [b1, b2]] = this.paths;
+
+            // if true, this is the + rail
+            // if false, this is the wavy rail.
+            return (a2 - a1) % 2 == 0 && (b2 - b1) % 2 == 0;
+        }
         updateContainer(cur: GridCursor): void {
             const con = cur.container();
             const [c1, c2] = con.children as PIXI.Sprite[];

@@ -157,7 +157,7 @@ export class TrainContainer extends AbsGriddedContainer {
                 const {preimage, image} = m;
                 const trainBody = this.trainBodies.popItem(preimage.shift()!);
 
-                this.trainBodies.set(image, trainBody!);
+                this.#passBody(trainBody, preImagePos, image);
 
                 for (let t of preimage) {
                     const trainBody = this.trainBodies.popItem(t);

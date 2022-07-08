@@ -197,7 +197,7 @@ export class DirFlags {
         return out;
     }
 
-    *[Symbol.iterator]() {
+    *[Symbol.iterator](): Generator<Dir> {
         let f = this.#flags;
         let i = 0;
 
