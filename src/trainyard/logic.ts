@@ -889,20 +889,21 @@ namespace Simulation {
          */
         step() {
             const moves = this.advance();
+            this.progress = 0;
 
             if (typeof moves !== "undefined") {
                 this.render(moves);
             }
         }
 
-        stepPartial(frames = 1) {
+        stepPartial(frames: number) {
             this.progress += frames / FRAMES_PER_STEP;
             
             while (this.progress > 1) {
                 this.progress -= 1;
 
                 const nextMove = this.advance();
-                if (nextMove) this.completeStep(nextMove);
+                if (nextMove) this.render(nextMove);
             }
 
             if (this.progress > 0) {
@@ -928,10 +929,6 @@ namespace Simulation {
                 const pos = Grids.indexToCell(this.#grid, +i);
                 this.#trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
             }
-        }
-
-        completeStep(step: GridStep) {
-            this.render(step);
         }
 
         /**
