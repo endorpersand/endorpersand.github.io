@@ -857,11 +857,14 @@ class GridCursor {
         return this.#grid.tile(...Dir.shift(this.#pos, direction));
     }
 
-    /**
-     * @returns the container of the tile the cursor is pointing to
-     */
-    container() {
-        return this.#grid.cellAt(this.#pos);
+    updateRender(progress: number, call: (con: PIXI.Container) => void) {
+        const updates = this.#grid.simulation!.renderUpdates;
+        const result = [progress, () => call(this.#grid.cellAt(this.#pos))] as const;
+
+        let gtIndex = updates.findIndex(([p, _]) => progress < p);
+
+        if (gtIndex == -1) updates.splice(updates.length, 0, result);
+        else updates.splice(gtIndex, 0, result);
     }
 }
 
@@ -897,7 +900,7 @@ export namespace Move {
  */
 export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
 
-type GridStep = {[i: number]: Move[]};
+type GridStep = Map<number, Move[]>;
 
 namespace Simulation {
     const FRAMES_PER_STEP = 30;
@@ -910,6 +913,7 @@ namespace Simulation {
         #peeked: GridStep[] = [];
         passing: boolean = true;
         progress: number = 0;
+        renderUpdates: (readonly [progress: number, call: () => void])[] = [];
 
         constructor(grid: TileGrid, tc: TrainContainer) {
             this.#grid = grid;
@@ -982,18 +986,25 @@ namespace Simulation {
          * Render a set of grid moves.
          */
         render(step: GridStep) {
-            for (let [i, deployedTrains] of Object.entries(step)) {
+            for (let [i, deployedTrains] of step.entries()) {
                 const pos = Grids.indexToCell(this.#grid, +i);
 
                 if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
                 this.#trainCon.moveBodies(pos, deployedTrains);
             }
+
+            for (let [_, call] of this.renderUpdates) call();
+            this.renderUpdates = [];
         }
 
         renderPartial(step: GridStep) {
-            for (let [i, deployedTrains] of Object.entries(step)) {
+            for (let [i, deployedTrains] of step.entries()) {
                 const pos = Grids.indexToCell(this.#grid, +i);
                 this.#trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
+            }
+
+            while (this.renderUpdates.length > 0 && this.renderUpdates[0][0] <= this.progress) {
+                this.renderUpdates.shift()![1]();
             }
         }
 
@@ -1030,7 +1041,7 @@ namespace Simulation {
         }
     
         next() {
-            let deploys: GridStep = {};
+            let deploys: GridStep = new Map();
     
             for (let [pos, tile] of this.#grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
@@ -1040,11 +1051,11 @@ namespace Simulation {
                     const i = Grids.cellToIndex(this.#grid, pos);
     
                     tile.step(cur);
-                    deploys[i] = [...trainState.deployedTrains];
+                    deploys.set(i, [...trainState.deployedTrains]);
                 }
             }
     
-            let done = Object.keys(deploys).length == 0;
+            let done = deploys.size == 0;
             if (done) {
                 this.done = true;
                 return {value: undefined, done};
@@ -1376,10 +1387,11 @@ export namespace Tile {
             this.colors = colors;
         }
 
-        createState() {
+        createState(): TileState {
             const {colors, out} = this;
             
             return {
+                ...this.createDefaultState(),
                 trainState: new TrainState(
                     Array.from(colors, color => ({color, dir: out}))
                 )
@@ -1389,8 +1401,10 @@ export namespace Tile {
         step(cur: GridCursor): void {
             // While the outlet has trains, deploy one.
             this.state!.trainState.deployOne(cur);
-            const symbols = cur.container().getChildByName("symbols", false) as PIXI.Container;
-            symbols.removeChildAt(0).destroy({children: true});
+            cur.updateRender(0, con => {
+                const symbols = con.getChildByName("symbols", false) as PIXI.Container;
+                symbols.removeChildAt(0).destroy({children: true});
+            });
         }
         
         toJSON() {
@@ -1456,8 +1470,10 @@ export namespace Tile {
                 let i = remaining.indexOf(train.color);
                 if (i != -1) {
                     remaining.splice(i, 1);
-                    const targets = cur.container().getChildByName("targets", false) as PIXI.Container;
-                    targets.removeChildAt(i).destroy({children: true});
+                    cur.updateRender(0.5, con => {
+                        const targets = con.getChildByName("targets") as PIXI.Container;
+                        targets.removeChildAt(i).destroy({children: true});
+                    });
                 } else {
                     return TRAIN_CRASH;
                 }
@@ -1870,11 +1886,12 @@ export namespace Tile {
             return (a2 - a1) % 2 == 0 && (b2 - b1) % 2 == 0;
         }
         updateContainer(cur: GridCursor): void {
-            const con = cur.container();
-            const [c1, c2] = con.children as PIXI.Sprite[];
-
-            [c1.tint, c2.tint] = [c2.tint, c1.tint];
-            con.swapChildren(c1, c2);
+            cur.updateRender(1, con => {
+                const [c1, c2] = con.children as PIXI.Sprite[];
+    
+                [c1.tint, c2.tint] = [c2.tint, c1.tint];
+                con.swapChildren(c1, c2);
+            });
         }
     }
 
