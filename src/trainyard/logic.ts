@@ -1002,10 +1002,6 @@ namespace Simulation {
 }
 
 
-type TrainStateOptions = Partial<{
-    mergeTrains: boolean
-}>;
-
 const TRAIN_CRASH = Symbol("train crashed");
 type TrainDeploy = (t: Train) => void | typeof TRAIN_CRASH | Train | Train[];
 
@@ -1026,12 +1022,8 @@ class TrainState {
      */
     deployedTrains: Move[] = [];
 
-    doTrainsMerge: boolean = false;
-
-    constructor(iter: Iterable<Train> = [], options: TrainStateOptions = {}) {
+    constructor(iter: Iterable<Train> = []) {
         this.#trains = Array.from(iter);
-
-        if (typeof options.mergeTrains !== "undefined") this.doTrainsMerge = options.mergeTrains;
     }
 
     get length() {
@@ -1049,24 +1041,6 @@ class TrainState {
         // do train collapsing here
         this.#trains.push(...this.#pendingTrains);
         this.#pendingTrains = [];
-    }
-
-    /**
-     * Take departuring trains and merge trains being deployed to the same place.
-     * @param trains trains, uncombined
-     * @returns the combined trains
-     */
-    static #mergeTrains(trains: Train[]): Train[] {
-        if (trains.length == 0) return trains;
-
-        // merge all the colors of all the trains going through the rail
-        let color = Color.mixMany(trains.map(t => t.color));
-
-        // get all train destinations
-        let dest = new Set(trains.map(t => t.dir));
-
-        // create one train per dest.
-        return Array.from(dest, dir => ({color, dir}));
     }
 
     #trackCrash(preimage: Train) {
@@ -1119,17 +1093,19 @@ class TrainState {
         if (move) this.deployedTrains.push(move);
     }
 
-    #computeImage(preimage: Train, f?: TrainDeploy): Train[] {
-        if (typeof f === "undefined") return [preimage];
+    #normalizeImage(preimage: Train, image: ReturnType<TrainDeploy>): Train[] {
+        image ??= [];
 
-        let image = f(preimage) ?? [];
         if (image === TRAIN_CRASH) {
             this.#trackCrash(preimage);
             return [];
         };
-
+    
         if (!(image instanceof Array)) image = [image];
         return image;
+    }
+    #computeImage(preimage: Train, f?: TrainDeploy): Train[] {
+        return this.#normalizeImage(preimage, f?.(preimage) ?? [preimage]);
     }
 
     #deployImage(cur: GridCursor, image: Train[]) {
@@ -1169,38 +1145,27 @@ class TrainState {
      *     The direction of the train designates which neighbor the train goes to.
      */
     deployAll(cur: GridCursor, f?: TrainDeploy) {
-        // no merge is identical to this
-        if (!this.doTrainsMerge) {
-            while (this.#trains.length > 0) this.deployOne(cur, f);
-            return;
-        }
+        while (this.#trains.length > 0) this.deployOne(cur, f);
+    }
 
-        // get image every preimage maps to
-        let imageTrains = this.#trains
-            .flatMap(preimage => {
-                const image = this.#computeImage(preimage, f);
-                this.#trackMove(preimage, image);
-                return image;
-            });
+    static #isDaoMerge<T, U, V>(r: [U, T] | [U[], V]): r is [U[], V] {
+        return r[0] instanceof Array;
+    }
 
-        // merge the trains, there should be 1 train that exits per direction
-        let mergedImage = TrainState.#mergeTrains(imageTrains);
+    deployAtOnce(cur: GridCursor, f: (t: readonly Train[]) => ([Train, ReturnType<TrainDeploy>] | [Train[], Train])[]) {
+        const results = f(this.#trains);
 
-        let imageMap = new Map<Dir, Train[]>();
+        for (let r of results) {
+            if (!TrainState.#isDaoMerge(r)) {
+                let image = this.#normalizeImage(...r);
 
-        for (let t of imageTrains) {
-            const {dir} = t;
-            if (imageMap.has(dir)) {
-                imageMap.get(dir)!.push(t);
+                this.#trackMove(r[0], image);
+                this.#deployImage(cur, image);
             } else {
-                imageMap.set(dir, [t]);
+                this.#trackMerge(...r);
+                this.#deployImage(cur, [r[1]]);
             }
         }
-
-        for (let t of mergedImage) {
-            this.#trackMerge(imageMap.get(t.dir)!, t);
-        }
-        this.#deployImage(cur, mergedImage);
 
         this.#trains = [];
     }
@@ -1587,11 +1552,6 @@ export namespace Tile {
             super(...entrances);
         }
     
-        step(cur: GridCursor): void {
-            this.state!.trainState.deployAll(cur, this.redirect.bind(this));
-            this.updateContainer(cur);
-        }
-    
         /**
          * Create a new rail from two single rails.
          * If they are the same rail, return a SingleRail, else create a joined DoubleRail.
@@ -1608,14 +1568,35 @@ export namespace Tile {
             }
             return new DoubleRail([e1, e2]);
         }
-        
-        /**
-         * Designate where a train should exit the rail (given its entrance state)
-         * @param t train to redirect
-         */
-        abstract redirect(t: Train): Train | undefined;
+
+        protected static redirect(d: Dir, path: DirFlags) {
+            let enterDir = Dir.flip(d);
+            
+            // A train that entered through one entrance exits through the other entrance
+            if (path.has(enterDir)) {
+                return path.dirExcluding(enterDir);
+            }
+        }
 
         abstract top(): SingleRail;
+
+        /**
+         * Take departuring trains and merge trains being deployed to the same place.
+         * @param trains trains, uncombined
+         * @returns the combined trains
+         */
+        protected static mergeTrains(trains: Train[]): Train[] {
+            if (trains.length == 0) return trains;
+
+            // merge all the colors of all the trains going through the rail
+            let color = Color.mixMany(trains.map(t => t.color));
+
+            // get all train destinations
+            let dest = new Set(trains.map(t => t.dir));
+
+            // create one train per dest.
+            return Array.from(dest, dir => ({color, dir}));
+        }
 
         updateContainer(cur: GridCursor) {
 
@@ -1629,23 +1610,22 @@ export namespace Tile {
         }
     
         createState(): TileState {
-            return {
-                trainState: new TrainState([], { mergeTrains: true })
-            };
+            return this.createDefaultState();
         }
 
-        redirect(t: Train): Train | undefined {
-            
-            let {color, dir} = t;
-            let enterDir = Dir.flip(dir);
-            
-            // A train that entered through one entrance exits through the other entrance
-            if (this.actives.has(enterDir)) {
-                return {color, dir: this.actives.dirExcluding(enterDir)};
-            }
-            // invalid state: wipe truck from existence
+        step(cur: GridCursor): void {
+            const trainState = this.state!.trainState;
+            const color = Color.mixMany(trainState.trains.map(t => t.color));
+
+            trainState.deployAll(cur, ({dir}) => {
+                const newDir = Rail.redirect(dir, this.actives);
+
+                if (typeof newDir === "number") return {color, dir: newDir};
+                // invalid state if undefined
+            });
+            this.updateContainer(cur);
         }
-    
+
         render({textures}: PIXIData, size: number): PIXI.Container {
             return TileGraphics.sized(size, con => {
                 con.addChild(TileGraphics.rail(textures, ...this.actives));
@@ -1680,29 +1660,27 @@ export namespace Tile {
     
         createState(): DoubleRailState {
             return {
-                trainState: new TrainState([], { mergeTrains: this.crossesOver }),
+                ...this.createDefaultState(),
                 topIndex: 0
             };
         }
-        redirect(t: Train): Train | undefined {
-            let {color, dir} = t;
-            let enterDir = Dir.flip(dir);
+
+        step(cur: GridCursor): void {
             const state = this.state!;
-    
-            // Find which path the train is on. Pass the train onto the other side of the path.
-            let rails = [state.topIndex, 1 - state.topIndex]
-                .map(i => this.paths[i])
-                .filter(r => r.has(enterDir));
-    
-            if (rails.length > 0) {
-                // If the double rail merges at a point, then the primary and secondary rails swap.
-                if (this.#overlapping) {
-                    state.topIndex = 1 - state.topIndex as 0 | 1;
-                }
-                return { color, dir: rails[0].dirExcluding(enterDir) };
-            }
+            const trainState = state.trainState;
             
-            // invalid state: wipe truck from existence
+            let redirects = trainState.trains.length;
+            const paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as [DirFlags, DirFlags];
+
+            const crossesOver = this.crossesOver;
+            trainState.deployAtOnce(cur, (trains) => {
+                throw new Error("TODO");
+                // TODO
+            });
+            state.topIndex += redirects;
+            state.topIndex %= 2;
+
+            this.updateContainer(cur);
         }
 
         render({textures}: PIXIData, size: number): PIXI.Container {
