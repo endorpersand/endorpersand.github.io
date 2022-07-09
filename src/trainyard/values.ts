@@ -117,6 +117,13 @@ export namespace Dir {
         }
     }
 
+    export function shifts(
+        pos: readonly [number, number], 
+        n = 1, ...d: Dir[]
+    ): readonly [number, number] {
+        return d.reduce(((acc, cv) => shift(acc, cv, n)), pos);
+    }
+
     export function difference(
         [x1, y1]: readonly [number, number], 
         [x2, y2]: readonly [number, number]
@@ -132,8 +139,16 @@ export namespace Dir {
         return undefined;
     }
 
-    export function edge(d: Dir, size = 1): readonly [number, number] {
-        return shift([size / 2, size / 2], d, size / 2);
+    /**
+     * Get the edge of the cell.
+     * @param d Direction of the edge (or undefined if center)
+     * @param size Size of the cell (not radius)
+     * @returns the position that marks the edge of the cell
+     */
+    export function edge(d: Dir | undefined, size = 1): readonly [number, number] {
+        const mid = size / 2;
+        const center = [mid, mid] as const;
+        return typeof d === "number" ? shift(center, d, mid) : center;
     }
 
     /**

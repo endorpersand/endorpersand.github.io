@@ -32,6 +32,7 @@ loader
     .load(setup);
 
 let textures: Atlas;
+let grid: TileGrid;
 
 function setup() {
     textures = resources[assets["trainyard.atlas.json"]].textures!;
@@ -41,17 +42,22 @@ function setup() {
     let cellSpace = gridSize - Grids.TILE_GAP * (cellLength + 1);
     let cellSize = Math.floor(cellSpace / cellLength);
 
-    const tg = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(Levels.Calgary.Multicolor);
+    grid = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
+        .load(TestLevels.AnimTest);
 
-    const tgc = tg.container;
+    const tgc = grid.container;
     tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
     app.stage.addChild(tgc);
-    applyButtons(tg);
+    applyButtons(grid);
+
+    app.ticker.add(gameLoop);
 };
+
+const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
 
 function gameLoop(delta: number) {
     // cat.x = (cat.x + speed + delta) % 256;
+    if (grid.editMode === "readonly" && grid.simulation && +slider.value) grid.simulation.stepPartial(delta);
 }
 
 function applyButtons(grid: TileGrid) {
@@ -265,4 +271,13 @@ namespace TestLevels {
         [ , , new Tile.Goal([Color.Purple, Color.Purple], [Dir.Up, Dir.Left]), new Tile.Goal([Color.Purple], [Dir.Up]), , new Tile.Outlet(Dir.Up, [Color.Blue])],
     ];
 
+    export const AnimTest = [
+        [],
+        [,,, new Tile.Painter(Color.Green, Dir.Down, Dir.Right)],
+        [],
+        [new Tile.Outlet(Dir.Right, [Color.Green]), , new Tile.Splitter(Dir.Left), , new Tile.Splitter(Dir.Left), , new Tile.Goal([Color.Green], [Dir.Left])],
+        [],
+        [],
+        [,, new Tile.Goal([Color.Green], [Dir.Up])],
+    ]
 }

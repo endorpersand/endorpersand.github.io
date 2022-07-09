@@ -273,6 +273,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     startSim() {
         this.simulation?.close();
+        this.container;
         this.simulation = new Simulation.Simulator(this, this.#trainCon!);
     }
 
@@ -476,6 +477,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             pointers = 0;
             cellPointer = undefined;
         })
+        // con.on("click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
 
     /**
@@ -832,12 +834,16 @@ export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
 type GridStep = {[i: number]: Move[]};
 
 namespace Simulation {
+    const FRAMES_PER_STEP = 30;
+
     export class Simulator {
+
         iterator: Iterator;
         #grid: TileGrid;
-        #trainCon?: TrainContainer;
+        #trainCon: TrainContainer;
         #peeked: GridStep[] = [];
         passing: boolean = true;
+        progress: number = 0;
 
         constructor(grid: TileGrid, tc: TrainContainer) {
             this.#grid = grid;
@@ -848,7 +854,7 @@ namespace Simulation {
 
                 // render trains
                 for (let t of tile.state!.trainState.trains) {
-                    this.#trainCon!.createBody(pos, t);
+                    this.#trainCon.createBody(pos, undefined, t);
                 }
             }
 
@@ -871,13 +877,37 @@ namespace Simulation {
         }
 
         /**
+         * Move to the next move and do not render it.
+         * @returns next move
+         */
+        advance() {
+            return this.#peeked.shift() ?? this.iterator.next().value;
+        }
+
+        /**
          * Move to the next move and render it.
          */
         step() {
-            const moves = this.#peeked.shift() ?? this.iterator.next().value;
+            const moves = this.advance();
 
             if (typeof moves !== "undefined") {
                 this.render(moves);
+            }
+        }
+
+        stepPartial(frames = 1) {
+            this.progress += frames / FRAMES_PER_STEP;
+            
+            while (this.progress > 1) {
+                this.progress -= 1;
+
+                const nextMove = this.advance();
+                if (nextMove) this.completeStep(nextMove);
+            }
+
+            if (this.progress > 0) {
+                const peekMove = this.peek();
+                if (peekMove) this.renderPartial(peekMove);
             }
         }
 
@@ -889,8 +919,19 @@ namespace Simulation {
                 const pos = Grids.indexToCell(this.#grid, +i);
 
                 if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
-                this.#trainCon!.moveBodies(pos, deployedTrains);
+                this.#trainCon.moveBodies(pos, deployedTrains);
             }
+        }
+
+        renderPartial(step: GridStep) {
+            for (let [i, deployedTrains] of Object.entries(step)) {
+                const pos = Grids.indexToCell(this.#grid, +i);
+                this.#trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
+            }
+        }
+
+        completeStep(step: GridStep) {
+            this.render(step);
         }
 
         /**
@@ -912,7 +953,7 @@ namespace Simulation {
                 this.#grid.rerenderTileInContainer(...pos);
             }
 
-            this.#trainCon!.clearBodies();
+            this.#trainCon.clearBodies();
             this.#grid.simulation = undefined;
         }
     }
