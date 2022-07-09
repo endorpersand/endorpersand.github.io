@@ -1004,7 +1004,7 @@ namespace Simulation {
 
 const TRAIN_CRASH = Symbol("train crashed");
 type TrainDeploy = (t: Train) => void | typeof TRAIN_CRASH | Train | Train[];
-
+type TrainDAOResult = readonly [...Parameters<TrainDeploy>, ReturnType<TrainDeploy>] | readonly [Train[], Train];
 class TrainState {
     /**
      * A list of the trains currently on the tile.
@@ -1148,24 +1148,39 @@ class TrainState {
         while (this.#trains.length > 0) this.deployOne(cur, f);
     }
 
-    static #isDaoMerge<T, U, V>(r: [U, T] | [U[], V]): r is [U[], V] {
+    static #isDaoMerge<T, U, V>(r: readonly [U, T] | readonly [U[], V]): r is readonly [U[], V] {
         return r[0] instanceof Array;
     }
 
-    deployAtOnce(cur: GridCursor, f: (t: readonly Train[]) => ([Train, ReturnType<TrainDeploy>] | [Train[], Train])[]) {
+    deployAtOnce(cur: GridCursor, f: (t: readonly Train[]) => TrainDAOResult[]) {
         const results = f(this.#trains);
 
-        for (let r of results) {
-            if (!TrainState.#isDaoMerge(r)) {
-                let image = this.#normalizeImage(...r);
+        const partition: [
+            nonMerges: (readonly [pre: Train, image: Train[]])[], 
+            merges:    (readonly [pre: Train[], image: Train])[]
+        ] = [[], []];
 
-                this.#trackMove(r[0], image);
-                this.#deployImage(cur, image);
-            } else {
+        for (let r of results) {
+            if (TrainState.#isDaoMerge(r)) {
                 this.#trackMerge(...r);
-                this.#deployImage(cur, [r[1]]);
+                partition[1].push(r);
+            } else {
+                const preimage = r[0];
+                const image = this.#normalizeImage(...r);
+
+                this.#trackMove(preimage, image);
+                partition[0].push([preimage, image]);
             }
         }
+
+        // trains that d/n need to be deployed because they are already merged
+        const mergedTrains = partition[1].flatMap(([pre, _]) => pre);
+        partition[0]
+            .map(([_, image]) => image)
+            .filter(image => image.every(t => !mergedTrains.includes(t)))
+            .forEach(image => this.#deployImage(cur, image));
+        
+        this.#deployImage(cur, partition[1].map(([_, image]) => image));
 
         this.#trains = [];
     }
@@ -1671,13 +1686,71 @@ export namespace Tile {
             const state = this.state!;
             const trainState = state.trainState;
             
-            let redirects = trainState.trains.length;
-            const paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as [Dir.Flags, Dir.Flags];
+            const redirects = trainState.trains.length;
+            const paths: typeof this.paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as any;
 
-            const crossesOver = this.crossesOver;
             trainState.deployAtOnce(cur, (trains) => {
-                throw new Error("TODO");
-                // TODO
+                const result: TrainDAOResult[] = [];
+                let which: [Train[], Train[]] = [[], []];
+
+                for (let t of trains) {
+                    let i = paths.findIndex(p => p.has(Dir.flip(t.dir)));
+                    if (i !== -1) {
+                        which[i].push(t);
+                    } else {
+                        result.push([t, TRAIN_CRASH]);
+                    }
+                }
+
+                if (!this.#overlapping && this.crossesOver) { // + rail
+                    const color = Color.mixMany(trains.map(t => t.color));
+
+                    for (let i = 0; i < 2; i++) {
+                        const path = paths[i];
+                        const pathTrains = which[i];
+
+                        // recolor & redirect
+                        result.push(...pathTrains.map(t => {
+                            const dir = Rail.redirect(t.dir, path);
+                            if (typeof dir === "number") return [t, {color, dir}] as const;
+                            return [t, TRAIN_CRASH] as const;
+                        }));
+                    }
+                } else {
+                    for (let i = 0; i < 2; i++) {
+                        const path = paths[i];
+                        const pathTrains = which[i];
+
+                        if (pathTrains.length > 0) {
+                            const color = Color.mixMany(pathTrains.map(t => t.color));
+    
+                            // recolor & redirect
+                            result.push(...pathTrains.map(t => {
+                                const dir = Rail.redirect(t.dir, path);
+                                if (typeof dir === "number") return [t, {color, dir}] as const;
+                                return [t, TRAIN_CRASH] as const;
+                            }));
+                        }
+                    }
+                }
+
+                // check for same ending dir, merge those if so
+                const endTrains = result
+                    .map(([_, t]) => t)
+                    .filter((t): t is Train | Train[] => typeof t === "object")
+                    .flat();
+                const endMap = new Map<Dir, Train[]>();
+                for (let t of endTrains) {
+                    endMap.setDefault(t.dir, () => []).push(t);
+                }
+                for (let mergingTrains of endMap.values()) {
+                    if (mergingTrains.length < 2) continue;
+
+                    const color = Color.mixMany(mergingTrains.map(t => t.color));
+                    result.push([mergingTrains, {color, dir: mergingTrains[0].dir}]);
+                }
+
+                return result;
             });
             state.topIndex += redirects;
             state.topIndex %= 2;
