@@ -86,6 +86,66 @@ export enum Dir {
 }
 
 export namespace Dir {
+    export class Flags {
+        #flags: number;
+        static #MAX_BITS: number = 4;
+    
+        constructor(dirs: Dir[] | Flags | number = []) {
+            if (dirs instanceof Flags) {
+                this.#flags = dirs.#flags;
+            } else if (typeof dirs === "number") {
+                this.#flags = dirs;
+            } else {
+                this.#flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
+            }
+    
+            let f = this.#flags;
+            if (f < 0 || f >= (1 << Flags.#MAX_BITS)) {
+                throw new Error("Invalid direction entered");
+            }
+        }
+    
+        get bits() { return this.#flags; }
+    
+        get ones() { return Array.from(this, () => 1).reduce((acc, cv) => acc + cv, 0); }
+    
+        has(dir: Dir) {
+            return !!(this.#flags & (1 << dir));
+        }
+    
+        // only works given all inputs are valid and flags only has 2 dirs in it
+        dirExcluding(dir: Dir): Dir {
+            let bits = this.#flags ^ (1 << dir);
+            return 31 - Math.clz32(bits);
+        }
+    
+        equals(df: Flags) {
+            return this.#flags === df.#flags;
+        }
+    
+        or(df: Flags) {
+            let out = new Flags();
+            out.#flags = this.#flags | df.#flags;
+            return out;
+        }
+        and(df: Flags) {
+            let out = new Flags();
+            out.#flags = this.#flags & df.#flags;
+            return out;
+        }
+    
+        *[Symbol.iterator](): Generator<Dir> {
+            let f = this.#flags;
+            let i = 0;
+    
+            while (f > 0) {
+                if (f & 0b1) yield i;
+                i++;
+                f >>= 1;
+            }
+        }
+    }
+
     /**
      * Rotate a direction some number of 90 degree turns counterclockwise
      * @param d initial direction
@@ -161,66 +221,6 @@ export namespace Dir {
 
         if (typeof d === "string") return index;
         throw new TypeError(`Invalid direction ${index}`);
-    }
-}
-
-export class DirFlags {
-    #flags: number;
-    static #MAX_BITS: number = 4;
-
-    constructor(dirs: Dir[] | DirFlags | number = []) {
-        if (dirs instanceof DirFlags) {
-            this.#flags = dirs.#flags;
-        } else if (typeof dirs === "number") {
-            this.#flags = dirs;
-        } else {
-            this.#flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
-        }
-
-        let f = this.#flags;
-        if (f < 0 || f >= (1 << DirFlags.#MAX_BITS)) {
-            throw new Error("Invalid direction entered");
-        }
-    }
-
-    get bits() { return this.#flags; }
-
-    get ones() { return Array.from(this, () => 1).reduce((acc, cv) => acc + cv, 0); }
-
-    has(dir: Dir) {
-        return !!(this.#flags & (1 << dir));
-    }
-
-    // only works given all inputs are valid and flags only has 2 dirs in it
-    dirExcluding(dir: Dir) {
-        let bits = this.#flags ^ (1 << dir);
-        return 31 - Math.clz32(bits);
-    }
-
-    equals(df: DirFlags) {
-        return this.#flags === df.#flags;
-    }
-
-    or(df: DirFlags) {
-        let out = new DirFlags();
-        out.#flags = this.#flags | df.#flags;
-        return out;
-    }
-    and(df: DirFlags) {
-        let out = new DirFlags();
-        out.#flags = this.#flags & df.#flags;
-        return out;
-    }
-
-    *[Symbol.iterator](): Generator<Dir> {
-        let f = this.#flags;
-        let i = 0;
-
-        while (f > 0) {
-            if (f & 0b1) yield i;
-            i++;
-            f >>= 1;
-        }
     }
 }
 

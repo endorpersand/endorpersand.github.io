@@ -1,4 +1,4 @@
-import { Atlas, CellPos, Color, Dir, DirFlags, Grids, Palette, PixelPos, Train } from "./values";
+import { Atlas, CellPos, Color, Dir, Grids, Palette, PixelPos, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
@@ -1211,7 +1211,7 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      * The sides that trains can enter this tile through.
      * Note that if an active left side accepts right-facing trains.
      */
-    readonly actives: DirFlags;
+    readonly actives: Dir.Flags;
 
     /**
      * Char this is represented with during serialization. If not serialized, serChar is " ".
@@ -1220,7 +1220,7 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
 
     constructor(...actives: Dir[]) {
         super();
-        this.actives = new DirFlags(actives);
+        this.actives = new Dir.Flags(actives);
     }
 
 
@@ -1381,7 +1381,7 @@ export namespace Tile {
 
         static fromJSON({targets, actives}: {targets: string[], actives: number}) {
             const targetsR = targets.map(Color.parse);
-            const entrances = [...new DirFlags(actives)];
+            const entrances = [...new Dir.Flags(actives)];
 
             return new Goal(targetsR, entrances);
         }
@@ -1439,7 +1439,7 @@ export namespace Tile {
 
         static fromJSON({actives, color}: {actives: number, color: string}) {
             const colorR = Color.parse(color);
-            const activesR = new DirFlags(actives);
+            const activesR = new Dir.Flags(actives);
 
             if (activesR.ones != 2) throw new TypeError("Painter must have 2 active sides");
             const [a1, a2] = activesR;
@@ -1504,7 +1504,7 @@ export namespace Tile {
             return {actives: this.actives.bits};
         }
         static fromJSON({actives}: {actives: number}) {
-            const af = new DirFlags(actives);
+            const af = new Dir.Flags(actives);
             if (af.ones != 1) throw new TypeError("Splitter must have 1 active side");
 
             const [active] = af;
@@ -1548,7 +1548,7 @@ export namespace Tile {
     }
     
     export abstract class Rail<S extends TileState = TileState> extends StatefulTile<S> {
-        constructor(entrances: Dir[] | DirFlags) {
+        constructor(entrances: Dir[] | Dir.Flags) {
             super(...entrances);
         }
     
@@ -1569,13 +1569,15 @@ export namespace Tile {
             return new DoubleRail([e1, e2]);
         }
 
-        protected static redirect(d: Dir, path: DirFlags) {
+        protected static redirect(d: Dir, path: Dir.Flags) {
             let enterDir = Dir.flip(d);
             
             // A train that entered through one entrance exits through the other entrance
             if (path.has(enterDir)) {
                 return path.dirExcluding(enterDir);
             }
+
+            // invalid state if not in the path
         }
 
         abstract top(): SingleRail;
@@ -1645,10 +1647,10 @@ export namespace Tile {
     };
 
     export class DoubleRail extends Rail<DoubleRailState> {
-        readonly paths: readonly [DirFlags, DirFlags];
+        readonly paths: readonly [Dir.Flags, Dir.Flags];
         readonly #overlapping: boolean;
     
-        constructor(paths: [DirFlags, DirFlags]) {
+        constructor(paths: [Dir.Flags, Dir.Flags]) {
             let [e0, e1] = paths;
             if (e0.equals(e1)) {
                 throw new Error("Rails match");
@@ -1670,7 +1672,7 @@ export namespace Tile {
             const trainState = state.trainState;
             
             let redirects = trainState.trains.length;
-            const paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as [DirFlags, DirFlags];
+            const paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as [Dir.Flags, Dir.Flags];
 
             const crossesOver = this.crossesOver;
             trainState.deployAtOnce(cur, (trains) => {
