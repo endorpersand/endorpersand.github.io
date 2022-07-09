@@ -1003,8 +1003,14 @@ namespace Simulation {
 
 
 const TRAIN_CRASH = Symbol("train crashed");
-type TrainDeploy = (t: Train) => void | typeof TRAIN_CRASH | Train | Train[];
-type TrainDAOResult = readonly [...Parameters<TrainDeploy>, ReturnType<TrainDeploy>] | readonly [Train[], Train];
+
+type TrainImage = void | typeof TRAIN_CRASH | Train | Train[];
+type NormalizedImage = typeof TRAIN_CRASH | Train[];
+type TrainDeploy = (t: Train) => TrainImage;
+type TrainDAOResult = 
+    | readonly [...Parameters<TrainDeploy>, ReturnType<TrainDeploy>] 
+    | readonly [Train[], Train];
+
 class TrainState {
     /**
      * A list of the trains currently on the tile.
@@ -1043,13 +1049,6 @@ class TrainState {
         this.#pendingTrains = [];
     }
 
-    #trackCrash(preimage: Train) {
-        this.deployedTrains.push({
-            move: "destroy",
-            preimage,
-            crashed: true
-        });
-    }
     #trackMerge(preimage: Train[], image: Train) {
         // if only 1 preimage, this is just an extension of the previous move
         if (preimage.length == 1) {
@@ -1067,10 +1066,16 @@ class TrainState {
             });
         }
     }
-    #trackMove(preimage: Train, image: Train[]) {
+    #trackMove(preimage: Train, image: NormalizedImage) {
         let move: Move;
-
-        if (image.length == 0) {
+        
+        if (image === TRAIN_CRASH) {
+            move = {
+                move: "destroy",
+                preimage,
+                crashed: true
+            };
+        } else if (image.length == 0) {
             move = {
                 move: "destroy",
                 preimage,
@@ -1093,29 +1098,30 @@ class TrainState {
         if (move) this.deployedTrains.push(move);
     }
 
-    #normalizeImage(preimage: Train, image: ReturnType<TrainDeploy>): Train[] {
+    #normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
         image ??= [];
 
         if (image === TRAIN_CRASH) {
-            this.#trackCrash(preimage);
-            return [];
+            return TRAIN_CRASH;
         };
     
         if (!(image instanceof Array)) image = [image];
         return image;
     }
-    #computeImage(preimage: Train, f?: TrainDeploy): Train[] {
-        return this.#normalizeImage(preimage, f?.(preimage) ?? [preimage]);
+    #computeImage(preimage: Train, f?: TrainDeploy): NormalizedImage {
+        return f ? this.#normalizeImage(f(preimage)) : [preimage];
     }
 
-    #deployImage(cur: GridCursor, image: Train[]) {
+    #deployImage(cur: GridCursor, image: NormalizedImage) {
+        if (image === TRAIN_CRASH) image = [];
+
         for (let t of image) {
             const nb = cur.neighbor(t.dir);
             
             if (nb?.accepts(t)) {
                 nb.state!.trainState.#pendingTrains.push(t);
             } else {
-                this.#trackCrash(t);
+                this.#trackMove(t, TRAIN_CRASH);
             }
         }
     }
@@ -1132,7 +1138,7 @@ class TrainState {
         if (preimage) {
             // convert image result into Train[]
             let image = this.#computeImage(preimage, f);
-    
+
             this.#trackMove(preimage, image);
             this.#deployImage(cur, image);
         }
@@ -1166,10 +1172,10 @@ class TrainState {
                 partition[1].push(r);
             } else {
                 const preimage = r[0];
-                const image = this.#normalizeImage(...r);
+                const image = this.#normalizeImage(r[1]);
 
                 this.#trackMove(preimage, image);
-                partition[0].push([preimage, image]);
+                if (image !== TRAIN_CRASH) partition[0].push([preimage, image]);
             }
         }
 

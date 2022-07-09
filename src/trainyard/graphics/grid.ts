@@ -318,21 +318,20 @@ export class TrainContainer extends AbsGriddedContainer {
                     }
                 });
             } else if (m.move == "destroy") {
-                // crash at the end of the step
-                // non-crash destroys should move in halfway before destroying
-                if (!m.crashed) {
-                    const {preimage} = m;
+                const {preimage} = m;
 
-                    if (this.trainBodies.has(preimage)) {
-                        const [trainBody, initDir] = this.trainBodies.get(preimage)!;
-        
-                        const transform = this.#interp(preImagePos, initDir, undefined, progress * 2);
+                if (this.trainBodies.has(preimage)) {
+                    const [trainBody, initDir] = this.trainBodies.get(preimage)!;
+    
+                    const transform = this.#interp(preImagePos, initDir, preimage.dir, progress);
 
-                        this.#redressBody(trainBody, transform);
-                        if (progress > 0.5) {
-                            this.trainBodies.delete(preimage);
-                            trainBody.destroy();
-                        }
+                    this.#redressBody(trainBody, transform);
+
+                    // destroys in goals happen halfway through
+                    // destroys in outlets happen fullway
+                    if (typeof initDir !== "undefined" && progress > 0.5) {
+                        this.trainBodies.delete(preimage);
+                        trainBody.destroy();
                     }
                 }
             } else if (m.move == "merge") {
