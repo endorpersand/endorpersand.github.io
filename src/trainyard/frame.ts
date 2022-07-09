@@ -5,6 +5,15 @@ import { Tile, TileGrid } from './logic';
 import { Atlas, Color, Dir, Grids, Palette } from "./values";
 import Levels from "./levels.json";
 
+const DEBUG = false;
+declare global {
+    interface Window {
+        grid: TileGrid;
+        Levels: typeof Levels;
+        TestLevels: typeof TestLevels;
+    }
+}
+
 const loader = PIXI.Loader.shared,
    resources = PIXI.Loader.shared.resources;
 
@@ -43,8 +52,10 @@ function setup() {
     let cellSize = Math.floor(cellSpace / cellLength);
 
     grid = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(TestLevels.AnimTest);
+        .load(Levels.Calgary.Multicolor);
 
+    if (DEBUG) enableDebug();
+    
     const tgc = grid.container;
     tgc.position.set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
     app.stage.addChild(tgc);
@@ -280,4 +291,10 @@ namespace TestLevels {
         [],
         [,, new Tile.Goal([Color.Green], [Dir.Up])],
     ]
+}
+
+function enableDebug() {
+    window.grid = grid;
+    window.Levels = Levels;
+    window.TestLevels = TestLevels;
 }

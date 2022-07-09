@@ -9,18 +9,18 @@ type PIXIData = {
     renderer: PIXI.AbstractRenderer
 };
 
-interface ConstructorOptions {
+interface ConstructorGridOptions {
     cellSize: number;
     cellLength: number;
     pixi: PIXIData;
 };
 
-abstract class AbsGriddedContainer extends PIXI.Container implements Grids.Grid, ConstructorOptions {
+abstract class AbsGriddedContainer extends PIXI.Container implements Grids.Grid, ConstructorGridOptions {
     cellSize: number;
     cellLength: number;
     pixi: PIXIData;
 
-    constructor(options: ConstructorOptions) {
+    constructor(options: ConstructorGridOptions) {
         super();
 
         this.cellSize = options.cellSize;
@@ -29,29 +29,21 @@ abstract class AbsGriddedContainer extends PIXI.Container implements Grids.Grid,
     }
 }
 
+interface GridContainerOptions extends ConstructorGridOptions {
+    drawGrid?: boolean;
+}
+
 export class GridContainer extends AbsGriddedContainer {
     cells: PIXI.Container;
 
-    constructor(options: ConstructorOptions) {
+    constructor(options: GridContainerOptions) {
         super(options);
 
-        this.#drawBG();
-        this.#drawGrid();
+        if (options.drawGrid ?? true) this.#drawGrid();
 
         const cells = this.cells = new PIXI.Container();
         cells.name = "cells";
         this.addChild(cells);
-    }
-
-    #drawBG() {
-        const GRID_SIZE = Grids.gridSize(this);
-
-        const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
-        bg.tint = Palette.Grid.BG;
-        bg.width = GRID_SIZE;
-        bg.height = GRID_SIZE;
-        
-        this.addChild(bg);
     }
 
     #drawGrid() {
@@ -148,7 +140,7 @@ export class TrainContainer extends AbsGriddedContainer {
      */
     trainBodies: Map<Train, [body: TileGraphics.TwoAnchorSprite, edge?: Dir]> = new Map();
 
-    constructor(options: ConstructorOptions) {
+    constructor(options: ConstructorGridOptions) {
         super(options);
     }
 

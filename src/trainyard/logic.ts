@@ -56,6 +56,13 @@ interface GridJSON {
     tiles: {[x: number]: unknown}
 }
 
+const enum Layer { RAILS, TRAINS, BOXES };
+type Layers = {
+    [Layer.RAILS]:  GridContainer,
+    [Layer.TRAINS]: TrainContainer,
+    [Layer.BOXES]:  GridContainer,
+};
+
 /**
  A class which holds a grid of the current tiles on board.
  */
@@ -76,8 +83,8 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Cache for this.container
      */
-    #c_container?: GridContainer;
-    #trainCon?: TrainContainer;
+    #container: PIXI.Container = new PIXI.Container();
+    #rendered: boolean = false;
 
     /**
      * Object references coming from PIXI
@@ -132,8 +139,16 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * The PIXI container for this TileGrid
      */
-    get container(): GridContainer {
-        return this.#c_container ??= this.#renderContainer();
+    get container(): PIXI.Container {
+        if (!this.#rendered) return this.#renderContainer();
+        return this.#container;
+    }
+    layer<L extends Layer>(layer: L): Layers[L] {
+        const con = this.container.getChildByName("layers") as PIXI.Container;
+        return con.getChildAt(layer) as any;
+    }
+    maybeLayer<L extends Layer>(layer: L): Layers[L] | undefined {
+        if (this.#rendered) return this.layer(layer);
     }
 
     static #normalizeTileMatrix(mat: (Tile | undefined)[][] | undefined, length: number): Tile[][] {
@@ -142,17 +157,12 @@ export class TileGrid implements Serializable, Grids.Grid {
         );
     }
 
-    get maybeContainer(): GridContainer | undefined { return this.#c_container; }
-
     get tiles(): Tile[][] { return this.#tiles; }
     set tiles(mat: (Tile | undefined)[][]) {
         this.#tiles = TileGrid.#normalizeTileMatrix(mat, this.cellLength);
         this.#actionStack = []; // the tiles got reset, so can't do undos from here
 
-        if (this.#c_container) {
-            this.#c_container.destroy({children: true});
-            this.#c_container = this.#renderContainer();
-        }
+        this.#renderContainer(true);
     }
 
     load(tiles: (Tile | undefined)[][] | GridJSON): this {
@@ -273,8 +283,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     startSim() {
         this.simulation?.close();
-        this.container;
-        this.simulation = new Simulation.Simulator(this, this.#trainCon!);
+        this.simulation = new Simulation.Simulator(this, this.layer(Layer.TRAINS));
     }
 
 
@@ -297,8 +306,20 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y cell y
      * @returns the container holding the rendering
      */
-    #renderTileAt(x: number, y: number): PIXI.Container {
-        return this.tile(x, y)!.render(this.pixi, this.cellSize);
+    #renderTileAt(x: number, y: number, layerMask: number = -1): PIXI.Container {
+        const tile = this.tile(x, y);
+        if (tile && layerMask & (1 << tile.layer)) {
+            return tile.render(this.pixi, this.cellSize);
+        }
+
+        return new PIXI.Container();
+    }
+
+    #wipeContainer(con: PIXI.Container) {
+        while (con.children.length > 0) con.removeChildAt(0).destroy({children: true});
+
+        for (let e of this.#containerEvents) con.off(...e);
+        this.#containerEvents = [];
     }
 
     /**
@@ -306,26 +327,60 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Use this.container to fallback to cache if already created
      * @returns the container
      */
-    #renderContainer(): GridContainer {
-        const length = this.cellLength;
-        const con = new GridContainer(this);
-        con.loadCells(
-            Array.from({length}, (_, y) => 
-                Array.from({length}, (_, x) =>
-                    this.#renderTileAt(x, y)
+    #renderContainer(force=false): PIXI.Container {
+        const con = this.#container;
+        if (force || !this.#rendered) {
+            this.#wipeContainer(con);
+            // const con = new PIXI.Container();
+
+            // background
+            const GRID_SIZE = Grids.gridSize(this);
+
+            const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
+            bg.tint = Palette.Grid.BG;
+            bg.width = GRID_SIZE;
+            bg.height = GRID_SIZE;
+            
+            con.addChild(bg);
+
+            const layers = new PIXI.Container();
+            layers.name = "layers";
+            const length = this.cellLength;
+    
+            const railCon = new GridContainer(this).loadCells(
+                Array.from({length}, (_, y) => 
+                    Array.from({length}, (_, x) =>
+                        this.#renderTileAt(x, y, 1 << Layer.RAILS)
+                    )
                 )
-            )
-        );
+            );
+            const boxCon = new GridContainer({...this, drawGrid: false}).loadCells(
+                Array.from({length}, (_, y) => 
+                    Array.from({length}, (_, x) =>
+                        this.#renderTileAt(x, y, 1 << Layer.BOXES)
+                    )
+                )
+            );
 
-        const trainCon = this.#trainCon = new TrainContainer(this);
-        trainCon.name = "trains";
-        con.addChild(trainCon);
+            layers.addChild(
+                railCon, new TrainContainer(this), boxCon
+            );
+            con.addChild(layers);
+    
+            con.interactive = true;
+            this.#applyPointerEvents(con);
+            this.#applyRailIndicator(con);
+        }
 
-        con.interactive = true;
-        this.#applyPointerEvents(con);
-        this.#applyRailIndicator(con);
-
+        this.#rendered = true;
         return con;
+    }
+
+    cellAt(pos: CellPos) {
+        Grids.assertInBounds(this, ...pos);
+        const tile = this.tile(...pos)!;
+
+        return (this.layer(tile.layer) as GridContainer).cellAt(pos);
     }
 
     /**
@@ -334,9 +389,20 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y y coord
      */
     rerenderTileInContainer(x: number, y: number) {
-        this.#c_container?.replaceCell([x, y], this.#renderTileAt(x, y));
+        this.maybeLayer(Layer.RAILS)?.replaceCell([x, y], this.#renderTileAt(x, y, 1 << Layer.RAILS));
+        this.maybeLayer(Layer.BOXES)?.replaceCell([x, y], this.#renderTileAt(x, y, 1 << Layer.BOXES));
     }
 
+    #containerEvents: [string | symbol, (e: PIXI.InteractionEvent) => void][] = [];
+
+    #on<T extends string | symbol>(
+        emitter: PIXI.utils.EventEmitter<T>, 
+        event: T, 
+        listener: (e: PIXI.InteractionEvent) => void
+    ) {
+        this.#containerEvents.push([event, listener]);
+        emitter.on(event, listener);
+    }
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -349,7 +415,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         // While dragging, this can only bind to edges.
         let cellPointer: RailTouch | undefined = undefined;
 
-        con.on("pointermove", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(this, pos);
             
@@ -420,7 +486,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         let dbtTimeout: NodeJS.Timeout | undefined;
         const DBT_TIMEOUT_MS = 1000;
 
-        con.on("pointerdown", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
             pointers++;
 
             const pos = e.data.getLocalPosition(con);
@@ -470,14 +536,14 @@ export class TileGrid implements Serializable, Grids.Grid {
             pointers = Math.max(pointers - 1, 0);
             cellPointer = undefined;
         }
-        con.on("pointerup", pointerup);
-        con.on("pointerupoutside", pointerup);
+        this.#on(con, "pointerup", pointerup);
+        this.#on(con, "pointerupoutside", pointerup);
 
-        con.on("pointercancel", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "pointercancel", (e: PIXI.InteractionEvent) => {
             pointers = 0;
             cellPointer = undefined;
         })
-        // con.on("click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
+        // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
 
     /**
@@ -511,7 +577,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             railMarker.visible = visibility.every(t => t) && this.#editMode === "rail";
         };
 
-        con.on("mousemove", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(this, pos);
             const [cellX, cellY] = cellPos;
@@ -552,24 +618,24 @@ export class TileGrid implements Serializable, Grids.Grid {
             updateVisibility();
         })
 
-        con.on("mousedown", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mousedown", (e: PIXI.InteractionEvent) => {
             visibility[Condition.MOUSE_UP] = false;
             updateVisibility();
         });
-        con.on("mouseup", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mouseup", (e: PIXI.InteractionEvent) => {
             visibility[Condition.MOUSE_UP] = true;
             updateVisibility();
         });
-        con.on("mouseupoutside", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mouseupoutside", (e: PIXI.InteractionEvent) => {
             visibility[Condition.MOUSE_UP] = true;
             updateVisibility();
         });
 
-        con.on("mouseover", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mouseover", (e: PIXI.InteractionEvent) => {
             visibility[Condition.IN_BOUNDS] = true;
             updateVisibility();
         });
-        con.on("mouseout", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "mouseout", (e: PIXI.InteractionEvent) => {
             visibility[Condition.IN_BOUNDS] = false;
             updateVisibility();
         });
@@ -795,7 +861,7 @@ class GridCursor {
      * @returns the container of the tile the cursor is pointing to
      */
     container() {
-        return this.#grid.container.cellAt(this.#pos);
+        return this.#grid.cellAt(this.#pos);
     }
 }
 
@@ -1196,6 +1262,11 @@ export abstract class Tile {
     readonly serChar: string = " ";
 
     /**
+     * Which layer of the grid container is this object rendered on?
+     */
+    layer: number = Layer.BOXES;
+
+    /**
      * Check if the specified train would be able to enter the tile.
      * @param train
      * @returns false
@@ -1566,6 +1637,8 @@ export namespace Tile {
     }
     
     export abstract class Rail<S extends TileState = TileState> extends StatefulTile<S> {
+        layer: number = Layer.RAILS;
+
         constructor(entrances: Dir[] | Dir.Flags) {
             super(...entrances);
         }
