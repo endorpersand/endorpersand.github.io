@@ -47,13 +47,8 @@ let grid: TileGrid;
 function setup() {
     textures = resources[assets["trainyard.atlas.json"]].textures!;
 
-    let gridSize = app.renderer.width;
-    let cellLength = defaults.cellLength;
-    let cellSpace = gridSize - Grids.TILE_GAP * (cellLength + 1);
-    let cellSize = Math.floor(cellSpace / cellLength);
-
-    grid = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(TestLevels.TextureLoadTest);
+    grid = new TileGrid(defaults.cellSize, defaults.cellLength, {textures, renderer: app.renderer})
+        .load(Levels.Guelph['Cute Loop'], 64);
     if (DEBUG) enableDebug();
     
     const tgc = grid.container;

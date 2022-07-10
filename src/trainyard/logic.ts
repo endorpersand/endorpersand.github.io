@@ -161,14 +161,14 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.#renderContainer(true);
     }
 
-    load(tiles: (Tile | undefined)[][] | GridJSON): this {
+    load(tiles: (Tile | undefined)[][] | GridJSON, cellSize?: number): this {
         if ("board" in tiles) {
             tiles = TileGrid.#tilesFromJSON(tiles);
         }
         const gridSize = Grids.gridSize(this);
         
         this.cellLength = tiles.length;
-        this.cellSize = Grids.optimalCellSize(this, gridSize);
+        this.cellSize = cellSize ?? Grids.optimalCellSize(this, gridSize);
         this.tiles = tiles;
         return this;
     }
