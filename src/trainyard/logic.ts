@@ -1,4 +1,4 @@
-import { Atlas, CellPos, Color, Dir, Grids, Palette, PixelPos, Train } from "./values";
+import { CellPos, Color, Dir, Grids, Palette, PixelPos, PIXIResources, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
@@ -47,10 +47,6 @@ interface Serializable<J = any> {
     // static fromJSON(o: J): this;
 }
 
-interface PIXIData {
-    textures: Atlas,
-    renderer: PIXI.AbstractRenderer
-};
 interface GridJSON {
     board: string[], 
     tiles: {[x: number]: unknown}
@@ -89,7 +85,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Object references coming from PIXI
      */
-    pixi: PIXIData;
+    pixi: PIXIResources;
 
     /**
      * Determines what can be edited on the grid
@@ -120,7 +116,7 @@ export class TileGrid implements Serializable, Grids.Grid {
       */
      static readonly UNDO_THRESHOLD_MS = 300;
 
-    constructor(cellSize: number, cellLength: number, pixi: PIXIData, tiles?: (Tile | undefined)[][]) {
+    constructor(cellSize: number, cellLength: number, pixi: PIXIResources, tiles?: (Tile | undefined)[][]) {
         this.cellSize = cellSize;
         this.cellLength = cellLength;
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
@@ -557,7 +553,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         const TILE_GAP = Grids.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
 
-        const railMarker = TileGraphics.hoverIndicator(this.pixi.textures, this.cellSize);
+        const railMarker = TileGraphics.hoverIndicator(this.pixi, this.cellSize);
         railMarker.tint = Palette.Hover;
         railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
         railMarker.visible = false;
@@ -1288,10 +1284,10 @@ export abstract class Tile {
 
     /**
      * Create the Container that displays this tile.
-     * @param pixi Rendering objects from PIXI
+     * @param resources Rendering objects from PIXI
      * @param size Size of the tile
      */
-    abstract render(pixi: PIXIData, size: number): PIXI.Container;
+    abstract render(resources: PIXIResources, size: number): PIXI.Container;
 }
 
 type TileState = {
@@ -1418,20 +1414,20 @@ export namespace Tile {
             return new Outlet(outR, colorsR);
         }
 
-        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box, inner] = TileGraphics.box(renderer, size);
+            const [box, inner] = TileGraphics.box(resources, size);
             con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
             const symbols = TileGraphics.symbolSet(
-                renderer, this.colors, [center, inner], "plus"
+                resources, this.colors, [center, inner], "plus"
             );
             symbols.name = "symbols";
             con.addChild(symbols);
 
-            con.addChild(TileGraphics.passiveSide(textures, this.out, size));
+            con.addChild(TileGraphics.passiveSide(resources, this.out, size));
 
             return con;
         }
@@ -1493,20 +1489,20 @@ export namespace Tile {
             return new Goal(targetsR, entrances);
         }
 
-        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box, inner] = TileGraphics.box(renderer, size);
+            const [box, inner] = TileGraphics.box(resources, size);
             con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
             const symbols = TileGraphics.symbolSet(
-                renderer, this.targets, [center, inner], "circle"
+                resources, this.targets, [center, inner], "circle"
             );
             symbols.name = "targets";
             con.addChild(symbols);
 
-            let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(textures, e, size));
+            let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(resources, e, size));
             if (activeSides.length > 0) con.addChild(...activeSides);
 
             return con;
@@ -1555,15 +1551,15 @@ export namespace Tile {
             return new Painter(colorR, a1, a2);
         }
 
-        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Graphics();
 
-            const [box] = TileGraphics.box(renderer, size);
+            const [box] = TileGraphics.box(resources, size);
             con.addChild(box);
             
-            con.addChild(TileGraphics.painterSymbol(textures, this.color, size));
+            con.addChild(TileGraphics.painterSymbol(resources, this.color, size));
             con.addChild(
-                ...Array.from(this.actives, e => TileGraphics.activeSide(textures, e, size))
+                ...Array.from(this.actives, e => TileGraphics.activeSide(resources, e, size))
             );
 
             return con;
@@ -1622,17 +1618,17 @@ export namespace Tile {
             return new Splitter(active);
         }
 
-        render({textures, renderer}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box] = TileGraphics.box(renderer, size);
+            const [box] = TileGraphics.box(resources, size);
             con.addChild(box);
             
-            con.addChild(TileGraphics.splitterSymbol(textures, this.active, size));
+            con.addChild(TileGraphics.splitterSymbol(resources, this.active, size));
             
             let sides = [
-                TileGraphics.activeSide(textures, this.active, size),
-                ...this.sides.map(s => TileGraphics.passiveSide(textures, s, size))
+                TileGraphics.activeSide(resources, this.active, size),
+                ...this.sides.map(s => TileGraphics.passiveSide(resources, s, size))
             ];
             con.addChild(...sides);
 
@@ -1653,10 +1649,10 @@ export namespace Tile {
     export class Rock extends Tile {
         readonly serChar = "r";
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            con.addChild(TileGraphics.rock(textures, size));
+            con.addChild(TileGraphics.rock(resources, size));
 
             return con;
         }
@@ -1745,9 +1741,9 @@ export namespace Tile {
             this.updateContainer(cur);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
-            con.addChild(TileGraphics.rail(textures, [...this.actives], size));
+            con.addChild(TileGraphics.rail(resources, [...this.actives], size));
             return con;
         }
 
@@ -1860,10 +1856,10 @@ export namespace Tile {
             this.updateContainer(cur);
         }
 
-        render({textures}: PIXIData, size: number): PIXI.Container {
+        render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const rails = this.paths.map(p => TileGraphics.rail(textures, [...p], size));
+            const rails = this.paths.map(p => TileGraphics.rail(resources, [...p], size));
 
             if (this.#overlapping) {
                 rails[1].tint = Palette.Shadow;

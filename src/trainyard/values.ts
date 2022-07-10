@@ -1,4 +1,4 @@
-import { IPointData, Resource, Texture } from "pixi.js";
+import { AbstractRenderer, IPointData, Resource, Texture } from "pixi.js";
 
 export enum Color {
     // primaries
@@ -351,3 +351,7 @@ export namespace Grids {
 }
 
 export type Atlas = {[name: string]: Texture<Resource>};
+export interface PIXIResources {
+    textures: Atlas,
+    renderer: AbstractRenderer
+};

@@ -1,24 +1,19 @@
 import * as PIXI from "pixi.js";
 import { Move } from "../logic";
-import { Atlas, CellPos, Dir, Grids, Palette, Train } from "../values";
+import { CellPos, Dir, Grids, Palette, PIXIResources, Train } from "../values";
 import * as TileGraphics from "./components";
 import "../ext/map";
-
-type PIXIData = {
-    textures: Atlas,
-    renderer: PIXI.AbstractRenderer
-};
 
 interface ConstructorGridOptions {
     cellSize: number;
     cellLength: number;
-    pixi: PIXIData;
+    pixi: PIXIResources;
 };
 
 abstract class AbsGriddedContainer extends PIXI.Container implements Grids.Grid, ConstructorGridOptions {
     cellSize: number;
     cellLength: number;
-    pixi: PIXIData;
+    pixi: PIXIResources;
 
     constructor(options: ConstructorGridOptions) {
         super();
@@ -371,7 +366,7 @@ export class TrainContainer extends AbsGriddedContainer {
      * @returns the sprite
      */
     createBody(pos: CellPos, edge: Dir | undefined, t: Train) {
-        const body = TileGraphics.train(this.pixi.renderer, 32);
+        const body = TileGraphics.train(this.pixi, 32);
         body.posAnchor.set(0.5, 0.5);
         
         const pixPos = Grids.cellToPosition(this, pos, Dir.edge(edge, this.cellSize));

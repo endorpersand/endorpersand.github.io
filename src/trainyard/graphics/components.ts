@@ -3,7 +3,7 @@
  */
 
 import * as PIXI from 'pixi.js'
-import { Atlas, Color, Dir, Palette } from '../values';
+import { Color, Dir, Palette, PIXIResources } from '../values';
 
 const SpriteCache: {
     [name: string]: {
@@ -132,7 +132,7 @@ const SYM_TEXTURE_SCALE = 10;
  * @returns the box, and the inner value designating the size of the box without outline
  */
 export function box(
-    renderer: PIXI.AbstractRenderer, 
+    {renderer}: PIXIResources, 
     size: number
 ): [box: PIXI.Sprite, inner: number, outer: number] {
     const OUTLINE = Math.floor(size * Ratios.Box.OUTLINE);
@@ -164,7 +164,7 @@ export function box(
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function activeSide(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
+export function activeSide({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_active.png"]);
     sprite.width = size;
     sprite.height = size;
@@ -178,7 +178,7 @@ export function activeSide(textures: Atlas, d: Dir, size: number): TwoAnchorSpri
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function passiveSide(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
+export function passiveSide({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_passive.png"]);
     sprite.width = size;
     sprite.height = size;
@@ -226,7 +226,7 @@ function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: 
  * @returns the container holding the symbol set
  */
 export function symbolSet(
-    renderer: PIXI.AbstractRenderer,
+    {renderer}: PIXIResources,
     clrs: readonly Color[], 
     bounds: readonly [center: readonly [number, number], size: number], 
     symbol: keyof typeof Symbols | [name: string, cb: (drawSize: number) => PIXI.Graphics]
@@ -279,7 +279,7 @@ export function symbolSet(
  * @param c Color of the painter
  * @returns the sprite
  */
-export function painterSymbol(textures: Atlas, c: Color, size: number): PIXI.Sprite {
+export function painterSymbol({textures}: PIXIResources, c: Color, size: number): PIXI.Sprite {
     const sprite = new PIXI.Sprite(textures["t_painter.png"]);
     sprite.width = size;
     sprite.height = size;
@@ -293,7 +293,7 @@ export function painterSymbol(textures: Atlas, c: Color, size: number): PIXI.Spr
  * @param d Direction of the splitter symbol
  * @returns the sprite
  */
-export function splitterSymbol(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
+export function splitterSymbol({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["t_splitter.png"]);
     sprite.width = size;
     sprite.height = size;
@@ -306,7 +306,7 @@ export function splitterSymbol(textures: Atlas, d: Dir, size: number): TwoAnchor
  * @param textures reference to textures
  * @returns the sprite
  */
-export function rock(textures: Atlas, size: number): TwoAnchorSprite { // TODO
+export function rock({textures}: PIXIResources, size: number): TwoAnchorSprite { // TODO
     const sprite = TwoAnchorSprite.centered(textures["t_painter.png"]);
     sprite.width = size;
     sprite.height = size;
@@ -320,7 +320,7 @@ export function rock(textures: Atlas, size: number): TwoAnchorSprite { // TODO
  * @param entrances the TWO entrances for the rail
  * @returns the sprite
  */
-export function rail(textures: Atlas, entrances: Dir[], size: number): TwoAnchorSprite {
+export function rail({textures}: PIXIResources, entrances: Dir[], size: number): TwoAnchorSprite {
     let [e1, e2] = entrances;
 
     let straight = !((e1 - e2) % 2);
@@ -350,14 +350,14 @@ export function rail(textures: Atlas, entrances: Dir[], size: number): TwoAnchor
  * @param textures reference to the textures
  * @returns the sprite
  */
-export function hoverIndicator(textures: Atlas, size: number): TwoAnchorSprite {
+export function hoverIndicator({textures}: PIXIResources, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["hover.png"]);
     sprite.width = size;
     sprite.height = size;
     return sprite;
 }
 
-export function train(renderer: PIXI.AbstractRenderer, size: number) {
+export function train({renderer}: PIXIResources, size: number) {
     const rt = loadRenderTexture(renderer, "train", size, () => {
         return new PIXI.Graphics()
             .beginFill(0xFFFFFF)
