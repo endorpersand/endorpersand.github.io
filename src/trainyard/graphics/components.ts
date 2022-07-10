@@ -173,17 +173,25 @@ export function box(
             .endFill()
             .beginHole()
             .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
-            .endFill();
+            .endHole();
+    });
+
+    // this is technically just a white square
+    // so why not use PIXI.Texture.WHITE?
+    // cause the scaling breaks things.
+    // so. ya.
+    const bgRT = loadRenderTexture(renderer, `boxBG[ratio=${ratio}]`, size, size => {
+        return new PIXI.Graphics()
+            .beginFill(0xFFFFFF, 1)
+            .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
+            .endFill()
     });
 
     const outlineSprite = new PIXI.Sprite(outlineRT);
     outlineSprite.tint = color;
 
-    const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
+    const bg = new PIXI.Sprite(bgRT);
     bg.tint = Palette.Box.BG;
-    bg.position.set(SPACE + OUTLINE);
-    bg.width = inner;
-    bg.height = inner;
 
     const box = new PIXI.Container();
     box.addChild(bg, outlineSprite);
