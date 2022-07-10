@@ -47,8 +47,8 @@ let grid: TileGrid;
 function setup() {
     textures = resources[assets["trainyard.atlas.json"]].textures!;
 
-    grid = new TileGrid(defaults.cellSize, defaults.cellLength, {textures, renderer: app.renderer})
-        .load(Levels.Calgary.Rainbow, 64);
+    grid = new TileGrid(gridSize, defaults.cellLength, {textures, renderer: app.renderer})
+        .load(Levels.Calgary.Rainbow);
     if (DEBUG) enableDebug();
     
     const tgc = grid.container;

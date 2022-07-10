@@ -116,9 +116,9 @@ export class TileGrid implements Serializable, Grids.Grid {
       */
      static readonly UNDO_THRESHOLD_MS = 300;
 
-    constructor(cellSize: number, cellLength: number, pixi: PIXIResources, tiles?: (Tile | undefined)[][]) {
-        this.cellSize = cellSize;
+    constructor(gridSize: number, cellLength: number, pixi: PIXIResources, tiles?: (Tile | undefined)[][]) {
         this.cellLength = cellLength;
+        this.cellSize = Grids.optimalCellSize(this, gridSize);
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
         this.pixi = pixi;

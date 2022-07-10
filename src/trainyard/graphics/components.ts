@@ -20,7 +20,6 @@ export const Ratios = {
         },
         SPACE: 1 / 16
     },
-
     Rail: {
         INNER_WIDTH: 7 / 32,
         OUTER_WIDTH: 9 / 32
@@ -30,6 +29,10 @@ export const Ratios = {
         INNER_GAP: 1 / 32,
         OUTER_GAP: 3 / 64
     },
+    Train: {
+        SPAN: 14 / 32,
+        HEAD: 1 / 16
+    }
 } as const;
 
 const SYM_TEXTURE_SCALE = 5;
@@ -149,8 +152,12 @@ function roundToParity(x: number, toOdd: number | boolean) {
 
 /**
  * Creates a box (which appears in tiles such as outlet and goal)
- * @param renderer renderer
- * @returns the box, and the inner value designating the size of the box without outline
+ * @param param0 grid.pixi
+ * @param outline Settings for the outline, particularly, its thickness and color
+ * @param size Cell size
+ * @returns the box, 
+ *    an inner value (the size of the box without outline), 
+ *    and an outer value (the size of the box with outline)
  */
 export function box(
     {renderer}: PIXIResources, 
@@ -203,9 +210,10 @@ export function box(
 
 /**
  * Creates an active side indicator.
- * @param textures reference to the textures
- * @param d Direction the indicator points
- * @returns the sprite holding the indicator
+ * @param param0 grid.pixi
+ * @param d the direction this active side is supposed to be at
+ * @param size Cell size
+ * @returns the sprite
  */
 export function activeSide({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_active.png"]);
@@ -216,10 +224,11 @@ export function activeSide({textures}: PIXIResources, d: Dir, size: number): Two
 }
 
 /**
- * Creates a passive side indicator.
- * @param textures reference to the textures
- * @param d Direction the indicator points
- * @returns the sprite holding the indicator
+ * Creates an passive side indicator.
+ * @param param0 grid.pixi
+ * @param d the direction this passive side is supposed to be at
+ * @param size Cell size
+ * @returns the sprite
  */
 export function passiveSide({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_passive.png"]);
@@ -229,7 +238,15 @@ export function passiveSide({textures}: PIXIResources, d: Dir, size: number): Tw
     return sprite;
 }
 
-
+/**
+ * Shorthand for creating a render texture. 
+ * `loadRenderTexture` should be used instead of this 
+ * as `loadRenderTexture` caches created render textures.
+ * @param renderer Renderer
+ * @param o Display object to put in the render texture
+ * @param size Size of the render texture
+ * @returns the render texture
+ */
 function createRenderTexture(
     renderer: PIXI.AbstractRenderer, 
     o: PIXI.DisplayObject, 
@@ -246,7 +263,7 @@ function createRenderTexture(
  * @param name Name of the render texture
  * @param size Size of the render texture
  * @param fallback Callback to create a display object to render if not in cache
- * @returns display texture
+ * @returns the render texture
  */
 function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: number, fallback: (drawSize: number) => PIXI.DisplayObject) {
     const cached = SpriteCache[name]?.[size];
@@ -259,9 +276,9 @@ function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: 
 
 /**
  * Creates a sequence of symbols from a given symbol (e.g. circle, plus) and colors
- * @param renderer Renderer to render graphics
+ * @param param0 grid.pixi
  * @param clrs Colors of the symbols
- * @param bounds Center and size of the box these symbols need to be placed in
+ * @param bounds Center and size of the box these symbols are placed in & the cell size
  * @param symbol A function that creates the symbol from a given size.
  * The symbol should be [size x size] pixels, 
  * centered at (size / 2, size / 2), and colored white.
@@ -317,8 +334,9 @@ export function symbolSet(
 
 /**
  * Creates a painter symbol sprite
- * @param textures reference to textures
- * @param c Color of the painter
+ * @param param0 grid.pixi
+ * @param c color of the painter symbol
+ * @param size cell size
  * @returns the sprite
  */
 export function painterSymbol({textures}: PIXIResources, c: Color, size: number): PIXI.Sprite {
@@ -331,8 +349,9 @@ export function painterSymbol({textures}: PIXIResources, c: Color, size: number)
 
 /**
  * Creates a splitter symbol sprite
- * @param textures reference to textures
+ * @param param0 grid.pixi
  * @param d Direction of the splitter symbol
+ * @param size cell size
  * @returns the sprite
  */
 export function splitterSymbol({textures}: PIXIResources, d: Dir, size: number): TwoAnchorSprite {
@@ -345,7 +364,8 @@ export function splitterSymbol({textures}: PIXIResources, d: Dir, size: number):
 
 /**
  * Creates a rock sprite
- * @param textures reference to textures
+ * @param param0 grid.pixi
+ * @param size cell size
  * @returns the sprite
  */
 export function rock({textures}: PIXIResources, size: number): TwoAnchorSprite { // TODO
@@ -358,8 +378,9 @@ export function rock({textures}: PIXIResources, size: number): TwoAnchorSprite {
 
 /**
  * Creates a SINGLE rail sprite
- * @param textures reference to textures
+ * @param param0 grid.pixi
  * @param entrances the TWO entrances for the rail
+ * @param size cell size
  * @returns the sprite
  */
 export function rail({renderer}: PIXIResources, entrances: Dir[], size: number): TwoAnchorSprite {
@@ -435,7 +456,8 @@ export function rail({renderer}: PIXIResources, entrances: Dir[], size: number):
 
 /**
  * Creates a hover indicator sprite
- * @param textures reference to the textures
+ * @param param0 grid.pixi
+ * @param size cell size
  * @returns the sprite
  */
 export function hoverIndicator({textures}: PIXIResources, size: number): TwoAnchorSprite {
@@ -445,13 +467,24 @@ export function hoverIndicator({textures}: PIXIResources, size: number): TwoAnch
     return sprite;
 }
 
+/**
+ * Creates a train sprite
+ * @param param0 grid.pixi
+ * @param size cell size
+ * @returns the sprite
+ */
 export function train({renderer}: PIXIResources, size: number) {
     const rt = loadRenderTexture(renderer, "train", size, size => {
+        const SPAN  = Math.round(Ratios.Train.SPAN * size);
+        const HEAD  = Math.round(Ratios.Train.HEAD * size);
+        const WIDTH = Math.round(Ratios.Rail.INNER_WIDTH * size);
+        const [cx, cy] = [size / 2, size / 2];
+        
         return new PIXI.Graphics()
             .beginFill(0xFFFFFF)
-            .drawRect(0, 8, 28, 16)
+            .drawRect(cx - SPAN / 2, cy - WIDTH / 2, SPAN, WIDTH)
             .beginFill(0x7F7F7F)
-            .drawRect(28, 8, 4, 16)
+            .drawRect(cx + SPAN / 2 - HEAD / 2, cy - WIDTH / 2, HEAD, WIDTH)
     });
     
     return TwoAnchorSprite.centered(rt);
