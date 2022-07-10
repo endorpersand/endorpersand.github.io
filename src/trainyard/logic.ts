@@ -1418,17 +1418,16 @@ export namespace Tile {
             const con = new PIXI.Container();
 
             const [box, inner] = TileGraphics.box(resources, {ratio: TileGraphics.Ratios.Box.Outline.OUTLET}, size);
-            con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
             const symbols = TileGraphics.symbolSet(
                 resources, this.colors, [center, inner, size], "plus"
             );
             symbols.name = "symbols";
-            con.addChild(symbols);
 
-            con.addChild(TileGraphics.passiveSide(resources, this.out, size));
-
+            const exit = TileGraphics.passiveSide(resources, this.out, size);
+            
+            con.addChild(exit, box, symbols);
             return con;
         }
     }
@@ -1493,18 +1492,16 @@ export namespace Tile {
             const con = new PIXI.Container();
 
             const [box, inner] = TileGraphics.box(resources, {color: Palette.Box.Outline.Goal}, size);
-            con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
             const symbols = TileGraphics.symbolSet(
                 resources, this.targets, [center, inner, size], "circle"
             );
             symbols.name = "targets";
-            con.addChild(symbols);
-
+            
             let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(resources, e, size));
-            if (activeSides.length > 0) con.addChild(...activeSides);
-
+            
+            con.addChild(...activeSides, box, symbols);
             return con;
         }
     }
@@ -1555,13 +1552,11 @@ export namespace Tile {
             const con = new PIXI.Graphics();
 
             const [box] = TileGraphics.box(resources, {color: Palette.Train[this.color]}, size);
-            con.addChild(box);
             
-            con.addChild(TileGraphics.painterSymbol(resources, this.color, size));
-            con.addChild(
-                ...Array.from(this.actives, e => TileGraphics.activeSide(resources, e, size))
-            );
+            const painter = TileGraphics.painterSymbol(resources, this.color, size);
+            const activeSides = Array.from(this.actives, e => TileGraphics.activeSide(resources, e, size));
 
+            con.addChild(...activeSides, box, painter);
             return con;
         }
     }
@@ -1624,14 +1619,14 @@ export namespace Tile {
             const [box] = TileGraphics.box(resources, {}, size);
             con.addChild(box);
             
-            con.addChild(TileGraphics.splitterSymbol(resources, this.active, size));
+            const splitter = TileGraphics.splitterSymbol(resources, this.active, size);
             
-            let sides = [
+            const sides = [
                 TileGraphics.activeSide(resources, this.active, size),
                 ...this.sides.map(s => TileGraphics.passiveSide(resources, s, size))
             ];
-            con.addChild(...sides);
-
+            
+            con.addChild(...sides, box, splitter);
             return con;
         }
     }
