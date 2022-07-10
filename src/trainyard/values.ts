@@ -247,8 +247,11 @@ export const Palette = {
     Shadow: 0x7F7F7F,
     Hover: 0xD7FFE7,
     Box: {
-        BG: 0x000000,
-        Outline: 0xAFAFAF,
+        BG: 0x252525,
+        Outline: {
+            Default: 0xB8B8B8,
+            Goal: 0xDDDDDD
+        },
     },
     Rail: {
         Inner: 0xB3B3B3,

@@ -53,7 +53,7 @@ function setup() {
     let cellSize = Math.floor(cellSpace / cellLength);
 
     grid = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(Levels.Guelph['Cute Loop']);
+        .load(TestLevels.TextureLoadTest);
     if (DEBUG) enableDebug();
     
     const tgc = grid.container;

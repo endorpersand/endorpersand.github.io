@@ -12,9 +12,12 @@ const SpriteCache: {
 } = {};
 
 
-const Ratios = {
+export const Ratios = {
     Box: {
-        OUTLINE: 1 / 16,
+        Outline: {
+            DEFAULT: 1 / 16,
+            OUTLET: 1 / 16
+        },
         SPACE: 1 / 16
     },
 
@@ -148,25 +151,39 @@ function roundToParity(x: number, toOdd: number | boolean) {
  */
 export function box(
     {renderer}: PIXIResources, 
+    outline: {ratio?: number, color?: number},
     size: number
-): [box: PIXI.Sprite, inner: number, outer: number] {
-    const OUTLINE = Math.floor(size * Ratios.Box.OUTLINE);
+): [box: PIXI.Container, inner: number, outer: number] {
+    const ratio = outline.ratio ?? Ratios.Box.Outline.DEFAULT;
+    const color = outline.color ?? Palette.Box.Outline.Default;
+
+    const OUTLINE = Math.floor(size * ratio);
     const SPACE   = Math.floor(size * Ratios.Box.SPACE);
 
     const outer = size - 2 * SPACE;
     const inner = size - 2 * (OUTLINE + SPACE);
 
-    const rt = loadRenderTexture(renderer, "box", size, size => {
+    const outlineRT = loadRenderTexture(renderer, `boxOutline[ratio=${ratio}]`, size, size => {
         return new PIXI.Graphics()
-            .beginFill(Palette.Box.Outline, 1)
+            .beginFill(0xFFFFFF, 1)
             .drawRect(SPACE, SPACE, outer, outer)
             .endFill()
-            .beginFill(Palette.Box.BG, 1)
+            .beginHole()
             .drawRect(SPACE + OUTLINE, SPACE + OUTLINE, inner, inner)
             .endFill();
     });
 
-    const box = new PIXI.Sprite(rt);
+    const outlineSprite = new PIXI.Sprite(outlineRT);
+    outlineSprite.tint = color;
+
+    const bg = new PIXI.Sprite(PIXI.Texture.WHITE);
+    bg.tint = Palette.Box.BG;
+    bg.position.set(SPACE + OUTLINE);
+    bg.width = inner;
+    bg.height = inner;
+
+    const box = new PIXI.Container();
+    box.addChild(bg, outlineSprite);
     
     return [
         box, inner, outer
@@ -248,7 +265,7 @@ export function symbolSet(
 ): PIXI.Container {
     const [boundsCenter, boundsSize] = bounds;
     const SYM_GAP = Math.floor(
-        boundsSize * Ratios.SYM_GAP / (1 - 2 * (Ratios.Box.OUTLINE + Ratios.Box.SPACE))
+        boundsSize * Ratios.SYM_GAP / (1 - 2 * (Ratios.Box.Outline.DEFAULT + Ratios.Box.SPACE))
     );
 
     const n = clrs.length;

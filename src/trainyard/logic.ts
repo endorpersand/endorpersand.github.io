@@ -1417,7 +1417,7 @@ export namespace Tile {
         render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box, inner] = TileGraphics.box(resources, size);
+            const [box, inner] = TileGraphics.box(resources, {ratio: TileGraphics.Ratios.Box.Outline.OUTLET}, size);
             con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
@@ -1492,7 +1492,7 @@ export namespace Tile {
         render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box, inner] = TileGraphics.box(resources, size);
+            const [box, inner] = TileGraphics.box(resources, {color: Palette.Box.Outline.Goal}, size);
             con.addChild(box);
             
             const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
@@ -1554,7 +1554,7 @@ export namespace Tile {
         render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Graphics();
 
-            const [box] = TileGraphics.box(resources, size);
+            const [box] = TileGraphics.box(resources, {color: Palette.Train[this.color]}, size);
             con.addChild(box);
             
             con.addChild(TileGraphics.painterSymbol(resources, this.color, size));
@@ -1621,7 +1621,7 @@ export namespace Tile {
         render(resources: PIXIResources, size: number): PIXI.Container {
             const con = new PIXI.Container();
 
-            const [box] = TileGraphics.box(resources, size);
+            const [box] = TileGraphics.box(resources, {}, size);
             con.addChild(box);
             
             con.addChild(TileGraphics.splitterSymbol(resources, this.active, size));
@@ -1863,9 +1863,9 @@ export namespace Tile {
 
             if (this.#overlapping) {
                 rails[1].tint = Palette.Shadow;
-                rails.reverse();
             }
-
+            
+            rails.reverse();
             con.addChild(...rails);
 
             return con;
