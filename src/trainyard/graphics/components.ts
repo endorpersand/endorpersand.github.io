@@ -26,7 +26,10 @@ export const Ratios = {
         OUTER_WIDTH: 9 / 32
     },
     ARROW_BASE: 2 / 16,
-    SYM_GAP: 3 / 64,
+    Symbols: {
+        INNER_GAP: 1 / 32,
+        OUTER_GAP: 3 / 64
+    },
 } as const;
 
 const SYM_TEXTURE_SCALE = 5;
@@ -264,13 +267,14 @@ export function symbolSet(
     symbol: keyof typeof Symbols | [name: string, cb: (drawSize: number) => PIXI.Graphics]
 ): PIXI.Container {
     const [boundsCenter, boundsSize, fullCellSize] = bounds;
-    const SYM_GAP = Math.round(fullCellSize * Ratios.SYM_GAP);
+    const INNER_SYM_GAP = Math.round(fullCellSize * Ratios.Symbols.INNER_GAP);
+    const OUTER_SYM_GAP = Math.round(fullCellSize * Ratios.Symbols.OUTER_GAP);
 
     const n = clrs.length;
     const rowN = Math.ceil(Math.sqrt(n));
 
     const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
-    const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
+    const cellSize = (boundsSize - (rowN - 1) * INNER_SYM_GAP - 2 * OUTER_SYM_GAP) / rowN;
 
     const drawSize = cellSize * SYM_TEXTURE_SCALE;
 
@@ -288,8 +292,8 @@ export function symbolSet(
         let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
         let [centerX, centerY] = [
             // origin > shift to top left pixel in cell > shift to center
-            (originX + SYM_GAP) + (cellX * (cellSize + SYM_GAP)) + (cellSize / 2),
-            (originY + SYM_GAP) + (cellY * (cellSize + SYM_GAP)) + (cellSize / 2),
+            (originX + OUTER_SYM_GAP) + (cellX * (cellSize + INNER_SYM_GAP)) + (cellSize / 2),
+            (originY + OUTER_SYM_GAP) + (cellY * (cellSize + INNER_SYM_GAP)) + (cellSize / 2),
         ]
         let clr = clrs[i];
 
