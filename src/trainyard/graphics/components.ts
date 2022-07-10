@@ -26,7 +26,7 @@ export const Ratios = {
         OUTER_WIDTH: 9 / 32
     },
     ARROW_BASE: 2 / 16,
-    SYM_GAP: 3 / 64,
+    SYM_GAP: 1 / 32,
 } as const;
 
 const SYM_TEXTURE_SCALE = 5;
@@ -260,11 +260,13 @@ function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: 
 export function symbolSet(
     {renderer}: PIXIResources,
     clrs: readonly Color[], 
-    bounds: readonly [center: readonly [number, number], symbolSetSize: number, cellSize: number], 
+    bounds: readonly [center: readonly [number, number], size: number], 
     symbol: keyof typeof Symbols | [name: string, cb: (drawSize: number) => PIXI.Graphics]
 ): PIXI.Container {
-    const [boundsCenter, boundsSize, fullCellSize] = bounds;
-    const SYM_GAP = Math.floor(fullCellSize * Ratios.SYM_GAP);
+    const [boundsCenter, boundsSize] = bounds;
+    const SYM_GAP = Math.floor(
+        boundsSize * Ratios.SYM_GAP / (1 - 2 * (Ratios.Box.Outline.DEFAULT + Ratios.Box.SPACE))
+    );
 
     const n = clrs.length;
     const rowN = Math.ceil(Math.sqrt(n));
