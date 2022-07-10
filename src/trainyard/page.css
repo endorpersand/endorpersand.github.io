@@ -13,6 +13,7 @@ body {
     align-items: stretch;
     margin: 0px 0px;
 }
+
 body.erase-mode {
     background: linear-gradient(#222 25%, #442)
 }
@@ -139,6 +140,13 @@ button.readonly-mode:active {
 input {
     width: 0px;
 }
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0; 
+}
 
 @media (width <= 500px) {
     #wrapper {
@@ -166,4 +174,12 @@ body.failed #fd-pass {
 }
 body:not(.failed) #fd-fail {
     display: none;
+}
+
+input, span {
+    font-family: 'Fira Sans', sans-serif;
+}
+
+.white {
+    color: white;
 }

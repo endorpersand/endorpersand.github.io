@@ -4,6 +4,7 @@ import assets from '../../static/*'
 import { Tile, TileGrid } from './logic';
 import { Atlas, Color, Dir, Grids, Palette } from "./values";
 import Levels from "./levels.json";
+import { applyButtons, Elements, speed } from './dom';
 
 const DEBUG = false;
 declare global {
@@ -64,78 +65,11 @@ function setup() {
     app.ticker.add(gameLoop);
 };
 
-const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
-
 function gameLoop(delta: number) {
     // cat.x = (cat.x + speed + delta) % 256;
-    if (grid.editMode === "readonly" && grid.simulation && +slider.value) grid.simulation.stepPartial(delta);
-}
-
-function applyButtons(grid: TileGrid) {
-    const wrapper = document.querySelector("#wrapper")!;
-
-    const erase = wrapper.querySelector("button#b-erase")!;
-    const undo  = wrapper.querySelector("button#b-undo")!;
-    const start = wrapper.querySelector("button#b-start")!;
-    const step  = wrapper.querySelector("button#b-step")!;
-
-    const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
-    erase.addEventListener("click", () => {
-        let em = grid.editMode;
-        if (em === "rail") grid.editMode = "railErase";
-        else if (em === "railErase") grid.editMode = "rail";
-    });
-    undo.addEventListener("click", () => {
-        grid.undo();
-    })
-    start.addEventListener("click", () => {
-        let em = grid.editMode;
-
-        if (em === "readonly") grid.editMode = "rail";
-        else grid.editMode = "readonly";
-    })
-    step.addEventListener("click", () => {
-        let em = grid.editMode;
-
-        if (em !== "readonly") {
-            grid.editMode = "readonly";
-        } else {
-            grid.simulation?.step();
-        }
-
-        slider.value = "0";
-    });
-
-    grid.on("enterRailErase", () => {
-        // enable erase mode
-        document.body.classList.add("erase-mode");
-        erase.classList.add("erase-mode");
-        erase.textContent = "Stop Erasing";
-    });
-    grid.on("exitRailErase", () => {
-        // reset erase mode
-        document.body.classList.remove("erase-mode");
-        erase.classList.remove("erase-mode");
-        erase.textContent = "Erase";
-    });
-
-    grid.on("enterReadonly", () => {
-        // set readonly mode active
-        document.body.classList.add("readonly-mode");
-        start.classList.add("readonly-mode");
-        start.textContent = "Return";
-    });
-    grid.on("exitReadonly", () => {
-        // reset readonly mode
-        document.body.classList.remove("readonly-mode");
-        start.classList.remove("readonly-mode");
-        start.textContent = "Start";
-        document.body.classList.remove("failed");
-    });
-
-    grid.on("fail", () => {
-        document.body.classList.add("failed");
-    });
+    if (grid.editMode === "readonly" && grid.simulation && +Elements.slider.value) {
+        grid.simulation.stepPartial(delta * speed());
+    }
 }
 
 namespace TestLevels {
