@@ -26,7 +26,7 @@ export const Ratios = {
         OUTER_WIDTH: 9 / 32
     },
     ARROW_BASE: 2 / 16,
-    SYM_GAP: 1 / 32,
+    SYM_GAP: 3 / 64,
 } as const;
 
 const SYM_TEXTURE_SCALE = 5;
@@ -260,19 +260,17 @@ function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: 
 export function symbolSet(
     {renderer}: PIXIResources,
     clrs: readonly Color[], 
-    bounds: readonly [center: readonly [number, number], size: number], 
+    bounds: readonly [center: readonly [number, number], symbolSetSize: number, cellSize: number], 
     symbol: keyof typeof Symbols | [name: string, cb: (drawSize: number) => PIXI.Graphics]
 ): PIXI.Container {
-    const [boundsCenter, boundsSize] = bounds;
-    const SYM_GAP = Math.floor(
-        boundsSize * Ratios.SYM_GAP / (1 - 2 * (Ratios.Box.Outline.DEFAULT + Ratios.Box.SPACE))
-    );
+    const [boundsCenter, boundsSize, fullCellSize] = bounds;
+    const SYM_GAP = Math.round(fullCellSize * Ratios.SYM_GAP);
 
     const n = clrs.length;
     const rowN = Math.ceil(Math.sqrt(n));
 
     const [originX, originY] = boundsCenter.map(x => x - boundsSize / 2);
-    const cellSize = (boundsSize - (rowN + 3) * SYM_GAP) / rowN;
+    const cellSize = (boundsSize - (rowN + 1) * SYM_GAP) / rowN;
 
     const drawSize = cellSize * SYM_TEXTURE_SCALE;
 
@@ -290,8 +288,8 @@ export function symbolSet(
         let [cellX, cellY] = [i % rowN, Math.floor(i / rowN)];
         let [centerX, centerY] = [
             // origin > shift to top left pixel in cell > shift to center
-            (originX + 2 * SYM_GAP) + (cellX * (cellSize + SYM_GAP)) + (cellSize / 2),
-            (originY + 2 * SYM_GAP) + (cellY * (cellSize + SYM_GAP)) + (cellSize / 2),
+            (originX + SYM_GAP) + (cellX * (cellSize + SYM_GAP)) + (cellSize / 2),
+            (originY + SYM_GAP) + (cellY * (cellSize + SYM_GAP)) + (cellSize / 2),
         ]
         let clr = clrs[i];
 
