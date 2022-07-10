@@ -6,7 +6,7 @@ import { Atlas, Color, Dir, Grids, Palette } from "./values";
 import Levels from "./levels.json";
 import { applyButtons, Elements, speed } from './dom';
 
-const DEBUG = false;
+const DEBUG = true;
 declare global {
     interface Window {
         grid: TileGrid;
@@ -48,7 +48,7 @@ function setup() {
     textures = resources[assets["trainyard.atlas.json"]].textures!;
 
     grid = new TileGrid(defaults.cellSize, defaults.cellLength, {textures, renderer: app.renderer})
-        .load(Levels.Guelph['Cute Loop'], 64);
+        .load(Levels.Calgary.Rainbow, 64);
     if (DEBUG) enableDebug();
     
     const tgc = grid.container;
@@ -209,6 +209,17 @@ namespace TestLevels {
         [ , new Tile.Outlet(Dir.Down, [Color.Red]), , new Tile.Outlet(Dir.Down, [Color.Red]), , new Tile.Goal([Color.Purple], [Dir.Down])],
         [new Tile.Outlet(Dir.Right, [Color.Blue])],
         [ , , new Tile.Goal([Color.Purple, Color.Purple], [Dir.Up, Dir.Left]), new Tile.Goal([Color.Purple], [Dir.Up]), , new Tile.Outlet(Dir.Up, [Color.Blue])],
+    ];
+
+    export const MergeTest8 = [
+        [new Tile.Outlet(Dir.Right, [Color.Red]), , , , , new Tile.Outlet(Dir.Down, [Color.Red])],
+        [, , , new Tile.Goal([Color.Purple], [Dir.Left]), new Tile.Outlet(Dir.Right, [Color.Blue])],
+        [new Tile.Outlet(Dir.Right, [Color.Blue]), , , , , , , new Tile.Goal([Color.Blue,Color.Red], [Dir.Up,Dir.Left])],
+        [],
+        [ , new Tile.Outlet(Dir.Down, [Color.Red]), , , new Tile.Outlet(Dir.Down, [Color.Red]), , , new Tile.Goal([Color.Purple], [Dir.Down])],
+        [new Tile.Outlet(Dir.Right, [Color.Blue])],
+        [],
+        [ , , , new Tile.Goal([Color.Purple, Color.Purple], [Dir.Up, Dir.Left]), new Tile.Goal([Color.Purple], [Dir.Up]), , new Tile.Outlet(Dir.Up, [Color.Blue]), new Tile.Rock()],
     ];
 
     export const AnimTest = [

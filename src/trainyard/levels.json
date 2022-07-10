@@ -15,7 +15,103 @@
         "Journey": null
     },
     "Calgary": {
-        "Rainbow": null,
+        "Rainbow": {
+            "board": [
+                "o+o+o+o",
+                "       ",
+                "       ",
+                "       ",
+                "       ",
+                "       ",
+                "+o+o+o+"
+            ],
+            "tiles": {
+                "0": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 8
+                },
+                "1": {
+                    "out": 3,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "2": {
+                    "targets": [
+                        "Blue"
+                    ],
+                    "actives": 8
+                },
+                "3": {
+                    "out": 3,
+                    "colors": [
+                        "Green"
+                    ]
+                },
+                "4": {
+                    "targets": [
+                        "Yellow"
+                    ],
+                    "actives": 8
+                },
+                "5": {
+                    "out": 3,
+                    "colors": [
+                        "Orange"
+                    ]
+                },
+                "6": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 8
+                },
+                "42": {
+                    "out": 1,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "43": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 2
+                },
+                "44": {
+                    "out": 1,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "45": {
+                    "targets": [
+                        "Green"
+                    ],
+                    "actives": 2
+                },
+                "46": {
+                    "out": 1,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "47": {
+                    "targets": [
+                        "Orange"
+                    ],
+                    "actives": 2
+                },
+                "48": {
+                    "out": 1,
+                    "colors": [
+                        "Red"
+                    ]
+                }
+            }
+        },
         "Innie Outie": null,
         "Around the Back": null,
         "Multicolor": {

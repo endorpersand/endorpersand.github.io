@@ -82,6 +82,7 @@ export function applyButtons(grid: TileGrid) {
         }
 
         slider.value = "0";
+        input.value = "0.00";
     });
 
     grid.on("enterRailErase", () => {

@@ -896,9 +896,8 @@ export namespace Move {
  */
 export type Move = Move.Destroy | Move.Pass | Move.Split | Move.Merge;
 
-type GridStep = Map<number, Move[]>;
-
 namespace Simulation {
+    type GridStep = Map<number, Move[]>;
     const FRAMES_PER_STEP = 30;
 
     export class Simulator {
