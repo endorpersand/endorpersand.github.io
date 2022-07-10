@@ -312,7 +312,9 @@ export class TileGrid implements Serializable, Grids.Grid {
             return tile.render(this.pixi, this.cellSize);
         }
 
-        return new PIXI.Container();
+        const con = new PIXI.Container();
+        con.visible = false;
+        return con;
     }
 
     #wipeContainer(con: PIXI.Container) {
@@ -555,9 +557,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         const TILE_GAP = Grids.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
 
-        const railMarker = TileGraphics.hoverIndicator(this.pixi.textures);
-        railMarker.width = this.cellSize;
-        railMarker.height = this.cellSize;
+        const railMarker = TileGraphics.hoverIndicator(this.pixi.textures, this.cellSize);
         railMarker.tint = Palette.Hover;
         railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
         railMarker.visible = false;
@@ -1419,19 +1419,21 @@ export namespace Tile {
         }
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(renderer);
-                con.addChild(box);
-                
-                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
-                const symbols = TileGraphics.symbolSet(
-                    renderer, this.colors, [center, inner], "plus"
-                );
-                symbols.name = "symbols";
-                con.addChild(symbols);
+            const con = new PIXI.Container();
 
-                con.addChild(TileGraphics.passiveSide(textures, this.out));
-            });
+            const [box, inner] = TileGraphics.box(renderer, size);
+            con.addChild(box);
+            
+            const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
+            const symbols = TileGraphics.symbolSet(
+                renderer, this.colors, [center, inner], "plus"
+            );
+            symbols.name = "symbols";
+            con.addChild(symbols);
+
+            con.addChild(TileGraphics.passiveSide(textures, this.out, size));
+
+            return con;
         }
     }
     
@@ -1492,20 +1494,22 @@ export namespace Tile {
         }
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                const [box, inner] = TileGraphics.box(renderer);
-                con.addChild(box);
-                
-                const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
-                const symbols = TileGraphics.symbolSet(
-                    renderer, this.targets, [center, inner], "circle"
-                );
-                symbols.name = "targets";
-                con.addChild(symbols);
+            const con = new PIXI.Container();
 
-                let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(textures, e));
-                if (activeSides.length > 0) con.addChild(...activeSides);
-            });
+            const [box, inner] = TileGraphics.box(renderer, size);
+            con.addChild(box);
+            
+            const center = [Math.floor(box.width / 2), Math.floor(box.height / 2)] as const;
+            const symbols = TileGraphics.symbolSet(
+                renderer, this.targets, [center, inner], "circle"
+            );
+            symbols.name = "targets";
+            con.addChild(symbols);
+
+            let activeSides = Array.from(this.actives, e => TileGraphics.activeSide(textures, e, size));
+            if (activeSides.length > 0) con.addChild(...activeSides);
+
+            return con;
         }
     }
     
@@ -1552,15 +1556,17 @@ export namespace Tile {
         }
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                const [box] = TileGraphics.box(renderer);
-                con.addChild(box);
-                
-                con.addChild(TileGraphics.painterSymbol(textures, this.color));
-                con.addChild(
-                    ...Array.from(this.actives, e => TileGraphics.activeSide(textures, e))
-                );
-            });
+            const con = new PIXI.Graphics();
+
+            const [box] = TileGraphics.box(renderer, size);
+            con.addChild(box);
+            
+            con.addChild(TileGraphics.painterSymbol(textures, this.color, size));
+            con.addChild(
+                ...Array.from(this.actives, e => TileGraphics.activeSide(textures, e, size))
+            );
+
+            return con;
         }
     }
     
@@ -1617,18 +1623,20 @@ export namespace Tile {
         }
 
         render({textures, renderer}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                const [box] = TileGraphics.box(renderer);
-                con.addChild(box);
-                
-                con.addChild(TileGraphics.splitterSymbol(textures, this.active));
-                
-                let sides = [
-                    TileGraphics.activeSide(textures, this.active),
-                    ...this.sides.map(s => TileGraphics.passiveSide(textures, s))
-                ];
-                con.addChild(...sides);
-            });
+            const con = new PIXI.Container();
+
+            const [box] = TileGraphics.box(renderer, size);
+            con.addChild(box);
+            
+            con.addChild(TileGraphics.splitterSymbol(textures, this.active, size));
+            
+            let sides = [
+                TileGraphics.activeSide(textures, this.active, size),
+                ...this.sides.map(s => TileGraphics.passiveSide(textures, s, size))
+            ];
+            con.addChild(...sides);
+
+            return con;
         }
     }
     
@@ -1646,9 +1654,11 @@ export namespace Tile {
         readonly serChar = "r";
 
         render({textures}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                con.addChild(TileGraphics.rock(textures));
-            });
+            const con = new PIXI.Container();
+
+            con.addChild(TileGraphics.rock(textures, size));
+
+            return con;
         }
     }
     
@@ -1736,9 +1746,9 @@ export namespace Tile {
         }
 
         render({textures}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                con.addChild(TileGraphics.rail(textures, ...this.actives));
-            });
+            const con = new PIXI.Container();
+            con.addChild(TileGraphics.rail(textures, [...this.actives], size));
+            return con;
         }
 
         top() {
@@ -1851,16 +1861,18 @@ export namespace Tile {
         }
 
         render({textures}: PIXIData, size: number): PIXI.Container {
-            return TileGraphics.sized(size, con => {
-                const rails = this.paths.map(p => TileGraphics.rail(textures, ...p));
+            const con = new PIXI.Container();
 
-                if (this.#overlapping) {
-                    rails[1].tint = Palette.Shadow;
-                    rails.reverse();
-                }
+            const rails = this.paths.map(p => TileGraphics.rail(textures, [...p], size));
 
-                con.addChild(...rails);
-            });
+            if (this.#overlapping) {
+                rails[1].tint = Palette.Shadow;
+                rails.reverse();
+            }
+
+            con.addChild(...rails);
+
+            return con;
         }
 
         /**

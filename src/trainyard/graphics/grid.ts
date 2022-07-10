@@ -371,7 +371,7 @@ export class TrainContainer extends AbsGriddedContainer {
      * @returns the sprite
      */
     createBody(pos: CellPos, edge: Dir | undefined, t: Train) {
-        const body = TileGraphics.train(this.pixi.renderer);
+        const body = TileGraphics.train(this.pixi.renderer, 32);
         body.posAnchor.set(0.5, 0.5);
         
         const pixPos = Grids.cellToPosition(this, pos, Dir.edge(edge, this.cellSize));

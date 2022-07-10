@@ -43,7 +43,7 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         super(texture);
         this.#posAnchor = this.#makePoint(0, 0);
         this.#position = this.#makePoint(this.transform.position.x, this.transform.position.y);
-        
+
         const anchorCB = this._anchor.cb;
         this._anchor.cb = function() {
             anchorCB();
@@ -73,7 +73,7 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         const {x, y} = this.#position;
         this.transform.position.set(x - dx, y - dy);
     }
-
+    updatePosition() { return this.#updatePosition(); }
     #makePoint(x: number, y: number) {
         return new PIXI.ObservablePoint( this.#updatePosition, this, x, y );
     }
@@ -96,21 +96,21 @@ export class TwoAnchorSprite extends PIXI.Sprite {
     set position(v: PIXI.IPointData) {
         this.#position.copyFrom(v);
     }
-}
 
-/**
- * Creates a PIXI container that upscales to the correct size.
- * @param size Size to upscale
- * @param f Function to add everything into container before upscaling
- * @returns the new container
- */
-export function sized(size: number, f?: (c: PIXI.Container) => void): PIXI.Container {
-    const con = new PIXI.Container();
-    f?.(con);
-
-    con.width = size;
-    con.height = size;
-    return con;
+    get width() {
+        return super.width;
+    }
+    set width(w: number) {
+        super.width = w;
+        this.#updatePosition();
+    }
+    get height() {
+        return super.height;
+    }
+    set height(h: number) {
+        super.height = h;
+        this.#updatePosition();
+    }
 }
 
 const Ratios = {
@@ -133,7 +133,7 @@ const SYM_TEXTURE_SCALE = 10;
  */
 export function box(
     renderer: PIXI.AbstractRenderer, 
-    size: number = 32
+    size: number
 ): [box: PIXI.Sprite, inner: number, outer: number] {
     const OUTLINE = Math.floor(size * Ratios.Box.OUTLINE);
     const SPACE   = Math.floor(size * Ratios.Box.SPACE);
@@ -164,8 +164,10 @@ export function box(
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function activeSide(textures: Atlas, d: Dir): TwoAnchorSprite {
+export function activeSide(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_active.png"]);
+    sprite.width = size;
+    sprite.height = size;
     sprite.angle = -90 * d;
     return sprite;
 }
@@ -176,8 +178,10 @@ export function activeSide(textures: Atlas, d: Dir): TwoAnchorSprite {
  * @param d Direction the indicator points
  * @returns the sprite holding the indicator
  */
-export function passiveSide(textures: Atlas, d: Dir): TwoAnchorSprite {
+export function passiveSide(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["s_passive.png"]);
+    sprite.width = size;
+    sprite.height = size;
     sprite.angle = -90 * d;
     return sprite;
 }
@@ -275,8 +279,10 @@ export function symbolSet(
  * @param c Color of the painter
  * @returns the sprite
  */
-export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
+export function painterSymbol(textures: Atlas, c: Color, size: number): PIXI.Sprite {
     const sprite = new PIXI.Sprite(textures["t_painter.png"]);
+    sprite.width = size;
+    sprite.height = size;
     sprite.tint = Palette.Train[c];
     return sprite;
 }
@@ -287,8 +293,10 @@ export function painterSymbol(textures: Atlas, c: Color): PIXI.Sprite {
  * @param d Direction of the splitter symbol
  * @returns the sprite
  */
-export function splitterSymbol(textures: Atlas, d: Dir): TwoAnchorSprite {
+export function splitterSymbol(textures: Atlas, d: Dir, size: number): TwoAnchorSprite {
     const sprite = TwoAnchorSprite.centered(textures["t_splitter.png"]);
+    sprite.width = size;
+    sprite.height = size;
     sprite.angle = 180 - 90 * d;
     return sprite;
 }
@@ -298,8 +306,10 @@ export function splitterSymbol(textures: Atlas, d: Dir): TwoAnchorSprite {
  * @param textures reference to textures
  * @returns the sprite
  */
-export function rock(textures: Atlas): TwoAnchorSprite { // TODO
+export function rock(textures: Atlas, size: number): TwoAnchorSprite { // TODO
     const sprite = TwoAnchorSprite.centered(textures["t_painter.png"]);
+    sprite.width = size;
+    sprite.height = size;
     sprite.angle = 180;
     return sprite;
 }
@@ -310,12 +320,15 @@ export function rock(textures: Atlas): TwoAnchorSprite { // TODO
  * @param entrances the TWO entrances for the rail
  * @returns the sprite
  */
-export function rail(textures: Atlas, ...entrances: Dir[]): TwoAnchorSprite {
+export function rail(textures: Atlas, entrances: Dir[], size: number): TwoAnchorSprite {
     let [e1, e2] = entrances;
 
     let straight = !((e1 - e2) % 2);
     
     let sprite = TwoAnchorSprite.centered(textures[straight ? "rail.png" : "rail2.png"]);
+    sprite.width = size;
+    sprite.height = size;
+
     if (straight) {
         sprite.angle = -90 * e1;
     } else {
@@ -337,12 +350,15 @@ export function rail(textures: Atlas, ...entrances: Dir[]): TwoAnchorSprite {
  * @param textures reference to the textures
  * @returns the sprite
  */
-export function hoverIndicator(textures: Atlas): TwoAnchorSprite {
-    return TwoAnchorSprite.centered(textures["hover.png"]);
+export function hoverIndicator(textures: Atlas, size: number): TwoAnchorSprite {
+    const sprite = TwoAnchorSprite.centered(textures["hover.png"]);
+    sprite.width = size;
+    sprite.height = size;
+    return sprite;
 }
 
-export function train(renderer: PIXI.AbstractRenderer) {
-    const rt = loadRenderTexture(renderer, "train", 32, () => {
+export function train(renderer: PIXI.AbstractRenderer, size: number) {
+    const rt = loadRenderTexture(renderer, "train", size, () => {
         return new PIXI.Graphics()
             .beginFill(0xFFFFFF)
             .drawRect(0, 8, 28, 16)
