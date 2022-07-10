@@ -98,7 +98,37 @@
     },
     "Guelph": {
         "Mirror Squad": null,
-        "Cute Loop": null,
+        "Cute Loop": {
+            "board": [
+                "+     +",
+                "r rrrrr",
+                "    r o",
+                "    r  ",
+                "    r  ",
+                "    r  ",
+                "       "
+            ],
+            "tiles": {
+                "0": {
+                    "out": 0,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "6": {
+                    "out": 2,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "20": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
         "Hourglass": null,
         "Gauss": null,
         "Third Wheel": null,

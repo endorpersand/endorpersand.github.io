@@ -11,6 +11,23 @@ const SpriteCache: {
     }
 } = {};
 
+
+const Ratios = {
+    Box: {
+        OUTLINE: 1 / 16,
+        SPACE: 1 / 16
+    },
+
+    Rail: {
+        INNER_WIDTH: 7 / 32,
+        OUTER_WIDTH: 9 / 32
+    },
+    ARROW_BASE: 2 / 16,
+    SYM_GAP: 1 / 32,
+} as const;
+
+const SYM_TEXTURE_SCALE = 5;
+
 namespace Symbols {
     export function circle(size: number) {
         return new PIXI.Graphics()
@@ -113,18 +130,16 @@ export class TwoAnchorSprite extends PIXI.Sprite {
     }
 }
 
-const Ratios = {
-    Box: {
-        OUTLINE: 1 / 16,
-        SPACE: 1 / 16
-    },
-
-    RAIL_WIDTH: 3 / 16,
-    ARROW_BASE: 2 / 16,
-    SYM_GAP: 1 / 32,
-} as const;
-
-const SYM_TEXTURE_SCALE = 10;
+/**
+ * Round to the nearest integer that matches the parity of the given size.
+ * @param x Number to round
+ * @param toOdd True? Round to nearest odd. False? Round to nearest even.
+ * @returns Rounded number
+ */
+function roundToParity(x: number, toOdd: number | boolean) {
+    const parity = +!!(+toOdd % 2);
+    return 2 * Math.round((x + parity) / 2) - parity;
+}
 
 /**
  * Creates a box (which appears in tiles such as outlet and goal)
@@ -141,7 +156,7 @@ export function box(
     const outer = size - 2 * SPACE;
     const inner = size - 2 * (OUTLINE + SPACE);
 
-    const rt = loadRenderTexture(renderer, "box", size, () => {
+    const rt = loadRenderTexture(renderer, "box", size, size => {
         return new PIXI.Graphics()
             .beginFill(Palette.Box.Outline, 1)
             .drawRect(SPACE, SPACE, outer, outer)
@@ -205,11 +220,11 @@ function createRenderTexture(
  * @param fallback Callback to create a display object to render if not in cache
  * @returns display texture
  */
-function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: number, fallback: () => PIXI.DisplayObject) {
+function loadRenderTexture(renderer: PIXI.AbstractRenderer, name: string, size: number, fallback: (drawSize: number) => PIXI.DisplayObject) {
     const cached = SpriteCache[name]?.[size];
 
     if (cached) return cached;
-    const rt = createRenderTexture(renderer, fallback(), size);
+    const rt = createRenderTexture(renderer, fallback(size), size);
     (SpriteCache[name] ??= {})[size] = rt;
     return rt;
 }
@@ -251,7 +266,7 @@ export function symbolSet(
         [symName, s] = symbol;
     }
 
-    const rt = loadRenderTexture(renderer, symName, drawSize, () => s(drawSize));
+    const rt = loadRenderTexture(renderer, symName, drawSize, drawSize => s(drawSize));
     const con = new PIXI.Container();
 
     for (let i = 0; i < n; i++) {
@@ -320,12 +335,58 @@ export function rock({textures}: PIXIResources, size: number): TwoAnchorSprite {
  * @param entrances the TWO entrances for the rail
  * @returns the sprite
  */
-export function rail({textures}: PIXIResources, entrances: Dir[], size: number): TwoAnchorSprite {
+export function rail({renderer}: PIXIResources, entrances: Dir[], size: number): TwoAnchorSprite {
     let [e1, e2] = entrances;
 
     let straight = !((e1 - e2) % 2);
     
-    let sprite = TwoAnchorSprite.centered(textures[straight ? "rail.png" : "rail2.png"]);
+    let rt: PIXI.RenderTexture;
+    if (straight) {
+        rt = loadRenderTexture(renderer, "railStraight", size, size => {
+            const width = size;
+            const outerHeight = roundToParity(size * Ratios.Rail.OUTER_WIDTH, 0);
+            const innerHeight = roundToParity(size * Ratios.Rail.INNER_WIDTH, 0);
+            
+            return new PIXI.Graphics()
+                .beginFill(Palette.Rail.Outer)
+                .drawRect(size / 2 - width / 2, size / 2 - outerHeight / 2, width, outerHeight)
+                .endFill()
+                .beginFill(Palette.Rail.Inner)
+                .drawRect(size / 2 - width / 2, size / 2 - innerHeight / 2, width, innerHeight)
+                .endFill();
+        });
+    } else {
+        rt = loadRenderTexture(renderer, "railCurved", size * SYM_TEXTURE_SCALE, size => {
+            const outerThickness = roundToParity(size * Ratios.Rail.OUTER_WIDTH, 0);
+            const innerThickness = roundToParity(size * Ratios.Rail.INNER_WIDTH, 0);
+            
+            // draw ring
+            const center = [size, 0] as const;
+            const radius = size / 2;
+
+            return new PIXI.Graphics()
+                .beginFill(Palette.Rail.Outer)
+                .moveTo(...center)
+                .arc(...center, radius + outerThickness / 2, 0, 2 * Math.PI)
+                .endFill()
+
+                .beginHole()
+                .moveTo(...center)
+                .arc(...center, radius - outerThickness / 2, 0, 2 * Math.PI)
+                .endHole()
+
+                .beginFill(Palette.Rail.Inner)
+                .moveTo(...center)
+                .arc(...center, radius + innerThickness / 2, 0, 2 * Math.PI)
+                .endFill()
+
+                .beginHole()
+                .moveTo(...center)
+                .arc(...center, radius - innerThickness / 2, 0, 2 * Math.PI)
+                .endHole();
+        });
+    }
+    const sprite = TwoAnchorSprite.centered(rt);
     sprite.width = size;
     sprite.height = size;
 
@@ -358,7 +419,7 @@ export function hoverIndicator({textures}: PIXIResources, size: number): TwoAnch
 }
 
 export function train({renderer}: PIXIResources, size: number) {
-    const rt = loadRenderTexture(renderer, "train", size, () => {
+    const rt = loadRenderTexture(renderer, "train", size, size => {
         return new PIXI.Graphics()
             .beginFill(0xFFFFFF)
             .drawRect(0, 8, 28, 16)

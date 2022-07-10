@@ -53,8 +53,7 @@ function setup() {
     let cellSize = Math.floor(cellSpace / cellLength);
 
     grid = new TileGrid(cellSize, cellLength, {textures, renderer: app.renderer})
-        .load(Levels.Calgary.Multicolor);
-
+        .load(Levels.Guelph['Cute Loop']);
     if (DEBUG) enableDebug();
     
     const tgc = grid.container;
@@ -206,6 +205,7 @@ namespace TestLevels {
 
     ];
     export const TextureLoadTest = gridFrom(8, (x, y) => tilesToLoad[y * 8 + x]);
+    export const TextureLoadTest7 = gridFrom(7, (x, y) => tilesToLoad[(y * 7 + x + 32) % tilesToLoad.length]);
 
     export const MergeTest = [
         [new Tile.Outlet(Dir.Right, [Color.Red]), , , , new Tile.Outlet(Dir.Down, [Color.Red])],
@@ -225,6 +225,8 @@ namespace TestLevels {
         [],
         [,, new Tile.Goal([Color.Green], [Dir.Up])],
     ]
+
+    export const Empty7 = gridFrom(7, () => undefined);
 }
 
 function enableDebug() {

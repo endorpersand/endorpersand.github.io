@@ -241,14 +241,18 @@ export const Palette = {
     },
     BG: 0x2F2F2F,
     Grid: {
-        BG: 0x000000,
-        Line: 0x7F7F7F,
+        BG: 0x1C1D22, //, 0x1E2929, or average, 0x1D2426
+        Line: 0x3D4E4D,
     },
     Shadow: 0x7F7F7F,
     Hover: 0xD7FFE7,
     Box: {
         BG: 0x000000,
         Outline: 0xAFAFAF,
+    },
+    Rail: {
+        Inner: 0xB3B3B3,
+        Outer: 0xB3B3B3,
     }
 } as const;
 
