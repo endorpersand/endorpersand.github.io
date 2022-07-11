@@ -865,27 +865,45 @@ class GridCursor {
 }
 
 
+export namespace Step {
+    export const Main = Symbol("main step");
+    export const CenterCollision = Symbol("center collision check");
+    export const EdgeCollision = Symbol("edge collision check");
+    export const Deploy = Symbol("deploy");
+    export const Finalize = Symbol("finalize");
+}
+export type Step = (typeof Step)[keyof typeof Step];
+
 export namespace Move {
+
     export interface Destroy {
+        step: Step,
         move: "destroy",
+
         preimage: Train,
         crashed: boolean
     }
 
     export interface Pass {
+        step: Step,
         move: "pass",
+
         preimage: Train,
         image: Train
     }
 
     export interface Split {
+        step: Step,
         move: "split",
+
         preimage: Train,
         image: Train[]
     }
 
     export interface Merge {
+        step: Step,
         move: "merge",
+
         preimage: Train[],
         image: Train
     }
@@ -946,7 +964,14 @@ namespace Simulation {
          * @returns next move
          */
         advance() {
-            console.log(structuredClone(this.peek()));
+            // const pk = this.peek();
+            // if (pk) {
+            //     for (let [tile, move] of pk) {
+            //         console.log(tile, ...move);
+            //     }
+            // }
+            // console.log("next move");
+
             return this.#peeked.shift() ?? this.iterator.next().value;
         }
 
@@ -1089,7 +1114,7 @@ namespace Simulation {
                 if (trains.length > 1) {
                     const color = Color.mixMany(trains.map(([_, t]) => t.color));
                     for (let [trainState, t] of trains) {
-                        trainState.replaceExit(t, {color, dir: t.dir});
+                        trainState.replaceExit(t, {color, dir: t.dir}, Step.EdgeCollision);
                     }
                 }
             }
@@ -1120,15 +1145,14 @@ namespace Simulation {
     }
 }
 
-
 const TRAIN_CRASH = Symbol("train crashed");
 
 type TrainImage = void | typeof TRAIN_CRASH | Train | Train[];
 type NormalizedImage = typeof TRAIN_CRASH | Train[];
 type TrainDeploy = (t: Train) => TrainImage;
-type TrainDAOResult = 
-    | readonly [...Parameters<TrainDeploy>, ReturnType<TrainDeploy>] 
-    | readonly [Train[], Train];
+interface TrainStateOptions {
+    doTrainsCollide: boolean
+}
 
 class TrainState {
     /**
@@ -1159,10 +1183,12 @@ class TrainState {
     /**
      * Whether or not to check intra collisions (merges and mixes) within this tile.
      */
-    doTrainsCollide = true;
+    doTrainsCollide = false;
 
-    constructor(iter: Iterable<Train> = []) {
+    constructor(iter: Iterable<Train> = [], options?: Partial<TrainStateOptions>) {
         this.#trains = Array.from(iter);
+
+        if (options?.doTrainsCollide) this.doTrainsCollide = options.doTrainsCollide;
     }
 
     get length() {
@@ -1176,7 +1202,7 @@ class TrainState {
         return this.#exitingTrains;
     }
     
-    replaceExit(exiting: number | Train, newExiting: Train) {
+    replaceExit(exiting: number | Train, newExiting: Train, step: Step) {
         let i: number;
         if (typeof exiting === "object") {
             i = this.exitingTrains.indexOf(exiting);
@@ -1189,16 +1215,26 @@ class TrainState {
             const {color, dir} = exiting;
             throw new Error(`Train[color=${color}, dir=${dir}] isn't exiting`);
         }
+        if (exiting === newExiting) return;
         this.#exitingTrains[i] = newExiting;
-        this.#trackMove(exiting, [newExiting]);
+        this.#trackMove(exiting, [newExiting], step);
     }
 
     sendToExit(preimage: Train, image: NormalizedImage) {
         if (image === TRAIN_CRASH) image = [];
 
         const pimPairs = image.map(t => [preimage, t] as const);
+        
+        this.#trackMove(preimage, image, Step.Main);
         this.#exitingTrains.push(...image);
         this.#paths.push(...pimPairs);
+    }
+
+    mergePass(m: Move.Pass) {
+        let mergingMove = this.tileMoves.find((tm): tm is Move.Pass => tm.move === "pass" && tm.image === m.preimage)!;
+        
+        mergingMove.image = m.image;
+        mergingMove.step = m.step;
     }
 
     checkIntraCollisions() {
@@ -1209,7 +1245,7 @@ class TrainState {
                 return !((d1 - d2) % 2);
             })
 
-            if (straightPaths.length > 0) {
+            if (straightPaths.length > 1) {
                 const straightImages = straightPaths.map(([_, im]) => im);
                 const color = Color.mixMany(straightImages.map(im => im.color));
     
@@ -1218,7 +1254,14 @@ class TrainState {
     
                     if (straightImages.includes(im)) {
                         const nim = { ...im, color };
-                        this.replaceExit(i, nim);
+
+                        this.#exitingTrains[i] = nim;
+                        this.mergePass({
+                            move: "pass",
+                            preimage: im,
+                            image: nim,
+                            step: Step.CenterCollision
+                        });
                     }
                 }
             }
@@ -1237,7 +1280,7 @@ class TrainState {
 
                     const nim = {color, dir: d};
                     this.#exitingTrains.push(nim);
-                    this.#trackMerge(trains, nim);
+                    this.#trackMerge(trains, nim, Step.EdgeCollision);
                 } else {
                     this.#exitingTrains.push(...trains);
                 }
@@ -1252,7 +1295,7 @@ class TrainState {
             if (nb?.accepts(t)) {
                 nb.state!.trainState.#enteringTrains.push(t);
             } else {
-                this.#trackMove(t, TRAIN_CRASH);
+                this.#trackMove(t, TRAIN_CRASH, Step.Deploy);
             }
         }
 
@@ -1268,53 +1311,61 @@ class TrainState {
         this.#enteringTrains = [];
     }
 
-    #trackMerge(preimage: Train[], image: Train) {
+    #trackMerge(preimage: Train[], image: Train, step: Step) {
         // if only 1 preimage, this is just an extension of the previous move
         if (preimage.length == 1) {
             const im = this.tileMoves.find((m): m is Move.Pass => m.move == "pass" && m.image == preimage[0]);
             if (im) {
                 im.image = image;
             } else {
-                this.#trackMove(preimage[0], [image]);
+                this.#trackMove(preimage[0], [image], step);
             }
         } else {
             this.tileMoves.push({
+                step,
                 move: "merge",
                 preimage,
                 image
             });
         }
     }
-    #trackMove(preimage: Train, image: NormalizedImage) {
+    #trackMove(preimage: Train, image: NormalizedImage, step: Step) {
         let move: Move;
         
         if (image === TRAIN_CRASH) {
             move = {
+                step,
                 move: "destroy",
                 preimage,
                 crashed: true
             };
         } else if (image.length == 0) {
             move = {
+                step,
                 move: "destroy",
                 preimage,
                 crashed: false
             };
         } else if (image.length == 1) {
             move = {
+                step,
                 move: "pass",
                 preimage,
                 image: image[0]
             };
         } else {
             move = {
+                step,
                 move: "split",
                 preimage,
                 image
             };
         }
 
-        if (move) this.tileMoves.push(move);
+        if (move) {
+            this.tileMoves.push(move);
+            return move;
+        }
     }
 
     #normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
@@ -1343,7 +1394,6 @@ class TrainState {
             // convert image result into Train[]
             let image = this.#computeImage(preimage, f);
 
-            this.#trackMove(preimage, image);
             this.sendToExit(preimage, image);
         }
     }
@@ -1757,6 +1807,12 @@ export namespace Tile {
             super(...entrances);
         }
     
+        createDefaultState(this: StatefulTile<TileState>): TileState {
+            return {
+                trainState: new TrainState([], {doTrainsCollide: true})
+            };
+        }
+
         /**
          * Create a new rail from two single rails.
          * If they are the same rail, return a SingleRail, else create a joined DoubleRail.

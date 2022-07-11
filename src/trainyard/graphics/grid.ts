@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import { Move } from "../logic";
+import { Move, Step } from "../logic";
 import { CellPos, Dir, Grids, Palette, PIXIResources, Train } from "../values";
 import * as TileGraphics from "./components";
 import "../ext/map";
@@ -231,6 +231,7 @@ export class TrainContainer extends AbsGriddedContainer {
                     // If a partial step occurred, we need to move the new bodies into the right place.
                     // Pass does exactly what we want, sooooooo...
                     this.moveBodies(preImagePos, image.map(t => ({
+                        step: m.step,
                         move: "pass",
                         preimage: t,
                         image: t
@@ -260,7 +261,12 @@ export class TrainContainer extends AbsGriddedContainer {
         moves.length = 0;
     }
 
+    
     moveBodiesPartial(preImagePos: CellPos, moves: Move[], progress: number) {
+        // these steps are handled at the end (by `moveBodies`)
+        const NO_PARTIAL_RENDER: readonly Step[] = [Step.EdgeCollision, Step.Deploy, Step.Finalize];
+        moves = moves.filter(m => !NO_PARTIAL_RENDER.includes(m.step));
+
         for (let m of moves) {
             if (m.move == "pass") {
                 const {preimage, image} = m;
@@ -270,7 +276,7 @@ export class TrainContainer extends AbsGriddedContainer {
                     const transform = this.#interp(preImagePos, initDir, image.dir, progress);
 
                     // after progress 0.5, the trains likely intersected, so color changes
-                    const c = progress > 0.5 ? image : preimage;
+                    const c = progress > 0.5 && m.step === Step.CenterCollision ? image : preimage;
                     this.#redressBody(trainBody, {...transform, train: c});
                 }
             } else if (m.move == "split") {
@@ -314,9 +320,7 @@ export class TrainContainer extends AbsGriddedContainer {
 
                     this.#redressBody(trainBody, transform);
 
-                    // destroys in goals happen halfway through
-                    // destroys in outlets happen fullway
-                    if (typeof initDir !== "undefined" && progress > 0.5) {
+                    if (progress > 0.5) {
                         this.trainBodies.delete(preimage);
                         trainBody.destroy();
                     }
