@@ -262,6 +262,155 @@ export const Palette = {
 export type CellPos  = readonly [cx: number, cy: number];
 export type PixelPos = readonly [px: number, py: number];
 
+/**
+ * Edge or center.
+ */
+export namespace Focus {
+    export type Relative = readonly [c1: CellPos, d?: Dir];
+    export type Absolute = readonly [c1: CellPos, c2?: CellPos];
+
+    /**
+     * Converts a relative focus into an absolute one.
+     * Note that this doesn't check if a focus is valid.
+     * @param f relative focus
+     * @returns absolute focus
+     */
+    export function intoAbsolute(f: Relative): Absolute {
+        const [c1, d] = f;
+
+        if (typeof d === "undefined") return [c1, d] as const;
+        return [c1, Dir.shift(c1, d)] as const;
+    }
+
+    /**
+     * Converts an absolute focus into the possible relative focuses it could represent.
+     * @param f relative focus
+     * @returns list of absolute focuses
+     */
+    export function intoRelative(f: Absolute): Relative[] {
+        const [c1, c2] = f;
+
+        if (typeof c2 === "undefined") return [[c1, c2] as const];
+
+        // if d is Left, c2 is left of c1
+        const d = Dir.difference(c1, c2);
+
+        const relatives = [[c1, d] as const];
+        if (typeof d !== "undefined") relatives.push([c2, Dir.flip(d)]);
+        return relatives;
+    }
+
+    function isRelative(f: Relative | Absolute): f is Relative {
+        return typeof f[1] === "number";
+    }
+
+    /**
+     * Checks if two focuses are equal.
+     * @param f1 focus 1
+     * @param f2 focus 2
+     * @returns true if they represent the same edge
+     */
+    export function equals(f1: Relative | Absolute, f2: Relative | Absolute) {
+        if (isRelative(f1)) { f1 = intoAbsolute(f1); }
+        if (isRelative(f2)) { f2 = intoAbsolute(f2); }
+
+        const [f1a, f1b] = f1;
+        const [f2a, f2b] = f2;
+
+        return (f1a === f2a && f1b === f2b)
+            || (f1a === f2b && f2a === f1b);
+    }
+
+    type FMK = `${number}_${number | undefined}`;
+    export class FocusMap<V> implements Map<Absolute | Relative, V> {
+        #grid: Grids.Grid;
+        #map = new Map<FMK, [Absolute, V]>();
+
+        constructor(grid: Grids.Grid) {
+
+            this.#grid = grid;
+        }
+
+        #realKey(k: Absolute | Relative): FMK {
+            if (isRelative(k)) k = intoAbsolute(k);
+            const [c1, c2] = k;
+
+            const i1 = Grids.cellToIndex(this.#grid, c1);
+            if (typeof c2 === "undefined") return `${i1}_${undefined}`;
+
+            const i2 = Grids.cellToIndex(this.#grid, c2);
+            if (i1 > i2) return `${i2}_${i1}`;
+            return `${i1}_${i2}`;
+        }
+
+        get(key: Absolute | Relative): V | undefined {
+            return this.#map.get(this.#realKey(key))?.[1];
+        }
+
+        has(key: Absolute | Relative): boolean {
+            return this.#map.has(this.#realKey(key));
+        }
+
+        set(key: Absolute | Relative, value: V): this {
+            if (isRelative(key)) key = intoAbsolute(key);
+            
+            this.#map.set(this.#realKey(key), [key, value]);
+            return this;
+        }
+
+        clear(): void {
+            this.#map.clear();
+        }
+
+        delete(key: Relative | Absolute): boolean {
+            return this.#map.delete(this.#realKey(key));
+        }
+
+        forEach(callbackfn: (value: V, key: Absolute, map: Map<Relative | Absolute, V>) => void // primaries
+            , thisArg?: any): void {
+                this.#map.forEach(v => callbackfn(v[1], v[0], this), thisArg);
+        }
+
+        get size() {
+            return this.#map.size;
+        }
+
+        entries(): IterableIterator<[Absolute, V]> {
+            return this.#map.values();
+        }
+
+        *keys(): IterableIterator<Absolute> {
+            for (let [k] of this.#map.values()) {
+                yield k;
+            }
+        }
+
+        *values(): IterableIterator<V> {
+            for (let [_, v] of this.#map.values()) {
+                yield v;
+            }
+        }
+
+        popItem(k: Relative | Absolute): V | undefined {
+            return this.#map.popItem(this.#realKey(k))?.[1];
+        }
+        
+        setDefault(k: Relative | Absolute, def: () => V): V {
+            const key = isRelative(k) ? intoAbsolute(k) : k;
+
+            return this.#map.setDefault(this.#realKey(key), () => [key, def()])[1];
+        }
+
+        [Symbol.iterator](): IterableIterator<[Relative | Absolute, V]> {
+            return this.entries();
+        }
+
+        get [Symbol.toStringTag]() {
+            return "FocusMap";
+        }
+    }
+}
+
 export namespace Grids {
     export const TILE_GAP = 1;
 

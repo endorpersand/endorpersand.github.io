@@ -1,4 +1,4 @@
-import { CellPos, Color, Dir, Grids, Palette, PixelPos, PIXIResources, Train } from "./values";
+import { CellPos, Color, Dir, Focus, Grids, Palette, PixelPos, PIXIResources, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
@@ -946,6 +946,7 @@ namespace Simulation {
          * @returns next move
          */
         advance() {
+            console.log(structuredClone(this.peek()));
             return this.#peeked.shift() ?? this.iterator.next().value;
         }
 
@@ -1030,38 +1031,85 @@ namespace Simulation {
     class Iterator implements IterableIterator<GridStep> {
         #grid: TileGrid;
         done: boolean = false;
+        curs: Map<StatefulTile, GridCursor>;
     
         constructor(grid: TileGrid) {
             this.#grid = grid;
+
+            this.curs = new Map(
+                Array.from(
+                    this.#grid.statefulTiles(), 
+                    ([pos, tile]) => [tile, new GridCursor(grid, pos)] as const
+                )
+            );
         }
     
         next() {
+            // Computing a step takes a few stages:
+            // 1. Step
+            //      The step functions are called on each applicable tile, 
+            //      and trains are designated as exiting.
+            // 2. Collision check
+            //      Check for edge collisions and center collisions.
+            // 3. Deploy
+            //      Send exiting trains to enter neighbors.
+            // 4. Finalize
+            //      Accept entering trains.
+
             let deploys: GridStep = new Map();
-    
+            let done = true;
+
             for (let [pos, tile] of this.#grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
     
                 if (trainState.length > 0) {
-                    const cur = new GridCursor(this.#grid, pos);
-                    const i = Grids.cellToIndex(this.#grid, pos);
-    
-                    tile.step(cur);
-                    deploys.set(i, [...trainState.deployedTrains]);
+                    tile.step(this.curs.get(tile)!);
+                    done = false;
                 }
             }
     
-            let done = deploys.size == 0;
             if (done) {
-                this.done = true;
-                return {value: undefined, done};
+                return {value: undefined, done: true as const};
             }
     
-            // merge pendingTrains into trains
+            let trainEdges = new Focus.FocusMap<[TrainState, Train][]>(this.#grid);
+
+            // check collisions
+            for (let [pos, tile] of this.#grid.statefulTiles()) {
+                const trainState = tile.state!.trainState;
+                trainState.checkIntraCollisions();
+
+                for (let t of trainState.exitingTrains) {
+                    trainEdges.setDefault([pos, t.dir], () => []).push([trainState, t]);
+                }
+            }
+            for (let trains of trainEdges.values()) {
+                if (trains.length > 1) {
+                    const color = Color.mixMany(trains.map(([_, t]) => t.color));
+                    for (let [trainState, t] of trains) {
+                        trainState.replaceExit(t, {color, dir: t.dir});
+                    }
+                }
+            }
+
+            // deploy
+            for (let [pos, tile] of this.#grid.statefulTiles()) {
+                const trainState = tile.state!.trainState;
+                trainState.deployExiting(this.curs.get(tile)!);
+
+                if (trainState.tileMoves.length > 0) {
+                    const i = Grids.cellToIndex(this.#grid, pos);
+                    deploys.set(i, [...trainState.tileMoves]);
+                    trainState.tileMoves.length = 0;
+                }
+            }
+
+            // finalize
             for (let [_, tile] of this.#grid.statefulTiles()) {
                 tile.state!.trainState.finalize();
             }
     
-            return {value: deploys, done};
+            return {value: deploys, done: false as const};
         }
     
         [Symbol.iterator]() {
@@ -1087,15 +1135,29 @@ class TrainState {
     #trains: Train[];
 
     /**
-     * A list of trains that will be on the tile after all step computations are complete.
+     * Trains that are entering this tile in finalization.
      */
-    #pendingTrains: Train[] = [];
+    #enteringTrains: Train[] = [];
 
+    /**
+     * Trains that will be exiting this tile in deploy.
+     */
+    #exitingTrains: Train[] = [];
+
+    /**
+     * Path that a train took through this tile.
+     */
+    #paths: (readonly [pre: Train, im: Train])[] = []
     /**
      * A mapping keeping track of which trains moved to where during the step calculation.
      * It is used during finalization to move train sprites on the stage.
      */
-    deployedTrains: Move[] = [];
+    tileMoves: Move[] = [];
+
+    /**
+     * Whether or not to check intra collisions (merges and mixes) within this tile.
+     */
+    doTrainsCollide = true;
 
     constructor(iter: Iterable<Train> = []) {
         this.#trains = Array.from(iter);
@@ -1108,27 +1170,113 @@ class TrainState {
     get trains(): readonly Train[] {
         return this.#trains;
     }
+    get exitingTrains(): readonly Train[] {
+        return this.#exitingTrains;
+    }
     
+    replaceExit(exiting: number | Train, newExiting: Train) {
+        let i: number;
+        if (typeof exiting === "object") {
+            i = this.exitingTrains.indexOf(exiting);
+        } else {
+            i = exiting;
+            exiting = this.exitingTrains[i];
+        }
+
+        if (i === -1) {
+            const {color, dir} = exiting;
+            throw new Error(`Train[color=${color}, dir=${dir}] isn't exiting`);
+        }
+        this.#exitingTrains[i] = newExiting;
+        this.#trackMove(exiting, [newExiting]);
+    }
+
+    sendToExit(preimage: Train, image: NormalizedImage) {
+        if (image === TRAIN_CRASH) image = [];
+
+        const pimPairs = image.map(t => [preimage, t] as const);
+        this.#exitingTrains.push(...image);
+        this.#paths.push(...pimPairs);
+    }
+
+    checkIntraCollisions() {
+        if (this.doTrainsCollide && this.#exitingTrains.length > 0) {
+            // straight paths cross through center so they all get color mix
+            const straightPaths = this.#paths.filter(([pre, im]) => {
+                const [d1, d2] = [pre.dir, im.dir];
+                return !((d1 - d2) % 2);
+            })
+
+            if (straightPaths.length > 0) {
+                const straightImages = straightPaths.map(([_, im]) => im);
+                const color = Color.mixMany(straightImages.map(im => im.color));
+    
+                for (let i = 0; i < this.#exitingTrains.length; i++) {
+                    const im = this.#exitingTrains[i];
+    
+                    if (straightImages.includes(im)) {
+                        const nim = { ...im, color };
+                        this.replaceExit(i, nim);
+                    }
+                }
+            }
+
+            this.#paths.length = 0;
+
+            // merge colors if they land at the same place
+            const dirMap = new Map<Dir, Train[]>();
+            for (let t of this.#exitingTrains) {
+                dirMap.setDefault(t.dir, () => []).push(t);
+            }
+            this.#exitingTrains.length = 0;
+            for (let [d, trains] of dirMap) {
+                if (trains.length > 1) {
+                    const color = Color.mixMany(trains.map(t => t.color));
+
+                    const nim = {color, dir: d};
+                    this.#exitingTrains.push(nim);
+                    this.#trackMerge(trains, nim);
+                } else {
+                    this.#exitingTrains.push(...trains);
+                }
+            }
+        }
+    }
+
+    deployExiting(cur: GridCursor) {
+        for (let t of this.#exitingTrains) {
+            const nb = cur.neighbor(t.dir);
+            
+            if (nb?.accepts(t)) {
+                nb.state!.trainState.#enteringTrains.push(t);
+            } else {
+                this.#trackMove(t, TRAIN_CRASH);
+            }
+        }
+
+        this.#exitingTrains.length = 0;
+    }
+
     /**
      * After all the steps have been computed, this should be called.
      */
     finalize() {
         // do train collapsing here
-        this.#trains.push(...this.#pendingTrains);
-        this.#pendingTrains = [];
+        this.#trains.push(...this.#enteringTrains);
+        this.#enteringTrains = [];
     }
 
     #trackMerge(preimage: Train[], image: Train) {
         // if only 1 preimage, this is just an extension of the previous move
         if (preimage.length == 1) {
-            const im = this.deployedTrains.find((m): m is Move.Pass => m.move == "pass" && m.image == preimage[0]);
+            const im = this.tileMoves.find((m): m is Move.Pass => m.move == "pass" && m.image == preimage[0]);
             if (im) {
                 im.image = image;
             } else {
                 this.#trackMove(preimage[0], [image]);
             }
         } else {
-            this.deployedTrains.push({
+            this.tileMoves.push({
                 move: "merge",
                 preimage,
                 image
@@ -1164,7 +1312,7 @@ class TrainState {
             };
         }
 
-        if (move) this.deployedTrains.push(move);
+        if (move) this.tileMoves.push(move);
     }
 
     #normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
@@ -1188,7 +1336,7 @@ class TrainState {
             const nb = cur.neighbor(t.dir);
             
             if (nb?.accepts(t)) {
-                nb.state!.trainState.#pendingTrains.push(t);
+                nb.state!.trainState.#enteringTrains.push(t);
             } else {
                 this.#trackMove(t, TRAIN_CRASH);
             }
@@ -1209,7 +1357,7 @@ class TrainState {
             let image = this.#computeImage(preimage, f);
 
             this.#trackMove(preimage, image);
-            this.#deployImage(cur, image);
+            this.sendToExit(preimage, image);
         }
     }
     
@@ -1726,7 +1874,7 @@ export namespace Tile {
             const trainState = this.state!.trainState;
             const color = Color.mixMany(trainState.trains.map(t => t.color));
 
-            trainState.deployAll(cur, ({dir}) => {
+            trainState.deployAll(cur, ({color, dir}) => {
                 const newDir = Rail.redirect(dir, this.actives);
 
                 if (typeof newDir === "number") return {color, dir: newDir};
@@ -1781,69 +1929,17 @@ export namespace Tile {
             const redirects = trainState.trains.length;
             const paths: typeof this.paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as any;
 
-            trainState.deployAtOnce(cur, (trains) => {
-                const result: TrainDAOResult[] = [];
-                let which: [Train[], Train[]] = [[], []];
+            trainState.deployAll(cur, t => {
+                const path = paths.find(p => p.has(Dir.flip(t.dir)));
 
-                for (let t of trains) {
-                    let i = paths.findIndex(p => p.has(Dir.flip(t.dir)));
-                    if (i !== -1) {
-                        which[i].push(t);
-                    } else {
-                        result.push([t, TRAIN_CRASH]);
-                    }
+                if (typeof path !== "undefined") {
+                    const dir = Rail.redirect(t.dir, path);
+                    if (typeof dir === "number") return {color: t.color, dir};
                 }
 
-                if (!this.#overlapping && this.crossesOver) { // + rail
-                    const color = Color.mixMany(trains.map(t => t.color));
-
-                    for (let i = 0; i < 2; i++) {
-                        const path = paths[i];
-                        const pathTrains = which[i];
-
-                        // recolor & redirect
-                        result.push(...pathTrains.map(t => {
-                            const dir = Rail.redirect(t.dir, path);
-                            if (typeof dir === "number") return [t, {color, dir}] as const;
-                            return [t, TRAIN_CRASH] as const;
-                        }));
-                    }
-                } else {
-                    for (let i = 0; i < 2; i++) {
-                        const path = paths[i];
-                        const pathTrains = which[i];
-
-                        if (pathTrains.length > 0) {
-                            const color = Color.mixMany(pathTrains.map(t => t.color));
-    
-                            // recolor & redirect
-                            result.push(...pathTrains.map(t => {
-                                const dir = Rail.redirect(t.dir, path);
-                                if (typeof dir === "number") return [t, {color, dir}] as const;
-                                return [t, TRAIN_CRASH] as const;
-                            }));
-                        }
-                    }
-                }
-
-                // check for same ending dir, merge those if so
-                const endTrains = result
-                    .map(([_, t]) => t)
-                    .filter((t): t is Train | Train[] => typeof t === "object")
-                    .flat();
-                const endMap = new Map<Dir, Train[]>();
-                for (let t of endTrains) {
-                    endMap.setDefault(t.dir, () => []).push(t);
-                }
-                for (let mergingTrains of endMap.values()) {
-                    if (mergingTrains.length < 2) continue;
-
-                    const color = Color.mixMany(mergingTrains.map(t => t.color));
-                    result.push([mergingTrains, {color, dir: mergingTrains[0].dir}]);
-                }
-
-                return result;
+                return TRAIN_CRASH;
             });
+
             state.topIndex += redirects;
             state.topIndex %= 2;
 
