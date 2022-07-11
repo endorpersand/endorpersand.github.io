@@ -51,6 +51,7 @@ interface GridJSON {
     board: string[], 
     tiles: {[x: number]: unknown}
 }
+export type LoadableBoard = (Tile | undefined)[][] | GridJSON;
 
 const enum Layer { RAILS, TRAINS, BOXES };
 type Layers = {
@@ -75,6 +76,8 @@ export class TileGrid implements Serializable, Grids.Grid {
      * There are [length x length] cells.
      */
     cellLength: number;
+
+    loadGridSize: number;
 
     /**
      * Cache for this.container
@@ -118,6 +121,7 @@ export class TileGrid implements Serializable, Grids.Grid {
 
     constructor(gridSize: number, cellLength: number, pixi: PIXIResources, tiles?: (Tile | undefined)[][]) {
         this.cellLength = cellLength;
+        this.loadGridSize = gridSize;
         this.cellSize = Grids.optimalCellSize(this, gridSize);
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
@@ -161,14 +165,13 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.#renderContainer(true);
     }
 
-    load(tiles: (Tile | undefined)[][] | GridJSON, cellSize?: number): this {
+    load(tiles: LoadableBoard, cellSize?: number): this {
         if ("board" in tiles) {
             tiles = TileGrid.#tilesFromJSON(tiles);
         }
-        const gridSize = Grids.gridSize(this);
         
         this.cellLength = tiles.length;
-        this.cellSize = cellSize ?? Grids.optimalCellSize(this, gridSize);
+        this.cellSize = cellSize ?? Grids.optimalCellSize(this, this.loadGridSize);
         this.tiles = tiles;
         return this;
     }

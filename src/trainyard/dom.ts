@@ -1,4 +1,5 @@
-import { TileGrid } from "./logic";
+import * as LevelData from "./levels";
+import { LoadableBoard, TileGrid } from "./logic";
 
 export namespace Elements {
     export const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
@@ -9,6 +10,8 @@ export namespace Elements {
     export const undo  = wrapper.querySelector("button#b-undo")! as HTMLButtonElement;
     export const start = wrapper.querySelector("button#b-start")! as HTMLButtonElement;
     export const step  = wrapper.querySelector("button#b-step")! as HTMLButtonElement;
+
+    export const dd = document.querySelectorAll("select");
 }
 const {slider, input} = Elements;
 
@@ -116,3 +119,76 @@ export function applyButtons(grid: TileGrid) {
         document.body.classList.add("failed");
     });
 }
+
+const [catDD, levelDD] = Elements.dd;
+for (let cat of Object.keys(LevelData.ProvidedLevels)) {
+    const opt = document.createElement("option");
+
+    opt.value = cat;
+    opt.textContent = cat;
+    if (LevelData.Default[0] === cat) opt.selected = true;
+
+    catDD.append(opt);
+}
+
+export namespace Dropdowns {
+    export const [catDD, levelDD] = Elements.dd;
+
+    export function selectedCat(): keyof typeof LevelData.ProvidedLevels {
+        return catDD.value as any;
+    }
+
+    export function currentLevel(): LoadableBoard | null {
+        const ld = LevelData.ProvidedLevels[selectedCat()] as any;
+        return ld?.[levelDD.value];
+    }
+
+    
+    export namespace LevelHandlers {
+        type Handler = (b: LoadableBoard) => void;
+        const handlers: Handler[] = [];
+
+        export function add(h: Handler) {
+            handlers.push(h);
+        }
+
+        export function remove(h: Handler) {
+            const i = handlers.indexOf(h);
+            if (i !== -1) handlers.splice(i, 1);
+        }
+
+        export function call() {
+            const level = currentLevel();
+
+            if (level) {
+                for (let h of handlers) h(level);
+            }
+        }
+    }
+}
+function updateLevelDD() {
+    const catLevels = LevelData.ProvidedLevels[catDD.value as keyof typeof LevelData.ProvidedLevels];
+    
+    levelDD.replaceChildren(
+        ...Object.keys(catLevels)
+            .filter(k => (catLevels as any)[k] != null)
+            .map(k => {
+                const opt = document.createElement("option");
+    
+                opt.value = k;
+                opt.textContent = k;
+                if (LevelData.Default[1] === k) opt.selected = true;
+                return opt;
+        })
+    );
+}
+
+updateLevelDD();
+
+catDD.addEventListener("input", () => {
+    updateLevelDD();
+    Dropdowns.LevelHandlers.call();
+});
+levelDD.addEventListener("input", () => {
+    Dropdowns.LevelHandlers.call();
+});

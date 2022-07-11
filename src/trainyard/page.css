@@ -12,6 +12,11 @@ body {
     justify-content: center;
     align-items: stretch;
     margin: 0px 0px;
+    font-family: 'Fira Sans', sans-serif;
+}
+
+body * {
+    font-family: inherit;
 }
 
 body.erase-mode {
@@ -106,7 +111,6 @@ button, .btn {
     color: white;
     padding: 15px 0px;
     font-size: 18px;
-    font-family: 'Fira Sans', sans-serif;
     text-align: center;
     vertical-align: middle;
 }
@@ -176,10 +180,20 @@ body:not(.failed) #fd-fail {
     display: none;
 }
 
-input, span {
-    font-family: 'Fira Sans', sans-serif;
-}
-
 .white {
     color: white;
+}
+
+#navbar {
+    display: flex;
+}
+
+#dd {
+    margin: 5px 5px;
+    display: flex;
+    gap: 0 5px;
+}
+
+#dd select {
+    font-size: 20px;
 }
