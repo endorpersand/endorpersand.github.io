@@ -1059,7 +1059,7 @@ namespace Simulation {
             let deploys: GridStep = new Map();
             let done = true;
 
-            for (let [pos, tile] of this.#grid.statefulTiles()) {
+            for (let [_, tile] of this.#grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
     
                 if (trainState.length > 0) {
@@ -1074,7 +1074,7 @@ namespace Simulation {
     
             let trainEdges = new Focus.FocusMap<[TrainState, Train][]>(this.#grid);
 
-            // check collisions
+            // check intra collisions
             for (let [pos, tile] of this.#grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
                 trainState.checkIntraCollisions();
@@ -1083,6 +1083,8 @@ namespace Simulation {
                     trainEdges.setDefault([pos, t.dir], () => []).push([trainState, t]);
                 }
             }
+
+            // check inter collisions: mix trains on the same edge
             for (let trains of trainEdges.values()) {
                 if (trains.length > 1) {
                     const color = Color.mixMany(trains.map(([_, t]) => t.color));
@@ -1329,27 +1331,12 @@ class TrainState {
         return f ? this.#normalizeImage(f(preimage)) : [preimage];
     }
 
-    #deployImage(cur: GridCursor, image: NormalizedImage) {
-        if (image === TRAIN_CRASH) image = [];
-
-        for (let t of image) {
-            const nb = cur.neighbor(t.dir);
-            
-            if (nb?.accepts(t)) {
-                nb.state!.trainState.#enteringTrains.push(t);
-            } else {
-                this.#trackMove(t, TRAIN_CRASH);
-            }
-        }
-    }
-
     /**
      * Take out one train from the list of trains and send it to a neighboring tile.
-     * @param cur current cursor
      * @param f a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
      */
-    deployOne(cur: GridCursor, f?: TrainDeploy) {
+    deployOne(f?: TrainDeploy) {
         const preimage = this.#trains.shift()!;
 
         if (preimage) {
@@ -1363,49 +1350,11 @@ class TrainState {
     
     /**
      * Take out every train from the list of trains and send them to neighboring tiles.
-     * @param cur current cursor
      * @param f  a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
      */
-    deployAll(cur: GridCursor, f?: TrainDeploy) {
-        while (this.#trains.length > 0) this.deployOne(cur, f);
-    }
-
-    static #isDaoMerge<T, U, V>(r: readonly [U, T] | readonly [U[], V]): r is readonly [U[], V] {
-        return r[0] instanceof Array;
-    }
-
-    deployAtOnce(cur: GridCursor, f: (t: readonly Train[]) => TrainDAOResult[]) {
-        const results = f(this.#trains);
-
-        const partition: [
-            nonMerges: (readonly [pre: Train, image: Train[]])[], 
-            merges:    (readonly [pre: Train[], image: Train])[]
-        ] = [[], []];
-
-        for (let r of results) {
-            if (TrainState.#isDaoMerge(r)) {
-                this.#trackMerge(...r);
-                partition[1].push(r);
-            } else {
-                const preimage = r[0];
-                const image = this.#normalizeImage(r[1]);
-
-                this.#trackMove(preimage, image);
-                if (image !== TRAIN_CRASH) partition[0].push([preimage, image]);
-            }
-        }
-
-        // trains that d/n need to be deployed because they are already merged
-        const mergedTrains = partition[1].flatMap(([pre, _]) => pre);
-        partition[0]
-            .map(([_, image]) => image)
-            .filter(image => image.every(t => !mergedTrains.includes(t)))
-            .forEach(image => this.#deployImage(cur, image));
-        
-        this.#deployImage(cur, partition[1].map(([_, image]) => image));
-
-        this.#trains = [];
+    deployAll(f?: TrainDeploy) {
+        while (this.#trains.length > 0) this.deployOne(f);
     }
 }
 
@@ -1543,7 +1492,7 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             // While the outlet has trains, deploy one.
-            this.state!.trainState.deployOne(cur);
+            this.state!.trainState.deployOne();
             cur.updateRender(0, con => {
                 const symbols = con.getChildByName("symbols", false) as PIXI.Container;
                 symbols.removeChildAt(0).destroy({children: true});
@@ -1610,7 +1559,7 @@ export namespace Tile {
         step(cur: GridCursor): void {
             let {remaining, trainState} = this.state!;
 
-            trainState.deployAll(cur, train => {
+            trainState.deployAll(train => {
                 let i = remaining.indexOf(train.color);
                 if (i != -1) {
                     remaining.splice(i, 1);
@@ -1618,9 +1567,10 @@ export namespace Tile {
                         const targets = con.getChildByName("targets") as PIXI.Container;
                         targets.removeChildAt(i).destroy({children: true});
                     });
-                } else {
-                    return TRAIN_CRASH;
+
+                    return;
                 }
+                return TRAIN_CRASH;
             });
         }
     
@@ -1671,7 +1621,7 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             // Paint the train and output it.
-            this.state!.trainState.deployAll(cur, train => {
+            this.state!.trainState.deployAll(train => {
                 // Get the output direction.
                 let outDir: Dir = this.actives.dirExcluding(Dir.flip(train.dir));
     
@@ -1738,7 +1688,7 @@ export namespace Tile {
         step(cur: GridCursor): void {
             const [ldir, rdir] = this.sides;
 
-            this.state!.trainState.deployAll(cur, train => {
+            this.state!.trainState.deployAll(train => {
                 // Split train's colors, pass the new trains through the two passive sides.
                 const [lclr, rclr] = Color.split(train.color);
 
@@ -1872,9 +1822,8 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             const trainState = this.state!.trainState;
-            const color = Color.mixMany(trainState.trains.map(t => t.color));
 
-            trainState.deployAll(cur, ({color, dir}) => {
+            trainState.deployAll(({color, dir}) => {
                 const newDir = Rail.redirect(dir, this.actives);
 
                 if (typeof newDir === "number") return {color, dir: newDir};
@@ -1929,7 +1878,7 @@ export namespace Tile {
             const redirects = trainState.trains.length;
             const paths: typeof this.paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as any;
 
-            trainState.deployAll(cur, t => {
+            trainState.deployAll(t => {
                 const path = paths.find(p => p.has(Dir.flip(t.dir)));
 
                 if (typeof path !== "undefined") {
