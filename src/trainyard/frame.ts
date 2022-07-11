@@ -203,12 +203,12 @@ namespace TestLevels {
     export const TextureLoadTest7 = gridFrom(7, (x, y) => tilesToLoad[(y * 7 + x + 32) % tilesToLoad.length]);
 
     export const MergeTest = [
-        [new Tile.Outlet(Dir.Right, [Color.Red]), , , , new Tile.Outlet(Dir.Down, [Color.Red])],
-        [, , new Tile.Goal([Color.Purple], [Dir.Left]), new Tile.Outlet(Dir.Right, [Color.Blue])],
-        [new Tile.Outlet(Dir.Right, [Color.Blue]), , , , , new Tile.Goal([Color.Blue,Color.Red], [Dir.Up,Dir.Left])],
-        [ , new Tile.Outlet(Dir.Down, [Color.Red]), , new Tile.Outlet(Dir.Down, [Color.Red]), , new Tile.Goal([Color.Purple], [Dir.Down])],
+        [new Tile.Outlet(Dir.Right, [Color.Red]), , new Tile.Rock(), new Tile.Rock(), new Tile.Outlet(Dir.Down, [Color.Red]), new Tile.Rock()],
+        [new Tile.Rock(), , new Tile.Goal([Color.Purple], [Dir.Left]), new Tile.Outlet(Dir.Right, [Color.Blue])],
+        [new Tile.Outlet(Dir.Right, [Color.Blue]), , new Tile.Rock(), new Tile.Rock(), , new Tile.Goal([Color.Blue,Color.Red], [Dir.Up,Dir.Left])],
+        [new Tile.Rock(), new Tile.Outlet(Dir.Down, [Color.Red]), new Tile.Rock(), new Tile.Outlet(Dir.Down, [Color.Red]), new Tile.Rock(), new Tile.Goal([Color.Purple], [Dir.Down])],
         [new Tile.Outlet(Dir.Right, [Color.Blue])],
-        [ , , new Tile.Goal([Color.Purple, Color.Purple], [Dir.Up, Dir.Left]), new Tile.Goal([Color.Purple], [Dir.Up]), new Tile.Outlet(Dir.Up, [Color.Blue]), new Tile.Outlet(Dir.Up, [Color.Blue])],
+        [new Tile.Rock(), , new Tile.Goal([Color.Purple, Color.Purple], [Dir.Up, Dir.Left]), new Tile.Goal([Color.Purple], [Dir.Up]), new Tile.Outlet(Dir.Up, [Color.Blue]), new Tile.Outlet(Dir.Up, [Color.Blue])],
     ];
 
     export const AnimTest = [
