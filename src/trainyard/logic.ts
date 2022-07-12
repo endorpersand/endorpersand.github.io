@@ -93,7 +93,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "rail";
+    #editMode: EditMode = "select";
 
     /**
      * Map keeping track of listeners listening to an event
@@ -305,10 +305,10 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y cell y
      * @returns the container holding the rendering
      */
-    #renderTileAt(x: number, y: number, layerMask: number = -1): PIXI.Container {
+    #renderTileAt(x: number, y: number, layerMask: number = -1, drag: boolean = false): PIXI.Container {
         const tile = this.tile(x, y);
         if (tile && layerMask & (1 << tile.layer)) {
-            return tile.render(this.pixi, this.cellSize);
+            return tile.render(this.pixi, this.cellSize, drag);
         }
 
         const con = new PIXI.Container();
@@ -317,10 +317,14 @@ export class TileGrid implements Serializable, Grids.Grid {
     }
 
     #wipeContainer(con: PIXI.Container) {
-        while (con.children.length > 0) con.removeChildAt(0).destroy({children: true});
+        TileGrid.#cpsContainer(con);
 
         for (let e of this.#containerEvents) con.off(...e);
         this.#containerEvents = [];
+    }
+
+    static #cpsContainer(con: PIXI.Container) {
+        while (con.children.length > 0) con.removeChildAt(0).destroy({children: true});
     }
 
     /**
@@ -369,8 +373,8 @@ export class TileGrid implements Serializable, Grids.Grid {
             con.addChild(layers);
     
             con.interactive = true;
-            this.#applyPointerEvents(con);
             this.#applyHoverEvents(con);
+            this.#applyPointerEvents(con);
         }
 
         this.#rendered = true;
@@ -423,6 +427,9 @@ export class TileGrid implements Serializable, Grids.Grid {
         // On an initial click, this can be bound to an edge or a center.
         // While dragging, this can only bind to edges.
         let cellPointer: DragPointer = undefined;
+        const selectCopy = new PIXI.Container();
+        let ccshift: PIXI.IPointData;
+        con.addChild(selectCopy);
 
         this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
@@ -473,15 +480,18 @@ export class TileGrid implements Serializable, Grids.Grid {
                         }
                     }
     
-                    cellPointer = {editMode: "rail", drag: nCellPointer};
+                    cellPointer = {editMode, drag: nCellPointer};
                 } else if (editMode === "readonly") {
-                        return;
+                    // nothing
                 } else if (editMode === "railErase") {
                     this.replaceTile(...cellPos, t => {
                         return t instanceof Tile.Rail ? undefined : t;
                     });
                 } else if (editMode === "select") {
-                    // TODO
+                    selectCopy.position = {
+                        x: e.data.global.x - ccshift.x, 
+                        y: e.data.global.y - ccshift.y
+                    };
                 } else {
                     let _: never = editMode;
                 }
@@ -529,20 +539,43 @@ export class TileGrid implements Serializable, Grids.Grid {
                     return t instanceof Tile.Rail ? undefined : t;
                 });
             } else if (editMode === "readonly") {
-                return;
+                // nothing
             } else if (editMode === "select") {
-                // TODO
+                cellPointer = { editMode, drag: cellPos };
+                selectCopy.addChild(this.#renderTileAt(...cellPos, -1, true));
+                selectCopy.visible = true;
+                
+                const ccmin = Grids.cellToPosition(this, cellPos);
+                ccshift = {x: pos.x - ccmin.x, y: pos.y - ccmin.y};
+
+                selectCopy.position = {
+                    x: e.data.global.x - ccshift.x, 
+                    y: e.data.global.y - ccshift.y
+                };
             } else {
                 let _: never = editMode;
             }
         });
 
-        function pointerup(e: PIXI.InteractionEvent) {
+        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
             pointers = Math.max(pointers - 1, 0);
+            
+            if (cellPointer?.editMode === "select") {
+                const cellPos = Grids.positionToCell(this, e.data.getLocalPosition(con));
+                this.setTile(...cellPos, this.tile(...cellPointer.drag)!.clone());
+            }
+
+            selectCopy.visible = false;
+            TileGrid.#cpsContainer(selectCopy);
             cellPointer = undefined;
-        }
-        this.#on(con, "pointerup", pointerup);
-        this.#on(con, "pointerupoutside", pointerup);
+        });
+        this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
+            pointers = Math.max(pointers - 1, 0);
+
+            selectCopy.visible = false;
+            TileGrid.#cpsContainer(selectCopy);
+            cellPointer = undefined;
+        });
 
         this.#on(con, "pointercancel", (e: PIXI.InteractionEvent) => {
             pointers = 0;
@@ -565,10 +598,11 @@ export class TileGrid implements Serializable, Grids.Grid {
         railMarker.cursor = "grab";
         con.addChild(railMarker);
 
+        // TODO, impl hoverSquare in select on mobile
         const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
         hoverSquare.width = this.cellSize;
         hoverSquare.height = this.cellSize;
-        hoverSquare.alpha = 0.5;
+        hoverSquare.alpha = 0.2;
         hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
         hoverSquare.visible = false;
         con.addChild(hoverSquare);
@@ -586,7 +620,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                 this.#editMode === "rail" && visibility.every(t => t);
             hoverSquare.visible = 
                 (this.#editMode === "railErase" && visibility.every(t => t))
-                || (this.#editMode === "select" && visibility.slice(2).every(t => t));
+                || (this.#editMode === "select" && visibility[Condition.IN_BOUNDS]);
         };
 
         this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
@@ -1454,7 +1488,12 @@ export abstract class Tile {
      * @param resources Rendering objects from PIXI
      * @param size Size of the tile
      */
-    abstract render(resources: PIXIResources, size: number): PIXI.Container;
+    abstract render(resources: PIXIResources, size: number, drag: boolean): PIXI.Container;
+
+    /**
+     * Create a copy of this tile.
+     */
+    abstract clone(): Tile;
 }
 
 type TileState = {
@@ -1524,6 +1563,8 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
      * @param cur Cursor that allows interaction with the tiles around
      */
     abstract step(cur: GridCursor): void;
+
+    abstract clone(): StatefulTile;
 }
 
 export namespace Tile {
@@ -1544,7 +1585,7 @@ export namespace Tile {
 
         readonly serChar = "+";
 
-        constructor(out: Dir, colors: Color[]) {
+        constructor(out: Dir, colors: readonly Color[]) {
             super();
             this.out = out;
             this.colors = colors;
@@ -1597,6 +1638,10 @@ export namespace Tile {
             con.addChild(exit, box, symbols);
             return con;
         }
+
+        clone() {
+            return new Outlet(this.out, [...this.colors]);
+        }
     }
     
     type GoalState = TileState & {
@@ -1615,7 +1660,7 @@ export namespace Tile {
         readonly targets: readonly Color[];
         readonly serChar = "o";
 
-        constructor(targets: Color[], entrances: Dir[]) {
+        constructor(targets: readonly Color[], entrances: Dir[]) {
             super(...entrances);
             this.targets = targets;
         }
@@ -1672,6 +1717,10 @@ export namespace Tile {
             con.addChild(...activeSides, box, symbols);
             return con;
         }
+
+        clone() {
+            return new Goal([...this.targets], [...this.actives]);
+        }
     }
     
     /**
@@ -1726,6 +1775,11 @@ export namespace Tile {
 
             con.addChild(...activeSides, box, painter);
             return con;
+        }
+
+        clone() {
+            const [d1, d2] = this.actives;
+            return new Painter(this.color, d1, d2);
         }
     }
     
@@ -1797,15 +1851,32 @@ export namespace Tile {
             con.addChild(...sides, box, splitter);
             return con;
         }
+
+        clone() {
+            return new Splitter(this.active);
+        }
     }
     
     export class Blank extends Tile {
         readonly serChar = " ";
 
-        render(): PIXI.Container {
+        render(_resources: unknown, size: number, drag: boolean): PIXI.Container {
             const con = new PIXI.Container();
-            con.visible = false;
+
+            if (drag) {
+                const sprite = new PIXI.Sprite(PIXI.Texture.WHITE);
+                sprite.width = size;
+                sprite.height = size;
+                sprite.tint = Palette.BG;
+                con.addChild(sprite);
+            } else {
+                con.visible = false;
+            }
             return con;
+        }
+
+        clone() {
+            return new Blank();
         }
     }
 
@@ -1818,6 +1889,10 @@ export namespace Tile {
             con.addChild(TileGraphics.rock(resources, size));
 
             return con;
+        }
+
+        clone() {
+            return new Rock();
         }
     }
     
@@ -1885,6 +1960,8 @@ export namespace Tile {
         updateContainer(cur: GridCursor) {
 
         }
+
+        abstract clone(): Rail<S>;
     }
     
     export class SingleRail extends Rail {
@@ -1918,6 +1995,11 @@ export namespace Tile {
         top() {
             return this;
         }
+
+        clone() {
+            const [d1, d2] = this.actives;
+            return new SingleRail(d1, d2);
+        }
     }
     
     type DoubleRailState = TileState & {
@@ -1931,7 +2013,7 @@ export namespace Tile {
         readonly paths: readonly [Dir.Flags, Dir.Flags];
         readonly #overlapping: boolean;
     
-        constructor(paths: [Dir.Flags, Dir.Flags]) {
+        constructor(paths: readonly [Dir.Flags, Dir.Flags]) {
             let [e0, e1] = paths;
             if (e0.equals(e1)) {
                 throw new Error("Rails match");
@@ -2016,6 +2098,10 @@ export namespace Tile {
                 [c1.tint, c2.tint] = [c2.tint, c1.tint];
                 con.swapChildren(c1, c2);
             });
+        }
+
+        clone() {
+            return new DoubleRail([...this.paths]);
         }
     }
 
