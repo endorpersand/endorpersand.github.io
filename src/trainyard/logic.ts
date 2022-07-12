@@ -11,7 +11,7 @@ type EditMode =
     | "readonly"  // Active while a simulation. You cannot edit any tiles.
     | "rail"      // Active while solving. You can only draw rails.
     | "railErase" // Active while solving (while erasing). You can only erase rails.
-    | "select"    // Active while level editing. Allows you to select and edit tiles.
+    | "levelEdit" // Active while level editing. Allows you to select and edit tiles.
 type Event =
     | `exit${Capitalize<EditMode>}`
     | `enter${Capitalize<EditMode>}`
@@ -93,7 +93,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "select";
+    #editMode: EditMode = "levelEdit";
 
     /**
      * Map keeping track of listeners listening to an event
@@ -419,7 +419,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             editMode: "rail",
             drag: RailTouch
         } | {
-            editMode: "select",
+            editMode: "levelEdit",
             drag: CellPos
         } | undefined;
 
@@ -487,7 +487,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                     this.replaceTile(...cellPos, t => {
                         return t instanceof Tile.Rail ? undefined : t;
                     });
-                } else if (editMode === "select") {
+                } else if (editMode === "levelEdit") {
                     selectCopy.position = {
                         x: e.data.global.x - ccshift.x, 
                         y: e.data.global.y - ccshift.y
@@ -540,7 +540,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                 });
             } else if (editMode === "readonly") {
                 // nothing
-            } else if (editMode === "select") {
+            } else if (editMode === "levelEdit") {
                 cellPointer = { editMode, drag: cellPos };
                 selectCopy.addChild(this.#renderTileAt(...cellPos, -1, true));
                 selectCopy.visible = true;
@@ -560,7 +560,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
             pointers = Math.max(pointers - 1, 0);
             
-            if (cellPointer?.editMode === "select") {
+            if (cellPointer?.editMode === "levelEdit") {
                 const cellPos = Grids.positionToCell(this, e.data.getLocalPosition(con));
                 this.setTile(...cellPos, this.tile(...cellPointer.drag)!.clone());
             }
@@ -620,7 +620,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                 this.#editMode === "rail" && visibility.every(t => t);
             hoverSquare.visible = 
                 (this.#editMode === "railErase" && visibility.every(t => t))
-                || (this.#editMode === "select" && visibility[Condition.IN_BOUNDS]);
+                || (this.#editMode === "levelEdit" && visibility[Condition.IN_BOUNDS]);
         };
 
         this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
@@ -657,7 +657,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             } else if (this.#editMode === "railErase") {
                 visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
                 hoverSquare.position = Grids.cellToPosition(this, cellPos);
-            } else if (this.#editMode === "select") {
+            } else if (this.#editMode === "levelEdit") {
                 hoverSquare.position = Grids.cellToPosition(this, cellPos);
                 
             } else if (this.#editMode === "readonly") {
