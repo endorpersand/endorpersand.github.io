@@ -370,7 +370,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     
             con.interactive = true;
             this.#applyPointerEvents(con);
-            this.#applyRailIndicator(con);
+            this.#applyHoverEvents(con);
         }
 
         this.#rendered = true;
@@ -552,10 +552,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
      * @param con Container to apply to
      */
-    #applyRailIndicator(con: PIXI.Container) {
-        const TILE_GAP = Grids.TILE_GAP;
-        const DELTA = this.cellSize + TILE_GAP;
-
+    #applyHoverEvents(con: PIXI.Container) {
         const railMarker = TileGraphics.hoverIndicator(this.pixi, this.cellSize);
         railMarker.tint = Palette.Hover;
         railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
@@ -564,56 +561,73 @@ export class TileGrid implements Serializable, Grids.Grid {
         railMarker.cursor = "grab";
         con.addChild(railMarker);
 
+        const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
+        hoverSquare.width = this.cellSize;
+        hoverSquare.height = this.cellSize;
+        hoverSquare.alpha = 0.5;
+        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
+        hoverSquare.visible = false;
+        con.addChild(hoverSquare);
+
         const enum Condition {
             IN_BOUNDS, MOUSE_UP, RAILABLE
         };
         let visibility = [
             false, true, false
         ];
-        
+
         // this syntax is necessary to avoid scoping `this`
         let updateVisibility = () => {
-            railMarker.visible = visibility.every(t => t) && this.#editMode === "rail";
+            railMarker.visible = 
+                this.#editMode === "rail" && visibility.every(t => t);
+            hoverSquare.visible = 
+                (this.#editMode === "railErase" && visibility.every(t => t))
+                || (this.#editMode === "select" && visibility.slice(2).every(t => t));
         };
 
         this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(this, pos);
-            const [cellX, cellY] = cellPos;
+            const tile = this.tile(...cellPos);
 
-            let dir = this.nearestEdge(pos, cellPos);
-
-            if (typeof dir === "undefined") {
-                visibility[Condition.RAILABLE] = false;
-            } else {
-                let tile = this.tile(...cellPos);
-
-                // If you can place a rail on this tile, mark the tile on the nearest edge
-                if (TileGrid.canRail(tile)) {
-                    visibility[Condition.RAILABLE] = true;
-                    railMarker.position.set(
-                        TILE_GAP + cellX * DELTA, 
-                        TILE_GAP + cellY * DELTA
-                    );
-                    railMarker.angle = -90 * dir;
+            if (this.#editMode === "rail") {
+                let dir = this.nearestEdge(pos, cellPos);
+    
+                if (typeof dir === "undefined") {
+                    visibility[Condition.RAILABLE] = false;
                 } else {
-                    let neighborPos = Dir.shift(cellPos, dir);
-                    let neighbor = this.tile(...neighborPos);
-
-                    if (TileGrid.canRail(neighbor)) {
+    
+                    // If you can place a rail on this tile, mark the tile on the nearest edge
+                    if (TileGrid.canRail(tile)) {
                         visibility[Condition.RAILABLE] = true;
-
-                        const [nx, ny] = neighborPos;
-                        railMarker.position.set(
-                            TILE_GAP + nx * DELTA, 
-                            TILE_GAP + ny * DELTA
-                        );
-                        railMarker.angle = -90 * Dir.flip(dir);
+                        railMarker.position = Grids.cellToPosition(this, cellPos);
+                        railMarker.angle = -90 * dir;
                     } else {
-                        visibility[Condition.RAILABLE] = false;
+                        let neighborPos = Dir.shift(cellPos, dir);
+                        let neighbor = this.tile(...neighborPos);
+    
+                        if (TileGrid.canRail(neighbor)) {
+                            visibility[Condition.RAILABLE] = true;
+    
+                            railMarker.position = Grids.cellToPosition(this, neighborPos);
+                            railMarker.angle = -90 * Dir.flip(dir);
+                        } else {
+                            visibility[Condition.RAILABLE] = false;
+                        }
                     }
                 }
+            } else if (this.#editMode === "railErase") {
+                visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
+                hoverSquare.position = Grids.cellToPosition(this, cellPos);
+            } else if (this.#editMode === "select") {
+                hoverSquare.position = Grids.cellToPosition(this, cellPos);
+                
+            } else if (this.#editMode === "readonly") {
+                // nothing
+            } else {
+                let _: never = this.#editMode;
             }
+
             updateVisibility();
         })
 
