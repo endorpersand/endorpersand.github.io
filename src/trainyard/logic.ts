@@ -411,10 +411,18 @@ export class TileGrid implements Serializable, Grids.Grid {
     #applyPointerEvents(con: PIXI.Container) {
         let pointers = 0;
 
+        type DragPointer = {
+            editMode: "rail",
+            drag: RailTouch
+        } | {
+            editMode: "select",
+            drag: CellPos
+        } | undefined;
+
         // In rail mode, this pointer is used to track the last pointed-to edge or center.
         // On an initial click, this can be bound to an edge or a center.
         // While dragging, this can only bind to edges.
-        let cellPointer: RailTouch | undefined = undefined;
+        let cellPointer: DragPointer = undefined;
 
         this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
@@ -426,6 +434,7 @@ export class TileGrid implements Serializable, Grids.Grid {
                 cellPointer = undefined;
             } else {
                 const editMode = this.#editMode;
+                if (editMode !== cellPointer?.editMode) cellPointer = undefined;
 
                 if (editMode === "rail") {
                     // cellPointer can now only bind to edges, so ignore centers.
@@ -436,10 +445,11 @@ export class TileGrid implements Serializable, Grids.Grid {
     
                     // If cellPointer has not existed yet, just set it
                     // If it has, then we can try to create a rail
-                    if (typeof cellPointer !== "undefined") {
+                    if (cellPointer?.editMode === "rail") {
+                        const pointer = cellPointer.drag;
                         // If the cell pointers are in the same cell, we can try to create a rail
     
-                        let result = this.findSharedCell(cellPointer, nCellPointer);
+                        let result = this.findSharedCell(pointer, nCellPointer);
     
                         if (typeof result !== "undefined") {
                             let [shared, me0, me1] = result;
@@ -463,22 +473,17 @@ export class TileGrid implements Serializable, Grids.Grid {
                         }
                     }
     
-                    cellPointer = nCellPointer;
-                } else {
-                    // useless if not rail mode
-                    cellPointer = undefined;
-
-                    if (editMode === "readonly") {
+                    cellPointer = {editMode: "rail", drag: nCellPointer};
+                } else if (editMode === "readonly") {
                         return;
-                    } else if (editMode === "railErase") {
-                        this.replaceTile(...cellPos, t => {
-                            return t instanceof Tile.Rail ? undefined : t;
-                        });
-                    } else if (editMode === "select") {
-                        // TODO
-                    } else {
-                        let _: never = editMode;
-                    }
+                } else if (editMode === "railErase") {
+                    this.replaceTile(...cellPos, t => {
+                        return t instanceof Tile.Rail ? undefined : t;
+                    });
+                } else if (editMode === "select") {
+                    // TODO
+                } else {
+                    let _: never = editMode;
                 }
             }
         });
@@ -509,27 +514,26 @@ export class TileGrid implements Serializable, Grids.Grid {
             //
 
             const editMode = this.#editMode;
+            if (editMode !== cellPointer?.editMode) cellPointer = undefined;
+
             if (editMode === "rail") {
                 let edge = this.nearestEdge(pos, cellPos);
-                cellPointer = [
-                    cellPos, 
-                    typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
-                ];
+                cellPointer = {
+                    editMode,
+                    drag: [
+                        cellPos, typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+                    ]
+                };
+            } else if (editMode === "railErase") {
+                this.replaceTile(...cellPos, t => {
+                    return t instanceof Tile.Rail ? undefined : t;
+                });
+            } else if (editMode === "readonly") {
+                return;
+            } else if (editMode === "select") {
+                // TODO
             } else {
-                // useless if not rail mode
-                cellPointer = undefined;
-
-                if (editMode === "railErase") {
-                    this.replaceTile(...cellPos, t => {
-                        return t instanceof Tile.Rail ? undefined : t;
-                    });
-                } else if (editMode === "readonly") {
-                    return;
-                } else if (editMode === "select") {
-                    // TODO
-                } else {
-                    let _: never = editMode;
-                }
+                let _: never = editMode;
             }
         });
 
