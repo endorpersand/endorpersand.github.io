@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap');
+
 * {
     touch-action: manipulation;
     user-select: none;
@@ -106,8 +109,7 @@ body.readonly-mode {
 
 button, .btn {
     background-color: #333;
-    border: 3px solid black;
-    border-radius: 3px;
+    border: 3px outset #222;
     color: white;
     padding: 15px 0px;
     font-size: 18px;
@@ -122,11 +124,11 @@ button, .btn {
 
 button:active {
     background-color: #343;
-    border-color: #121;
+    border-color: #232;
 }
 button.erase-mode {
     background-color: #771;
-    border-color: #442;
+    border-color: #552;
 }
 button.erase-mode:active {
     background-color: #781;
@@ -134,11 +136,11 @@ button.erase-mode:active {
 }
 button.readonly-mode {
     background-color: #233;
-    border-color: #011;
+    border-color: #122;
 }
 button.readonly-mode:active {
     background-color: #243;
-    border-color: #032;
+    border-color: #132;
 }
 
 input {

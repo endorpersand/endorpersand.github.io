@@ -25,7 +25,7 @@ const defaults = {
     cellLength: 7
 };
 const defaultWidth = defaults.cellSize * defaults.cellLength + Grids.TILE_GAP * (defaults.cellLength + 1);
-const gridSize = Math.min(clientWidth - 16, clientHeight - 16, defaultWidth);
+const gridSize = Math.min(clientWidth, clientHeight, defaultWidth);
 const app = new PIXI.Application({
     width: gridSize,
     height: gridSize,
