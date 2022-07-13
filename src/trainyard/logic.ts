@@ -588,7 +588,8 @@ namespace DragPointer {
     export interface FromStart {
         start?: {
             pixPos: PIXI.IPointData,
-            cellPos: CellPos
+            cellPos: CellPos,
+            time: number
         }
     }
 
@@ -602,6 +603,9 @@ namespace DragPointer {
         drag: CellPos
     }
 }
+
+const DBT_TIMEOUT_MS  = 1000;
+const CLICK_IGNORE_MS = 200;
 
 class PointerEvents {
     #grid: TileGrid;
@@ -682,7 +686,6 @@ class PointerEvents {
 
         let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
-        const DBT_TIMEOUT_MS = 1000;
 
         this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
             pointers++;
@@ -710,7 +713,7 @@ class PointerEvents {
             if (editMode === "rail") {
                 let edge = grid.nearestEdge(pos, cellPos);
                 this.pointer = {
-                    start: { pixPos: pos, cellPos },
+                    start: { pixPos: pos, cellPos, time: performance.now() },
                     editMode,
                     drag: [
                         cellPos, 
@@ -725,7 +728,7 @@ class PointerEvents {
                 // nothing
             } else if (editMode === "level") {
                 this.pointer = { 
-                    start: { pixPos: pos, cellPos },
+                    start: { pixPos: pos, cellPos, time: performance.now() },
                     editMode, 
                     drag: cellPos 
                 };
@@ -822,8 +825,11 @@ class PointerEvents {
                 const pos = e.data.getLocalPosition(con);
                 const cellPos = Grids.positionToCell(grid, pos);
 
-                const start = this.pointer.start?.cellPos;
-                if (start?.equals(cellPos)) {
+                const start = this.pointer.start;
+                const isClick = start &&
+                    start.cellPos.equals(cellPos) &&
+                    (performance.now() - start.time <= CLICK_IGNORE_MS);
+                if (isClick) {
                     selectSquare.visible = true;
                     selectSquare.position = Grids.cellToPosition(grid, cellPos);
                 } else {
