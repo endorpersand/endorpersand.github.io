@@ -326,7 +326,7 @@ export class TileGrid implements Serializable, Grids.Grid {
 
     #wipeContainer(con: PIXI.Container) {
         removeAllChildren(con, {children: true});
-        this.pointerEvents.clearEvents();
+        this.pointerEvents.clearEvents(con);
     }
 
     /**
@@ -375,7 +375,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             con.addChild(layers);
     
             con.interactive = true;
-            this.pointerEvents.applyEvents();
+            this.pointerEvents.applyEvents(con);
         }
 
         this.#rendered = true;
@@ -581,30 +581,40 @@ export class TileGrid implements Serializable, Grids.Grid {
     }
 }
 
-type DragPointer = {
-    editMode: "rail",
-    drag: RailTouch
-} | {
-    editMode: "levelEdit",
-    drag: CellPos
-} | undefined;
+type DragPointer = DragPointer.FromStart & (DragPointer.RailDrag | DragPointer.LEDrag);
+namespace DragPointer {
+    export interface FromStart {
+        start?: {
+            pixPos: PIXI.IPointData,
+            cellPos: CellPos
+        }
+    }
+
+    export interface RailDrag {
+        editMode: "rail",
+        drag: RailTouch
+    }
+
+    export interface LEDrag {
+        editMode: "levelEdit",
+        drag: CellPos
+    }
+}
 
 class PointerEvents {
     #grid: TileGrid;
+    pointer?: DragPointer;
 
     constructor(grid: TileGrid) {
         this.#grid = grid;
     }
 
-    applyEvents(con?: PIXI.Container) {
-        con ??= this.#grid.container;
+    applyEvents(con: PIXI.Container) {
         this.#applyPointerEvents(con);
         this.#applyHoverEvents(con);
     }
 
-    clearEvents(con?: PIXI.Container) {
-        con ??= this.#grid.container;
-
+    clearEvents(con: PIXI.Container) {
         for (let [name, h] of this.#containerEvents) con.off(name, h);
         this.#containerEvents.length = 0;
     }
@@ -630,77 +640,9 @@ class PointerEvents {
         // In rail mode, this pointer is used to track the last pointed-to edge or center.
         // On an initial click, this can be bound to an edge or a center.
         // While dragging, this can only bind to edges.
-        let cellPointer: DragPointer = undefined;
         const selectCopy = new PIXI.Container();
         let ccshift: PIXI.IPointData;
         con.addChild(selectCopy);
-
-        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
-            const pos = e.data.getLocalPosition(con);
-            const cellPos = Grids.positionToCell(this.#grid, pos);
-
-            // pointer === 1 implies drag
-            if (pointers !== 1) {
-                // If pointers increases or decreases, then the cellPointer is useless.
-                cellPointer = undefined;
-            } else {
-                const editMode = grid.editMode;
-                if (editMode !== cellPointer?.editMode) cellPointer = undefined;
-
-                if (editMode === "rail") {
-                    // cellPointer can now only bind to edges, so ignore centers.
-                    let edge = grid.nearestEdge(pos, cellPos);
-                    if (typeof edge === "undefined") return;
-                    
-                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
-    
-                    // If cellPointer has not existed yet, just set it
-                    // If it has, then we can try to create a rail
-                    if (cellPointer?.editMode === "rail") {
-                        const pointer = cellPointer.drag;
-                        // If the cell pointers are in the same cell, we can try to create a rail
-    
-                        let result = grid.findSharedCell(pointer, nCellPointer);
-    
-                        if (typeof result !== "undefined") {
-                            let [shared, me0, me1] = result;
-                            
-                            // edge + edge = make connection
-                            // center + edge = make straight line
-                            let e1 = me1!;
-                            let e0 = me0 ?? Dir.flip(e1);
-    
-                            if (e0 !== e1) {
-                                grid.replaceTile(...shared, t => {
-                                    if (t instanceof Tile.Blank) {
-                                        return new Tile.SingleRail(e0, e1);
-                                    } else if (t instanceof Tile.Rail) {
-                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
-                                    } else {
-                                        return t;
-                                    }
-                                });
-                            }
-                        }
-                    }
-    
-                    cellPointer = {editMode, drag: nCellPointer};
-                } else if (editMode === "readonly") {
-                    // nothing
-                } else if (editMode === "railErase") {
-                    grid.replaceTile(...cellPos, t => {
-                        return t instanceof Tile.Rail ? undefined : t;
-                    });
-                } else if (editMode === "levelEdit") {
-                    selectCopy.position = {
-                        x: e.data.global.x - ccshift.x, 
-                        y: e.data.global.y - ccshift.y
-                    };
-                } else {
-                    let _: never = editMode;
-                }
-            }
-        });
 
         let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
@@ -727,14 +669,16 @@ class PointerEvents {
             //
 
             const editMode = grid.editMode;
-            if (editMode !== cellPointer?.editMode) cellPointer = undefined;
+            if (editMode !== this.pointer?.editMode) this.pointer = undefined;
 
             if (editMode === "rail") {
                 let edge = grid.nearestEdge(pos, cellPos);
-                cellPointer = {
+                this.pointer = {
+                    start: { pixPos: pos, cellPos },
                     editMode,
                     drag: [
-                        cellPos, typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+                        cellPos, 
+                        typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
                     ]
                 };
             } else if (editMode === "railErase") {
@@ -744,7 +688,11 @@ class PointerEvents {
             } else if (editMode === "readonly") {
                 // nothing
             } else if (editMode === "levelEdit") {
-                cellPointer = { editMode, drag: cellPos };
+                this.pointer = { 
+                    start: { pixPos: pos, cellPos },
+                    editMode, 
+                    drag: cellPos 
+                };
                 selectCopy.addChild(grid.renderTileAt(...cellPos, -1, true));
                 selectCopy.visible = true;
                 
@@ -760,29 +708,107 @@ class PointerEvents {
             }
         });
 
+        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = Grids.positionToCell(this.#grid, pos);
+            // pointer === 1 implies drag
+            if (pointers !== 1) {
+                // can't really make sense of pointer if there's more than one finger dragging
+                this.pointer = undefined;
+            } else {
+                const editMode = grid.editMode;
+                if (editMode !== this.pointer?.editMode) this.pointer = undefined;
+
+                if (editMode === "rail") {
+                    // pointer can now only bind to edges, so ignore centers.
+                    let edge = grid.nearestEdge(pos, cellPos);
+                    if (typeof edge === "undefined") return;
+
+                    const newPoint: Edge = [cellPos, Dir.shift(cellPos, edge)];
+    
+                    // this is equivalent to `typeof this.pointer !== "undefined"`
+                    // if the pointer isn't undefined, then we can form rails
+                    // otherwise, we just create the pointer
+                    if (this.pointer?.editMode === "rail") {
+                        const point = this.pointer.drag;
+                        // If the cell pointers are in the same cell, we can try to create a rail
+    
+                        let result = grid.findSharedCell(point, newPoint);
+    
+                        if (typeof result !== "undefined") {
+                            let [shared, me0, me1] = result;
+                            
+                            // edge + edge = make connection
+                            // center + edge = make straight line
+                            let e1 = me1!;
+                            let e0 = me0 ?? Dir.flip(e1);
+    
+                            if (e0 !== e1) {
+                                grid.replaceTile(...shared, t => {
+                                    if (t instanceof Tile.Blank) {
+                                        return new Tile.SingleRail(e0, e1);
+                                    } else if (t instanceof Tile.Rail) {
+                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                                    } else {
+                                        return t;
+                                    }
+                                });
+                            }
+                        }
+                    }
+    
+                    this.pointer = { 
+                        ...this.pointer, 
+                        editMode, 
+                        drag: newPoint 
+                    };
+                } else if (editMode === "readonly") {
+                    // nothing
+                } else if (editMode === "railErase") {
+                    grid.replaceTile(...cellPos, t => {
+                        return t instanceof Tile.Rail ? undefined : t;
+                    });
+                } else if (editMode === "levelEdit") {
+                    selectCopy.position = {
+                        x: e.data.global.x - ccshift.x, 
+                        y: e.data.global.y - ccshift.y
+                    };
+                } else {
+                    let _: never = editMode;
+                }
+            }
+        });
+
         this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
             pointers = Math.max(pointers - 1, 0);
 
-            if (cellPointer?.editMode === "levelEdit") {
-                const cellPos = Grids.positionToCell(grid, e.data.getLocalPosition(con));
-                grid.setTile(...cellPos, grid.tile(...cellPointer.drag)!.clone());
+            if (this.pointer?.editMode === "levelEdit") {
+                const pos = e.data.getLocalPosition(con);
+                const cellPos = Grids.positionToCell(grid, pos);
+
+                const start = this.pointer.start?.pixPos;
+                if (start?.x === pos.x && start?.y === pos.y) {
+                    console.log("click");
+                } else {
+                    grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
+                }
             }
 
             selectCopy.visible = false;
             removeAllChildren(selectCopy, {children: true});
-            cellPointer = undefined;
+            this.pointer = undefined;
         });
         this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
             pointers = Math.max(pointers - 1, 0);
 
             selectCopy.visible = false;
             removeAllChildren(selectCopy, {children: true});
-            cellPointer = undefined;
+            this.pointer = undefined;
         });
 
         this.#on(con, "pointercancel", (e: PIXI.InteractionEvent) => {
             pointers = 0;
-            cellPointer = undefined;
+            this.pointer = undefined;
         })
         // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
