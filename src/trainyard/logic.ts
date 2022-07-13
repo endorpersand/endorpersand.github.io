@@ -320,14 +320,6 @@ export class TileGrid implements Serializable, Grids.Grid {
         const [reject, require] = buckets;
         return {reject, require};
     }
-    /**
-     * Check if rails can be placed on this type of tile
-     * @param t tile (`undefined` represents an OOB tile)
-     * @returns true if can be placed
-     */
-    static canRail(t: Tile | undefined): boolean {
-        return t instanceof Tile.Blank || t instanceof Tile.Rail;
-    }
 
     /**
      * Get this tile's rendered PIXI container
@@ -936,7 +928,7 @@ class PointerEvents {
                 } else {
     
                     // If you can place a rail on this tile, mark the tile on the nearest edge
-                    if (TileGrid.canRail(tile)) {
+                    if (tile?.railable) {
                         visibility[Condition.RAILABLE] = true;
                         railMarker.position = Grids.cellToPosition(grid, cellPos);
                         railMarker.angle = -90 * dir;
@@ -944,7 +936,7 @@ class PointerEvents {
                         let neighborPos = Dir.shift(cellPos, dir);
                         let neighbor = grid.tile(...neighborPos);
     
-                        if (TileGrid.canRail(neighbor)) {
+                        if (neighbor?.railable) {
                             visibility[Condition.RAILABLE] = true;
     
                             railMarker.position = Grids.cellToPosition(grid, neighborPos);
@@ -955,7 +947,7 @@ class PointerEvents {
                     }
                 }
             } else if (grid.editMode === "railErase") {
-                visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
+                visibility[Condition.RAILABLE] = !!(tile?.railable);
                 eraseSquare.position = Grids.cellToPosition(grid, cellPos);
             } else if (grid.editMode === "level") {
                 levelSquare.position = Grids.cellToPosition(grid, cellPos);
@@ -1544,7 +1536,12 @@ export abstract class Tile {
     /**
      * Which layer of the grid container is this object rendered on?
      */
-    layer: number = Layer.BOXES;
+    readonly layer: number = Layer.BOXES;
+
+    /**
+     * If this tile can be overwritten by a rail tile in rail edit mode.
+     */
+    readonly railable: boolean = false;
 
     /**
      * Check if the specified train would be able to enter the tile.
@@ -1931,6 +1928,7 @@ export namespace Tile {
     
     export class Blank extends Tile {
         readonly serChar = " ";
+        readonly railable = true;
 
         render(_resources: unknown, size: number, drag: boolean): PIXI.Container {
             const con = new PIXI.Container();
@@ -1969,7 +1967,8 @@ export namespace Tile {
     }
     
     export abstract class Rail<S extends TileState = TileState> extends StatefulTile<S> {
-        layer: number = Layer.RAILS;
+        readonly layer: number = Layer.RAILS;
+        readonly railable = true;
 
         constructor(entrances: Dir[] | Dir.Flags) {
             super(...entrances);
