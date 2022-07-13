@@ -15,6 +15,7 @@ type EditMode =
 type Event =
     | `exit${Capitalize<EditMode>}`
     | `enter${Capitalize<EditMode>}`
+    | "switchEdit"
     | "fail"
     | "win"
 
@@ -99,7 +100,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "rail";
+    #editMode: EditMode = "levelEdit";
 
     /**
      * Map keeping track of listeners listening to an event
@@ -192,6 +193,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             this.#editMode = em;
             
             this.#dispatchEvent(`enter${capitalize(em)}`);
+            this.#dispatchEvent("switchEdit");
         }
     }
 
@@ -603,13 +605,16 @@ namespace DragPointer {
 
 class PointerEvents {
     #grid: TileGrid;
+    #eventLayer: PIXI.Container;
     pointer?: DragPointer;
 
     constructor(grid: TileGrid) {
         this.#grid = grid;
+        this.#eventLayer = new PIXI.Container();
     }
 
     applyEvents(con: PIXI.Container) {
+        this.#addEventLayer(con);
         this.#applyHoverEvents(con);
         this.#applyPointerEvents(con);
     }
@@ -629,6 +634,29 @@ class PointerEvents {
         this.#containerEvents.push([event, listener]);
         emitter.on(event, listener);
     }
+
+    #addEventLayer(con: PIXI.Container) {
+        if (this.#eventLayer.destroyed) {
+            this.#eventLayer = new PIXI.Container();
+        }
+        con.addChild(this.#eventLayer);
+
+        this.#grid.on("switchEdit", () => {
+            for (let c of this.#eventLayer.children) {
+                c.visible = c.name === this.#grid.editMode;
+            }
+        });
+    }
+
+    #modeLayer(m: EditMode) {
+        let layer = this.#eventLayer.getChildByName(m) as PIXI.Container;
+        if (layer) return layer;
+
+        layer = this.#eventLayer.addChild(new PIXI.Container());
+        layer.name = m;
+        return layer;
+    }
+
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -636,13 +664,12 @@ class PointerEvents {
     #applyPointerEvents(con: PIXI.Container) {
         let pointers = 0;
         const grid = this.#grid;
+        
+        const leLayer = this.#modeLayer("levelEdit");
 
-        // In rail mode, this pointer is used to track the last pointed-to edge or center.
-        // On an initial click, this can be bound to an edge or a center.
-        // While dragging, this can only bind to edges.
         const selectCopy = new PIXI.Container();
         let ccshift: PIXI.IPointData;
-        con.addChild(selectCopy);
+        leLayer.addChild(selectCopy);
 
         // TODO: make actual sprite for this
         const selectSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
@@ -651,7 +678,7 @@ class PointerEvents {
         selectSquare.tint = 0xFF0000;
         selectSquare.alpha = 0.2;
         selectSquare.visible = false;
-        con.addChild(selectSquare);
+        leLayer.addChild(selectSquare);
 
         let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
@@ -823,6 +850,16 @@ class PointerEvents {
         // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
 
+    #hoverSquare(size: number) {
+        const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
+        hoverSquare.width = size;
+        hoverSquare.height = size;
+        hoverSquare.alpha = 0.2;
+        hoverSquare.visible = false;
+
+        return hoverSquare;
+    }
+
     /**
      * On desktop, display a rail indicator that marks which edge the mouse is nearest to.
      * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
@@ -836,15 +873,15 @@ class PointerEvents {
         railMarker.visible = false;
         railMarker.interactive = true;
         railMarker.cursor = "grab";
-        con.addChild(railMarker);
+        this.#modeLayer("rail").addChild(railMarker);
 
         // TODO, impl hoverSquare in select on mobile
-        const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
-        hoverSquare.width = grid.cellSize;
-        hoverSquare.height = grid.cellSize;
-        hoverSquare.alpha = 0.2;
-        hoverSquare.visible = false;
-        con.addChild(hoverSquare);
+        const levelSquare = this.#modeLayer("levelEdit").addChild(
+            this.#hoverSquare(grid.cellSize)
+        );
+        const eraseSquare = this.#modeLayer("railErase").addChild(
+            this.#hoverSquare(grid.cellSize)
+        );
 
         const enum Condition {
             IN_BOUNDS, MOUSE_UP, RAILABLE
@@ -855,11 +892,9 @@ class PointerEvents {
 
         // this syntax is necessary to avoid scoping `this`
         let updateVisibility = () => {
-            railMarker.visible = 
-                grid.editMode === "rail" && visibility.every(t => t);
-            hoverSquare.visible = 
-                (grid.editMode === "railErase" && visibility.every(t => t))
-                || (grid.editMode === "levelEdit" && visibility[Condition.IN_BOUNDS]);
+            railMarker.visible = visibility.every(t => t);
+            eraseSquare.visible = visibility.every(t => t);
+            levelSquare.visible = visibility[Condition.IN_BOUNDS];
         };
 
         this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
@@ -895,9 +930,9 @@ class PointerEvents {
                 }
             } else if (grid.editMode === "railErase") {
                 visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
-                hoverSquare.position = Grids.cellToPosition(grid, cellPos);
+                eraseSquare.position = Grids.cellToPosition(grid, cellPos);
             } else if (grid.editMode === "levelEdit") {
-                hoverSquare.position = Grids.cellToPosition(grid, cellPos);
+                levelSquare.position = Grids.cellToPosition(grid, cellPos);
                 
             } else if (grid.editMode === "readonly") {
                 // nothing
