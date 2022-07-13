@@ -1225,7 +1225,8 @@ namespace Simulation {
             // check inter collisions: mix/merge trains on the same edge
             for (let trains of trainEdges.values()) {
                 if (trains.length > 1) {
-                    const color = Color.mixMany(trains.map(([_, t]) => t.color));
+                    const trainColors = trains.map(([_, t]) => t.color);
+                    const color = Color.mixMany(trainColors)!;
                     for (let [trainState, t] of trains) {
                         trainState.replaceExit(t, {color, dir: t.dir}, Step.EdgeCollision);
                     }
@@ -1353,7 +1354,7 @@ class TrainState {
             let t: Train;
             if (trains.length > 1) {
                 const tc = trains.map(t => t.color);
-                t = {dir: d, color: Color.mixMany(tc)};
+                t = {dir: d, color: Color.mixMany(tc)!};
                 this.#trackMerge(trains, t, Step.Deploy);
             } else {
                 t = trains[0];
@@ -1943,24 +1944,6 @@ export namespace Tile {
 
         abstract top(): SingleRail;
 
-        /**
-         * Take departuring trains and merge trains being deployed to the same place.
-         * @param trains trains, uncombined
-         * @returns the combined trains
-         */
-        protected static mergeTrains(trains: Train[]): Train[] {
-            if (trains.length == 0) return trains;
-
-            // merge all the colors of all the trains going through the rail
-            let color = Color.mixMany(trains.map(t => t.color));
-
-            // get all train destinations
-            let dest = new Set(trains.map(t => t.dir));
-
-            // create one train per dest.
-            return Array.from(dest, dir => ({color, dir}));
-        }
-
         updateContainer(cur: GridCursor) {
 
         }
@@ -1980,7 +1963,7 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             const trainState = this.state!.trainState;
-            const color = Color.mixMany(trainState.trains.map(t => t.color));
+            const color = Color.mixMany(trainState.trains.map(t => t.color))!; // there has to be trains if step was called
 
             trainState.deployAll(({dir}) => {
                 const newDir = Rail.redirect(dir, this.actives);
@@ -2051,7 +2034,7 @@ export namespace Tile {
 
             let pathColors: [Color, Color];
             if (!this.#overlapping && this.crossesOver) { // + rail
-                const color = Color.mixMany(trains.map(t => t.color));
+                const color = Color.mixMany(trains.map(t => t.color))!; // there has to be trains if step was called
                 pathColors = [color, color];
             } else {
                 pathColors = pathTrains.map(trains => {

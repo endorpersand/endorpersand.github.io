@@ -41,10 +41,11 @@ export namespace Color {
     /**
      * Get the result of mixing an array of colors together
      * @param clrs the colors
+     * @returns the mixed color, or undefined if an array was given with no colors
      */
     export function mixMany(clrs: Color[]) {
         switch (clrs.length) {
-            case 0: throw new Error("Mix colors called with no arguments");
+            case 0: return undefined;
             case 1: return clrs[0];
             case 2: return mix(clrs[0], clrs[1]);
             default:
