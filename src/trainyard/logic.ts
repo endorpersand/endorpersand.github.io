@@ -99,7 +99,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "levelEdit";
+    #editMode: EditMode = "rail";
 
     /**
      * Map keeping track of listeners listening to an event
@@ -610,8 +610,8 @@ class PointerEvents {
     }
 
     applyEvents(con: PIXI.Container) {
-        this.#applyPointerEvents(con);
         this.#applyHoverEvents(con);
+        this.#applyPointerEvents(con);
     }
 
     clearEvents(con: PIXI.Container) {
@@ -643,6 +643,15 @@ class PointerEvents {
         const selectCopy = new PIXI.Container();
         let ccshift: PIXI.IPointData;
         con.addChild(selectCopy);
+
+        // TODO: make actual sprite for this
+        const selectSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
+        selectSquare.width = grid.cellSize;
+        selectSquare.height = grid.cellSize;
+        selectSquare.tint = 0xFF0000;
+        selectSquare.alpha = 0.2;
+        selectSquare.visible = false;
+        con.addChild(selectSquare);
 
         let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
@@ -786,9 +795,10 @@ class PointerEvents {
                 const pos = e.data.getLocalPosition(con);
                 const cellPos = Grids.positionToCell(grid, pos);
 
-                const start = this.pointer.start?.pixPos;
-                if (start?.x === pos.x && start?.y === pos.y) {
-                    console.log("click");
+                const start = this.pointer.start?.cellPos;
+                if (start?.equals(cellPos)) {
+                    selectSquare.visible = true;
+                    selectSquare.position = Grids.cellToPosition(grid, cellPos);
                 } else {
                     grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
                 }
@@ -823,7 +833,6 @@ class PointerEvents {
 
         const railMarker = TileGraphics.hoverIndicator(grid.pixi, grid.cellSize);
         railMarker.tint = Palette.Hover;
-        railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
         railMarker.visible = false;
         railMarker.interactive = true;
         railMarker.cursor = "grab";
@@ -834,7 +843,6 @@ class PointerEvents {
         hoverSquare.width = grid.cellSize;
         hoverSquare.height = grid.cellSize;
         hoverSquare.alpha = 0.2;
-        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
         hoverSquare.visible = false;
         con.addChild(hoverSquare);
 
