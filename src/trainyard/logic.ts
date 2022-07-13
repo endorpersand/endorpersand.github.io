@@ -39,6 +39,12 @@ function capitalize<S extends string>(str: S): Capitalize<S> {
     return str.charAt(0).toUpperCase() + str.slice(1) as any;
 }
 
+function removeAllChildren(con: PIXI.Container, options?: boolean | PIXI.IDestroyOptions) {
+    while (con.children.length > 0) {
+        con.removeChildAt(0).destroy(options);
+    }
+}
+
 interface Serializable<J = any> {
     /**
      * Designate how to convert this object into JSON.
@@ -99,6 +105,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Map keeping track of listeners listening to an event
      */
     #eventListeners: Partial<{[E in Event]: Array<() => void>}> = {}
+    pointerEvents: PointerEvents;
 
     /**
      * Stack keeping track of all the past actions (allowing for undoing)
@@ -126,6 +133,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
 
         this.pixi = pixi;
+        this.pointerEvents = new PointerEvents(this);
 
         this.on("enterReadonly", () => {
             this.startSim();
@@ -305,7 +313,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y cell y
      * @returns the container holding the rendering
      */
-    #renderTileAt(x: number, y: number, layerMask: number = -1, drag: boolean = false): PIXI.Container {
+    renderTileAt(x: number, y: number, layerMask: number = -1, drag: boolean = false): PIXI.Container {
         const tile = this.tile(x, y);
         if (tile && layerMask & (1 << tile.layer)) {
             return tile.render(this.pixi, this.cellSize, drag);
@@ -317,14 +325,8 @@ export class TileGrid implements Serializable, Grids.Grid {
     }
 
     #wipeContainer(con: PIXI.Container) {
-        TileGrid.#cpsContainer(con);
-
-        for (let e of this.#containerEvents) con.off(...e);
-        this.#containerEvents = [];
-    }
-
-    static #cpsContainer(con: PIXI.Container) {
-        while (con.children.length > 0) con.removeChildAt(0).destroy({children: true});
+        removeAllChildren(con, {children: true});
+        this.pointerEvents.clearEvents();
     }
 
     /**
@@ -355,14 +357,14 @@ export class TileGrid implements Serializable, Grids.Grid {
             const railCon = new GridContainer(this).loadCells(
                 Array.from({length}, (_, y) => 
                     Array.from({length}, (_, x) =>
-                        this.#renderTileAt(x, y, 1 << Layer.RAILS)
+                        this.renderTileAt(x, y, 1 << Layer.RAILS)
                     )
                 )
             );
             const boxCon = new GridContainer({...this, drawGrid: false}).loadCells(
                 Array.from({length}, (_, y) => 
                     Array.from({length}, (_, x) =>
-                        this.#renderTileAt(x, y, 1 << Layer.BOXES)
+                        this.renderTileAt(x, y, 1 << Layer.BOXES)
                     )
                 )
             );
@@ -373,8 +375,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             con.addChild(layers);
     
             con.interactive = true;
-            this.#applyHoverEvents(con);
-            this.#applyPointerEvents(con);
+            this.pointerEvents.applyEvents();
         }
 
         this.#rendered = true;
@@ -394,318 +395,8 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param y y coord
      */
     rerenderTileInContainer(x: number, y: number) {
-        this.maybeLayer(Layer.RAILS)?.replaceCell([x, y], this.#renderTileAt(x, y, 1 << Layer.RAILS));
-        this.maybeLayer(Layer.BOXES)?.replaceCell([x, y], this.#renderTileAt(x, y, 1 << Layer.BOXES));
-    }
-
-    #containerEvents: [string | symbol, (e: PIXI.InteractionEvent) => void][] = [];
-
-    #on<T extends string | symbol>(
-        emitter: PIXI.utils.EventEmitter<T>, 
-        event: T, 
-        listener: (e: PIXI.InteractionEvent) => void
-    ) {
-        this.#containerEvents.push([event, listener]);
-        emitter.on(event, listener);
-    }
-    /**
-     * Apply pointer events like click, drag, etc. to a container
-     * @param con Container to apply to.
-     */
-    #applyPointerEvents(con: PIXI.Container) {
-        let pointers = 0;
-
-        type DragPointer = {
-            editMode: "rail",
-            drag: RailTouch
-        } | {
-            editMode: "levelEdit",
-            drag: CellPos
-        } | undefined;
-
-        // In rail mode, this pointer is used to track the last pointed-to edge or center.
-        // On an initial click, this can be bound to an edge or a center.
-        // While dragging, this can only bind to edges.
-        let cellPointer: DragPointer = undefined;
-        const selectCopy = new PIXI.Container();
-        let ccshift: PIXI.IPointData;
-        con.addChild(selectCopy);
-
-        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
-            const pos = e.data.getLocalPosition(con);
-            const cellPos = Grids.positionToCell(this, pos);
-            
-            // pointer === 1 implies drag
-            if (pointers !== 1) {
-                // If pointers increases or decreases, then the cellPointer is useless.
-                cellPointer = undefined;
-            } else {
-                const editMode = this.#editMode;
-                if (editMode !== cellPointer?.editMode) cellPointer = undefined;
-
-                if (editMode === "rail") {
-                    // cellPointer can now only bind to edges, so ignore centers.
-                    let edge = this.nearestEdge(pos, cellPos);
-                    if (typeof edge === "undefined") return;
-                    
-                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
-    
-                    // If cellPointer has not existed yet, just set it
-                    // If it has, then we can try to create a rail
-                    if (cellPointer?.editMode === "rail") {
-                        const pointer = cellPointer.drag;
-                        // If the cell pointers are in the same cell, we can try to create a rail
-    
-                        let result = this.findSharedCell(pointer, nCellPointer);
-    
-                        if (typeof result !== "undefined") {
-                            let [shared, me0, me1] = result;
-                            
-                            // edge + edge = make connection
-                            // center + edge = make straight line
-                            let e1 = me1!;
-                            let e0 = me0 ?? Dir.flip(e1);
-    
-                            if (e0 !== e1) {
-                                this.replaceTile(...shared, t => {
-                                    if (t instanceof Tile.Blank) {
-                                        return new Tile.SingleRail(e0, e1);
-                                    } else if (t instanceof Tile.Rail) {
-                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
-                                    } else {
-                                        return t;
-                                    }
-                                });
-                            }
-                        }
-                    }
-    
-                    cellPointer = {editMode, drag: nCellPointer};
-                } else if (editMode === "readonly") {
-                    // nothing
-                } else if (editMode === "railErase") {
-                    this.replaceTile(...cellPos, t => {
-                        return t instanceof Tile.Rail ? undefined : t;
-                    });
-                } else if (editMode === "levelEdit") {
-                    selectCopy.position = {
-                        x: e.data.global.x - ccshift.x, 
-                        y: e.data.global.y - ccshift.y
-                    };
-                } else {
-                    let _: never = editMode;
-                }
-            }
-        });
-
-        let dbtTile: CellPos | undefined;
-        let dbtTimeout: NodeJS.Timeout | undefined;
-        const DBT_TIMEOUT_MS = 1000;
-
-        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
-            pointers++;
-
-            const pos = e.data.getLocalPosition(con);
-            const cellPos = Grids.positionToCell(this, pos);
-
-            // double tap check
-            if (!dbtTile) {
-                // tap 1
-                dbtTile = cellPos;
-                dbtTimeout = setTimeout(() => { dbtTile = undefined; }, DBT_TIMEOUT_MS);
-            } else {
-                // tap 2
-                if (cellPos.equals(dbtTile)) {
-                    clearTimeout(dbtTimeout);
-                    this.#onDoubleTap(dbtTile);
-                    dbtTile = undefined;
-                }
-            }
-            //
-
-            const editMode = this.#editMode;
-            if (editMode !== cellPointer?.editMode) cellPointer = undefined;
-
-            if (editMode === "rail") {
-                let edge = this.nearestEdge(pos, cellPos);
-                cellPointer = {
-                    editMode,
-                    drag: [
-                        cellPos, typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
-                    ]
-                };
-            } else if (editMode === "railErase") {
-                this.replaceTile(...cellPos, t => {
-                    return t instanceof Tile.Rail ? undefined : t;
-                });
-            } else if (editMode === "readonly") {
-                // nothing
-            } else if (editMode === "levelEdit") {
-                cellPointer = { editMode, drag: cellPos };
-                selectCopy.addChild(this.#renderTileAt(...cellPos, -1, true));
-                selectCopy.visible = true;
-                
-                const ccmin = Grids.cellToPosition(this, cellPos);
-                ccshift = {x: pos.x - ccmin.x, y: pos.y - ccmin.y};
-
-                selectCopy.position = {
-                    x: e.data.global.x - ccshift.x, 
-                    y: e.data.global.y - ccshift.y
-                };
-            } else {
-                let _: never = editMode;
-            }
-        });
-
-        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
-            pointers = Math.max(pointers - 1, 0);
-            
-            if (cellPointer?.editMode === "levelEdit") {
-                const cellPos = Grids.positionToCell(this, e.data.getLocalPosition(con));
-                this.setTile(...cellPos, this.tile(...cellPointer.drag)!.clone());
-            }
-
-            selectCopy.visible = false;
-            TileGrid.#cpsContainer(selectCopy);
-            cellPointer = undefined;
-        });
-        this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
-            pointers = Math.max(pointers - 1, 0);
-
-            selectCopy.visible = false;
-            TileGrid.#cpsContainer(selectCopy);
-            cellPointer = undefined;
-        });
-
-        this.#on(con, "pointercancel", (e: PIXI.InteractionEvent) => {
-            pointers = 0;
-            cellPointer = undefined;
-        })
-        // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
-    }
-
-    /**
-     * On desktop, display a rail indicator that marks which edge the mouse is nearest to.
-     * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
-     * @param con Container to apply to
-     */
-    #applyHoverEvents(con: PIXI.Container) {
-        const railMarker = TileGraphics.hoverIndicator(this.pixi, this.cellSize);
-        railMarker.tint = Palette.Hover;
-        railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
-        railMarker.visible = false;
-        railMarker.interactive = true;
-        railMarker.cursor = "grab";
-        con.addChild(railMarker);
-
-        // TODO, impl hoverSquare in select on mobile
-        const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
-        hoverSquare.width = this.cellSize;
-        hoverSquare.height = this.cellSize;
-        hoverSquare.alpha = 0.2;
-        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
-        hoverSquare.visible = false;
-        con.addChild(hoverSquare);
-
-        const enum Condition {
-            IN_BOUNDS, MOUSE_UP, RAILABLE
-        };
-        let visibility = [
-            false, true, false
-        ];
-
-        // this syntax is necessary to avoid scoping `this`
-        let updateVisibility = () => {
-            railMarker.visible = 
-                this.#editMode === "rail" && visibility.every(t => t);
-            hoverSquare.visible = 
-                (this.#editMode === "railErase" && visibility.every(t => t))
-                || (this.#editMode === "levelEdit" && visibility[Condition.IN_BOUNDS]);
-        };
-
-        this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
-            const pos = e.data.getLocalPosition(con);
-            const cellPos = Grids.positionToCell(this, pos);
-            const tile = this.tile(...cellPos);
-
-            if (this.#editMode === "rail") {
-                let dir = this.nearestEdge(pos, cellPos);
-    
-                if (typeof dir === "undefined") {
-                    visibility[Condition.RAILABLE] = false;
-                } else {
-    
-                    // If you can place a rail on this tile, mark the tile on the nearest edge
-                    if (TileGrid.canRail(tile)) {
-                        visibility[Condition.RAILABLE] = true;
-                        railMarker.position = Grids.cellToPosition(this, cellPos);
-                        railMarker.angle = -90 * dir;
-                    } else {
-                        let neighborPos = Dir.shift(cellPos, dir);
-                        let neighbor = this.tile(...neighborPos);
-    
-                        if (TileGrid.canRail(neighbor)) {
-                            visibility[Condition.RAILABLE] = true;
-    
-                            railMarker.position = Grids.cellToPosition(this, neighborPos);
-                            railMarker.angle = -90 * Dir.flip(dir);
-                        } else {
-                            visibility[Condition.RAILABLE] = false;
-                        }
-                    }
-                }
-            } else if (this.#editMode === "railErase") {
-                visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
-                hoverSquare.position = Grids.cellToPosition(this, cellPos);
-            } else if (this.#editMode === "levelEdit") {
-                hoverSquare.position = Grids.cellToPosition(this, cellPos);
-                
-            } else if (this.#editMode === "readonly") {
-                // nothing
-            } else {
-                let _: never = this.#editMode;
-            }
-
-            updateVisibility();
-        })
-
-        this.#on(con, "mousedown", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = false;
-            updateVisibility();
-        });
-        this.#on(con, "mouseup", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = true;
-            updateVisibility();
-        });
-        this.#on(con, "mouseupoutside", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = true;
-            updateVisibility();
-        });
-
-        this.#on(con, "mouseover", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.IN_BOUNDS] = true;
-            updateVisibility();
-        });
-        this.#on(con, "mouseout", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.IN_BOUNDS] = false;
-            updateVisibility();
-        });
-    }
-
-    /**
-     * Handles what happens when a tile is double tapped
-     * @param dbtTile the tile that was double tapped
-     */
-    #onDoubleTap(dbtTile: CellPos) {
-        if (this.#editMode === "rail") {
-            // double tap to swap rails (on a double rail)
-            this.replaceTile(...dbtTile, t => {
-                if (t instanceof Tile.DoubleRail) {
-                    return t.flipped();
-                }
-                return t;
-            });
-        }
+        this.maybeLayer(Layer.RAILS)?.replaceCell([x, y], this.renderTileAt(x, y, 1 << Layer.RAILS));
+        this.maybeLayer(Layer.BOXES)?.replaceCell([x, y], this.renderTileAt(x, y, 1 << Layer.BOXES));
     }
     
     /**
@@ -888,6 +579,340 @@ export class TileGrid implements Serializable, Grids.Grid {
 
         return newTiles;
     }
+}
+
+type DragPointer = {
+    editMode: "rail",
+    drag: RailTouch
+} | {
+    editMode: "levelEdit",
+    drag: CellPos
+} | undefined;
+
+class PointerEvents {
+    #grid: TileGrid;
+
+    constructor(grid: TileGrid) {
+        this.#grid = grid;
+    }
+
+    applyEvents(con?: PIXI.Container) {
+        con ??= this.#grid.container;
+        this.#applyPointerEvents(con);
+        this.#applyHoverEvents(con);
+    }
+
+    clearEvents(con?: PIXI.Container) {
+        con ??= this.#grid.container;
+
+        for (let [name, h] of this.#containerEvents) con.off(name, h);
+        this.#containerEvents.length = 0;
+    }
+
+    #containerEvents: [string | symbol, (e: PIXI.InteractionEvent) => void][] = [];
+
+    #on<T extends string | symbol>(
+        emitter: PIXI.utils.EventEmitter<T>, 
+        event: T, 
+        listener: (e: PIXI.InteractionEvent) => void
+    ) {
+        this.#containerEvents.push([event, listener]);
+        emitter.on(event, listener);
+    }
+    /**
+     * Apply pointer events like click, drag, etc. to a container
+     * @param con Container to apply to.
+     */
+    #applyPointerEvents(con: PIXI.Container) {
+        let pointers = 0;
+        const grid = this.#grid;
+
+        // In rail mode, this pointer is used to track the last pointed-to edge or center.
+        // On an initial click, this can be bound to an edge or a center.
+        // While dragging, this can only bind to edges.
+        let cellPointer: DragPointer = undefined;
+        const selectCopy = new PIXI.Container();
+        let ccshift: PIXI.IPointData;
+        con.addChild(selectCopy);
+
+        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = Grids.positionToCell(this.#grid, pos);
+
+            // pointer === 1 implies drag
+            if (pointers !== 1) {
+                // If pointers increases or decreases, then the cellPointer is useless.
+                cellPointer = undefined;
+            } else {
+                const editMode = grid.editMode;
+                if (editMode !== cellPointer?.editMode) cellPointer = undefined;
+
+                if (editMode === "rail") {
+                    // cellPointer can now only bind to edges, so ignore centers.
+                    let edge = grid.nearestEdge(pos, cellPos);
+                    if (typeof edge === "undefined") return;
+                    
+                    let nCellPointer: Edge = [cellPos, Dir.shift(cellPos, edge)];
+    
+                    // If cellPointer has not existed yet, just set it
+                    // If it has, then we can try to create a rail
+                    if (cellPointer?.editMode === "rail") {
+                        const pointer = cellPointer.drag;
+                        // If the cell pointers are in the same cell, we can try to create a rail
+    
+                        let result = grid.findSharedCell(pointer, nCellPointer);
+    
+                        if (typeof result !== "undefined") {
+                            let [shared, me0, me1] = result;
+                            
+                            // edge + edge = make connection
+                            // center + edge = make straight line
+                            let e1 = me1!;
+                            let e0 = me0 ?? Dir.flip(e1);
+    
+                            if (e0 !== e1) {
+                                grid.replaceTile(...shared, t => {
+                                    if (t instanceof Tile.Blank) {
+                                        return new Tile.SingleRail(e0, e1);
+                                    } else if (t instanceof Tile.Rail) {
+                                        return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                                    } else {
+                                        return t;
+                                    }
+                                });
+                            }
+                        }
+                    }
+    
+                    cellPointer = {editMode, drag: nCellPointer};
+                } else if (editMode === "readonly") {
+                    // nothing
+                } else if (editMode === "railErase") {
+                    grid.replaceTile(...cellPos, t => {
+                        return t instanceof Tile.Rail ? undefined : t;
+                    });
+                } else if (editMode === "levelEdit") {
+                    selectCopy.position = {
+                        x: e.data.global.x - ccshift.x, 
+                        y: e.data.global.y - ccshift.y
+                    };
+                } else {
+                    let _: never = editMode;
+                }
+            }
+        });
+
+        let dbtTile: CellPos | undefined;
+        let dbtTimeout: NodeJS.Timeout | undefined;
+        const DBT_TIMEOUT_MS = 1000;
+
+        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
+            pointers++;
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = Grids.positionToCell(grid, pos);
+
+            // double tap check
+            if (!dbtTile) {
+                // tap 1
+                dbtTile = cellPos;
+                dbtTimeout = setTimeout(() => { dbtTile = undefined; }, DBT_TIMEOUT_MS);
+            } else {
+                // tap 2
+                if (cellPos.equals(dbtTile)) {
+                    clearTimeout(dbtTimeout);
+                    this.#onDoubleTap(dbtTile);
+                    dbtTile = undefined;
+                }
+            }
+            //
+
+            const editMode = grid.editMode;
+            if (editMode !== cellPointer?.editMode) cellPointer = undefined;
+
+            if (editMode === "rail") {
+                let edge = grid.nearestEdge(pos, cellPos);
+                cellPointer = {
+                    editMode,
+                    drag: [
+                        cellPos, typeof edge !== "undefined" ? Dir.shift(cellPos, edge) : undefined
+                    ]
+                };
+            } else if (editMode === "railErase") {
+                grid.replaceTile(...cellPos, t => {
+                    return t instanceof Tile.Rail ? undefined : t;
+                });
+            } else if (editMode === "readonly") {
+                // nothing
+            } else if (editMode === "levelEdit") {
+                cellPointer = { editMode, drag: cellPos };
+                selectCopy.addChild(grid.renderTileAt(...cellPos, -1, true));
+                selectCopy.visible = true;
+                
+                const ccmin = Grids.cellToPosition(grid, cellPos);
+                ccshift = {x: pos.x - ccmin.x, y: pos.y - ccmin.y};
+
+                selectCopy.position = {
+                    x: e.data.global.x - ccshift.x, 
+                    y: e.data.global.y - ccshift.y
+                };
+            } else {
+                let _: never = editMode;
+            }
+        });
+
+        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
+            pointers = Math.max(pointers - 1, 0);
+
+            if (cellPointer?.editMode === "levelEdit") {
+                const cellPos = Grids.positionToCell(grid, e.data.getLocalPosition(con));
+                grid.setTile(...cellPos, grid.tile(...cellPointer.drag)!.clone());
+            }
+
+            selectCopy.visible = false;
+            removeAllChildren(selectCopy, {children: true});
+            cellPointer = undefined;
+        });
+        this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
+            pointers = Math.max(pointers - 1, 0);
+
+            selectCopy.visible = false;
+            removeAllChildren(selectCopy, {children: true});
+            cellPointer = undefined;
+        });
+
+        this.#on(con, "pointercancel", (e: PIXI.InteractionEvent) => {
+            pointers = 0;
+            cellPointer = undefined;
+        })
+        // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
+    }
+
+    /**
+     * On desktop, display a rail indicator that marks which edge the mouse is nearest to.
+     * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
+     * @param con Container to apply to
+     */
+    #applyHoverEvents(con: PIXI.Container) {
+        const grid = this.#grid;
+
+        const railMarker = TileGraphics.hoverIndicator(grid.pixi, grid.cellSize);
+        railMarker.tint = Palette.Hover;
+        railMarker.blendMode = PIXI.BLEND_MODES.SCREEN;
+        railMarker.visible = false;
+        railMarker.interactive = true;
+        railMarker.cursor = "grab";
+        con.addChild(railMarker);
+
+        // TODO, impl hoverSquare in select on mobile
+        const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
+        hoverSquare.width = grid.cellSize;
+        hoverSquare.height = grid.cellSize;
+        hoverSquare.alpha = 0.2;
+        hoverSquare.blendMode = PIXI.BLEND_MODES.SCREEN;
+        hoverSquare.visible = false;
+        con.addChild(hoverSquare);
+
+        const enum Condition {
+            IN_BOUNDS, MOUSE_UP, RAILABLE
+        };
+        let visibility = [
+            false, true, false
+        ];
+
+        // this syntax is necessary to avoid scoping `this`
+        let updateVisibility = () => {
+            railMarker.visible = 
+                grid.editMode === "rail" && visibility.every(t => t);
+            hoverSquare.visible = 
+                (grid.editMode === "railErase" && visibility.every(t => t))
+                || (grid.editMode === "levelEdit" && visibility[Condition.IN_BOUNDS]);
+        };
+
+        this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = Grids.positionToCell(grid, pos);
+            const tile = grid.tile(...cellPos);
+
+            if (grid.editMode === "rail") {
+                let dir = grid.nearestEdge(pos, cellPos);
+    
+                if (typeof dir === "undefined") {
+                    visibility[Condition.RAILABLE] = false;
+                } else {
+    
+                    // If you can place a rail on this tile, mark the tile on the nearest edge
+                    if (TileGrid.canRail(tile)) {
+                        visibility[Condition.RAILABLE] = true;
+                        railMarker.position = Grids.cellToPosition(grid, cellPos);
+                        railMarker.angle = -90 * dir;
+                    } else {
+                        let neighborPos = Dir.shift(cellPos, dir);
+                        let neighbor = grid.tile(...neighborPos);
+    
+                        if (TileGrid.canRail(neighbor)) {
+                            visibility[Condition.RAILABLE] = true;
+    
+                            railMarker.position = Grids.cellToPosition(grid, neighborPos);
+                            railMarker.angle = -90 * Dir.flip(dir);
+                        } else {
+                            visibility[Condition.RAILABLE] = false;
+                        }
+                    }
+                }
+            } else if (grid.editMode === "railErase") {
+                visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
+                hoverSquare.position = Grids.cellToPosition(grid, cellPos);
+            } else if (grid.editMode === "levelEdit") {
+                hoverSquare.position = Grids.cellToPosition(grid, cellPos);
+                
+            } else if (grid.editMode === "readonly") {
+                // nothing
+            } else {
+                let _: never = grid.editMode;
+            }
+
+            updateVisibility();
+        })
+
+        this.#on(con, "mousedown", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = false;
+            updateVisibility();
+        });
+        this.#on(con, "mouseup", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = true;
+            updateVisibility();
+        });
+        this.#on(con, "mouseupoutside", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.MOUSE_UP] = true;
+            updateVisibility();
+        });
+
+        this.#on(con, "mouseover", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.IN_BOUNDS] = true;
+            updateVisibility();
+        });
+        this.#on(con, "mouseout", (e: PIXI.InteractionEvent) => {
+            visibility[Condition.IN_BOUNDS] = false;
+            updateVisibility();
+        });
+    }
+
+    /**
+     * Handles what happens when a tile is double tapped
+     * @param dbtTile the tile that was double tapped
+     */
+    #onDoubleTap(dbtTile: CellPos) {
+        if (this.#grid.editMode === "rail") {
+            // double tap to swap rails (on a double rail)
+            this.#grid.replaceTile(...dbtTile, t => {
+                if (t instanceof Tile.DoubleRail) {
+                    return t.flipped();
+                }
+                return t;
+            });
+        }
+    }
+
 }
 
 class GridCursor {
