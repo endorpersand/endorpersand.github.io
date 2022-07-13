@@ -11,7 +11,7 @@ type EditMode =
     | "readonly"  // Active while a simulation. You cannot edit any tiles.
     | "rail"      // Active while solving. You can only draw rails.
     | "railErase" // Active while solving (while erasing). You can only erase rails.
-    | "levelEdit" // Active while level editing. Allows you to select and edit tiles.
+    | "level"     // Active while level editing. Allows you to select and edit tiles.
 type Event =
     | `exit${Capitalize<EditMode>}`
     | `enter${Capitalize<EditMode>}`
@@ -100,7 +100,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "levelEdit";
+    #editMode: EditMode = "level";
 
     /**
      * Map keeping track of listeners listening to an event
@@ -598,7 +598,7 @@ namespace DragPointer {
     }
 
     export interface LEDrag {
-        editMode: "levelEdit",
+        editMode: "level",
         drag: CellPos
     }
 }
@@ -665,11 +665,11 @@ class PointerEvents {
         let pointers = 0;
         const grid = this.#grid;
         
-        const leLayer = this.#modeLayer("levelEdit");
+        const levelLayer = this.#modeLayer("level");
 
         const selectCopy = new PIXI.Container();
         let ccshift: PIXI.IPointData;
-        leLayer.addChild(selectCopy);
+        levelLayer.addChild(selectCopy);
 
         // TODO: make actual sprite for this
         const selectSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
@@ -678,7 +678,7 @@ class PointerEvents {
         selectSquare.tint = 0xFF0000;
         selectSquare.alpha = 0.2;
         selectSquare.visible = false;
-        leLayer.addChild(selectSquare);
+        levelLayer.addChild(selectSquare);
 
         let dbtTile: CellPos | undefined;
         let dbtTimeout: NodeJS.Timeout | undefined;
@@ -723,7 +723,7 @@ class PointerEvents {
                 });
             } else if (editMode === "readonly") {
                 // nothing
-            } else if (editMode === "levelEdit") {
+            } else if (editMode === "level") {
                 this.pointer = { 
                     start: { pixPos: pos, cellPos },
                     editMode, 
@@ -804,7 +804,7 @@ class PointerEvents {
                     grid.replaceTile(...cellPos, t => {
                         return t instanceof Tile.Rail ? undefined : t;
                     });
-                } else if (editMode === "levelEdit") {
+                } else if (editMode === "level") {
                     selectCopy.position = {
                         x: e.data.global.x - ccshift.x, 
                         y: e.data.global.y - ccshift.y
@@ -818,7 +818,7 @@ class PointerEvents {
         this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
             pointers = Math.max(pointers - 1, 0);
 
-            if (this.pointer?.editMode === "levelEdit") {
+            if (this.pointer?.editMode === "level") {
                 const pos = e.data.getLocalPosition(con);
                 const cellPos = Grids.positionToCell(grid, pos);
 
@@ -876,7 +876,7 @@ class PointerEvents {
         this.#modeLayer("rail").addChild(railMarker);
 
         // TODO, impl hoverSquare in select on mobile
-        const levelSquare = this.#modeLayer("levelEdit").addChild(
+        const levelSquare = this.#modeLayer("level").addChild(
             this.#hoverSquare(grid.cellSize)
         );
         const eraseSquare = this.#modeLayer("railErase").addChild(
@@ -931,7 +931,7 @@ class PointerEvents {
             } else if (grid.editMode === "railErase") {
                 visibility[Condition.RAILABLE] = TileGrid.canRail(tile);
                 eraseSquare.position = Grids.cellToPosition(grid, cellPos);
-            } else if (grid.editMode === "levelEdit") {
+            } else if (grid.editMode === "level") {
                 levelSquare.position = Grids.cellToPosition(grid, cellPos);
                 
             } else if (grid.editMode === "readonly") {
