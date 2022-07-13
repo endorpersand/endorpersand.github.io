@@ -22,7 +22,7 @@ body * {
     font-family: inherit;
 }
 
-body.erase-mode {
+body.railErase-mode {
     background: linear-gradient(#222 25%, #442)
 }
 body.readonly-mode {
@@ -126,19 +126,19 @@ button:active {
     background-color: #343;
     border-color: #232;
 }
-button.erase-mode {
+body.railErase-mode button#b-erase {
     background-color: #771;
     border-color: #552;
 }
-button.erase-mode:active {
+body.railErase-mode button#b-erase:active {
     background-color: #781;
     border-color: #452;
 }
-button.readonly-mode {
+body.readonly-mode button#b-start {
     background-color: #233;
     border-color: #122;
 }
-button.readonly-mode:active {
+body.readonly-mode button#b-start:active {
     background-color: #243;
     border-color: #132;
 }

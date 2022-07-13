@@ -1,5 +1,5 @@
 import * as LevelData from "./levels";
-import { LoadableBoard, TileGrid } from "./logic";
+import { EditMode, EDIT_MODES, LoadableBoard, TileGrid } from "./logic";
 
 export namespace Elements {
     export const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
@@ -60,6 +60,13 @@ export function speed() { return _speed; }
 
 const {erase, undo, start, step} = Elements;
 
+function documentEditMode(e: EditMode) {
+    const classList = document.body.classList;
+
+    classList.remove(...EDIT_MODES.map(t => `${t}-mode`));
+    classList.add(`${e}-mode`);
+}
+
 export function applyButtons(grid: TileGrid) {
     erase.addEventListener("click", () => {
         let em = grid.editMode;
@@ -88,29 +95,39 @@ export function applyButtons(grid: TileGrid) {
         input.value = "0.00";
     });
 
+    grid.on("switchEdit", () => {
+        documentEditMode(grid.editMode);
+    })
+    documentEditMode(grid.editMode);
+    
+    const observer = new MutationObserver(() => {
+        const classList = document.body.classList;
+        const {reject, require} = grid.htmlRequire();
+        const needsFixes: string[] = [];
+
+        needsFixes.push(...require.filter(cls => !classList.contains(cls)));
+        needsFixes.push(...reject.filter(cls => classList.contains(cls)));
+
+        for (let cls of needsFixes) classList.toggle(cls);
+    });
+    observer.observe(document.body, {
+        attributes: true, 
+        attributeFilter: ['class'],
+        childList: false, 
+        characterData: false
+    });
+
     grid.on("enterRailErase", () => {
-        // enable erase mode
-        document.body.classList.add("erase-mode");
-        erase.classList.add("erase-mode");
         erase.textContent = "Stop Erasing";
     });
     grid.on("exitRailErase", () => {
-        // reset erase mode
-        document.body.classList.remove("erase-mode");
-        erase.classList.remove("erase-mode");
         erase.textContent = "Erase";
     });
 
     grid.on("enterReadonly", () => {
-        // set readonly mode active
-        document.body.classList.add("readonly-mode");
-        start.classList.add("readonly-mode");
         start.textContent = "Return";
     });
     grid.on("exitReadonly", () => {
-        // reset readonly mode
-        document.body.classList.remove("readonly-mode");
-        start.classList.remove("readonly-mode");
         start.textContent = "Start";
         document.body.classList.remove("failed");
     });

@@ -7,11 +7,15 @@ import "./ext/array";
 type Edge   = [c1: CellPos, c2: CellPos];
 type Center = [center: CellPos, _: undefined];
 type RailTouch = Edge | Center;
-type EditMode = 
-    | "readonly"  // Active while a simulation. You cannot edit any tiles.
-    | "rail"      // Active while solving. You can only draw rails.
-    | "railErase" // Active while solving (while erasing). You can only erase rails.
-    | "level"     // Active while level editing. Allows you to select and edit tiles.
+
+export const EDIT_MODES = [
+    "readonly",  // Active while a simulation. You cannot edit any tiles.
+    "rail",      // Active while solving. You can only draw rails.
+    "railErase", // Active while solving (while erasing). You can only erase rails.
+    "level",     // Active while level editing. Allows you to select and edit tiles.
+] as const;
+export type EditMode = typeof EDIT_MODES[number];
+
 type Event =
     | `exit${Capitalize<EditMode>}`
     | `enter${Capitalize<EditMode>}`
@@ -299,7 +303,23 @@ export class TileGrid implements Serializable, Grids.Grid {
     dispatchFailEvent() {
         this.#dispatchEvent("fail");
     }
+    get failed() {
+        return !this.simulation?.passing ?? false;
+    }
+    htmlRequire() {
+        const buckets: [string[], string[]] = [[], []];
+        
+        for (let e of EDIT_MODES) {
+            const include = this.#editMode === e;
+            buckets[+include].push(`${e}-mode`);
+        }
+        
+        const failedInclude = typeof this.simulation !== "undefined" && !this.simulation.passing;
+        buckets[+failedInclude].push("failed");
 
+        const [reject, require] = buckets;
+        return {reject, require};
+    }
     /**
      * Check if rails can be placed on this type of tile
      * @param t tile (`undefined` represents an OOB tile)
