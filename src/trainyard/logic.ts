@@ -1216,14 +1216,13 @@ namespace Simulation {
             // check intra collisions
             for (let [pos, tile] of this.#grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
-                trainState.checkIntraCollisions();
 
                 for (let t of trainState.exitingTrains) {
                     trainEdges.setDefault([pos, t.dir], () => []).push([trainState, t]);
                 }
             }
 
-            // check inter collisions: mix trains on the same edge
+            // check inter collisions: mix/merge trains on the same edge
             for (let trains of trainEdges.values()) {
                 if (trains.length > 1) {
                     const color = Color.mixMany(trains.map(([_, t]) => t.color));
@@ -1264,9 +1263,6 @@ const TRAIN_CRASH = Symbol("train crashed");
 type TrainImage = void | typeof TRAIN_CRASH | Train | Train[];
 type NormalizedImage = typeof TRAIN_CRASH | Train[];
 type TrainDeploy = (t: Train) => TrainImage;
-interface TrainStateOptions {
-    doTrainsCollide: boolean
-}
 
 class TrainState {
     /**
@@ -1294,15 +1290,8 @@ class TrainState {
      */
     tileMoves: Move[] = [];
 
-    /**
-     * Whether or not to check intra collisions (merges and mixes) within this tile.
-     */
-    doTrainsCollide = false;
-
-    constructor(iter: Iterable<Train> = [], options?: Partial<TrainStateOptions>) {
+    constructor(iter: Iterable<Train> = []) {
         this.#trains = Array.from(iter);
-
-        if (options?.doTrainsCollide) this.doTrainsCollide = options.doTrainsCollide;
     }
 
     get length() {
@@ -1351,61 +1340,25 @@ class TrainState {
         mergingMove.step = m.step;
     }
 
-    checkIntraCollisions() {
-        if (this.doTrainsCollide && this.#exitingTrains.length > 0) {
-            // straight paths cross through center so they all get color mix
-            const straightPaths = this.#paths.filter(([pre, im]) => {
-                const [d1, d2] = [pre.dir, im.dir];
-                return !((d1 - d2) % 2);
-            })
-
-            if (straightPaths.length > 1) {
-                const straightImages = straightPaths.map(([_, im]) => im);
-                const color = Color.mixMany(straightImages.map(im => im.color));
-    
-                for (let i = 0; i < this.#exitingTrains.length; i++) {
-                    const im = this.#exitingTrains[i];
-    
-                    if (straightImages.includes(im)) {
-                        const nim = { ...im, color };
-
-                        this.#exitingTrains[i] = nim;
-                        this.mergePass({
-                            move: "pass",
-                            preimage: im,
-                            image: nim,
-                            step: Step.CenterCollision
-                        });
-                    }
-                }
-            }
-
-            this.#paths.length = 0;
-
-            // merge colors if they land at the same place
-            const dirMap = new Map<Dir, Train[]>();
-            for (let t of this.#exitingTrains) {
-                dirMap.setDefault(t.dir, () => []).push(t);
-            }
-            this.#exitingTrains.length = 0;
-            for (let [d, trains] of dirMap) {
-                if (trains.length > 1) {
-                    const color = Color.mixMany(trains.map(t => t.color));
-
-                    const nim = {color, dir: d};
-                    this.#exitingTrains.push(nim);
-                    this.#trackMerge(trains, nim, Step.EdgeCollision);
-                } else {
-                    this.#exitingTrains.push(...trains);
-                }
-            }
-        }
-    }
-
     deployExiting(cur: GridCursor) {
+        // merge trains that are leaving the same edge
+        const groupMap = new Map<Dir, Train[]>();
         for (let t of this.#exitingTrains) {
-            const nb = cur.neighbor(t.dir);
+            groupMap.setDefault(t.dir, () => []).push(t);
+        }
+
+        for (let [d, trains] of groupMap) {
+            const nb = cur.neighbor(d);
             
+            let t: Train;
+            if (trains.length > 1) {
+                const tc = trains.map(t => t.color);
+                t = {dir: d, color: Color.mixMany(tc)};
+                this.#trackMerge(trains, t, Step.Deploy);
+            } else {
+                t = trains[0];
+            }
+
             if (nb?.accepts(t)) {
                 nb.state!.trainState.#enteringTrains.push(t);
             } else {
@@ -1476,10 +1429,8 @@ class TrainState {
             };
         }
 
-        if (move) {
-            this.tileMoves.push(move);
-            return move;
-        }
+        this.tileMoves.push(move);
+        return move;
     }
 
     #normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
@@ -1961,12 +1912,6 @@ export namespace Tile {
         constructor(entrances: Dir[] | Dir.Flags) {
             super(...entrances);
         }
-    
-        createDefaultState(this: StatefulTile<TileState>): TileState {
-            return {
-                trainState: new TrainState([], {doTrainsCollide: true})
-            };
-        }
 
         /**
          * Create a new rail from two single rails.
@@ -2035,8 +1980,9 @@ export namespace Tile {
 
         step(cur: GridCursor): void {
             const trainState = this.state!.trainState;
+            const color = Color.mixMany(trainState.trains.map(t => t.color));
 
-            trainState.deployAll(({color, dir}) => {
+            trainState.deployAll(({dir}) => {
                 const newDir = Rail.redirect(dir, this.actives);
 
                 if (typeof newDir === "number") return {color, dir: newDir};
@@ -2072,7 +2018,7 @@ export namespace Tile {
         readonly paths: readonly [Dir.Flags, Dir.Flags];
         readonly #overlapping: boolean;
     
-        constructor(paths: readonly [Dir.Flags, Dir.Flags]) {
+        constructor(paths: [Dir.Flags, Dir.Flags]) {
             let [e0, e1] = paths;
             if (e0.equals(e1)) {
                 throw new Error("Rails match");
@@ -2096,12 +2042,31 @@ export namespace Tile {
             const redirects = trainState.trains.length;
             const paths: typeof this.paths = [state.topIndex, 1 - state.topIndex].map(i => this.paths[i]) as any;
 
-            trainState.deployAll(t => {
-                const path = paths.find(p => p.has(Dir.flip(t.dir)));
+            const trains = this.state!.trainState.trains;
+            let pathTrains: [Train[], Train[]] = [[], []];
+            for (let t of trains) {
+                const i = paths.findIndex(p => p.has(Dir.flip(t.dir)));
+                if (i !== -1) pathTrains[i].push(t);
+            }
 
-                if (typeof path !== "undefined") {
-                    const dir = Rail.redirect(t.dir, path);
-                    if (typeof dir === "number") return {color: t.color, dir};
+            let pathColors: [Color, Color];
+            if (!this.#overlapping && this.crossesOver) { // + rail
+                const color = Color.mixMany(trains.map(t => t.color));
+                pathColors = [color, color];
+            } else {
+                pathColors = pathTrains.map(trains => {
+                    const clrs = trains.map(t => t.color);
+    
+                    if (clrs.length > 0) return Color.mixMany(clrs);
+                }) as any;
+            }
+
+            trainState.deployAll(({dir}) => {
+                const i = paths.findIndex(p => p.has(Dir.flip(dir)));
+
+                if (i !== -1) {
+                    const exitDir = Rail.redirect(dir, paths[i]);
+                    if (typeof exitDir === "number") return {color: pathColors[i]!, dir: exitDir};
                 }
 
                 return TRAIN_CRASH;

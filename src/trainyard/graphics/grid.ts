@@ -276,7 +276,7 @@ export class TrainContainer extends AbsGriddedContainer {
                     const transform = this.#interp(preImagePos, initDir, image.dir, progress);
 
                     // after progress 0.5, the trains likely intersected, so color changes
-                    const c = progress > 0.5 && m.step === Step.CenterCollision ? image : preimage;
+                    const c = progress > 0.5 ? image : preimage;
                     this.#redressBody(trainBody, {...transform, train: c});
                 }
             } else if (m.move == "split") {
@@ -387,10 +387,4 @@ export class TrainContainer extends AbsGriddedContainer {
             this.removeChild(this.children[0]).destroy({children: true});
         }
     }
-}
-
-function pop<K, V>(map: Map<K, V>, k: K): V | undefined {
-    const v = map.get(k);
-    map.delete(k);
-    return v;
 }
