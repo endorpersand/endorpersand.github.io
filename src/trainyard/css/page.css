@@ -11,6 +11,7 @@
 
 body {
     background-color: #222;
+    color: white;
     display: flex;
     justify-content: center;
     align-items: stretch;
@@ -46,6 +47,7 @@ body.readonly-mode {
 #navbar {
     height: 7vh;
     background-color: #555;
+    display: flex;
 }
 
 .control-hud {
@@ -55,11 +57,35 @@ body.readonly-mode {
     background-color: #555;
     height: 130px;
 }
+
+/* split-column, split-row: make a column or row that evenly divides space */
+.split-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.split-column > * {
+    flex: 1 1 0;
+}
+.split-row {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+}
+.split-row > * {
+    flex: 1 1 0;
+}
+
+/* stretch item across whole flex box */
+.stretch {
+    flex: 1 1 0;
+}
+
+/* rail-mode controls */
 #mistake-controls, #fail-display {
     flex: 1 1 0;
     align-items: stretch;
 }
-
 #play-controls {
     flex: 2 1 0;
     display: flex;
@@ -84,23 +110,28 @@ body.readonly-mode {
     flex: 1 1 0;
 }
 
-.split-column {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+
+#fd-pass {
+    background-color: #131;
+    border-color: #020;
 }
-.split-column > * {
-    flex: 1 1 0;
-}
-.split-row {
-    display: flex;
-    flex-direction: row;
-    gap: 3px;
-}
-.split-row > * {
-    flex: 1 1 0;
+#fd-fail {
+    background-color: #311;
+    border-color: #200;
 }
 
+/* level-mode controls */
+#edit-grid {
+    flex: 1 1 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+#edit-tile-btn {
+    padding: 15px 15px;
+}
+
+/* button display */
 button, .btn {
     background-color: #333;
     border: 3px outset #222;
@@ -137,6 +168,7 @@ body.readonly-mode button#b-start:active {
     border-color: #132;
 }
 
+/* input settings */
 input {
     width: 0px;
 }
@@ -148,29 +180,7 @@ input[type=number]::-webkit-outer-spin-button {
     margin: 0; 
 }
 
-@media (width <= 500px) {
-    #wrapper {
-        flex: 1 0 0;
-    }
-}
-
-#fd-pass {
-    background-color: #131;
-    border-color: #020;
-}
-#fd-fail {
-    background-color: #311;
-    border-color: #200;
-}
-
-.white {
-    color: white;
-}
-
-#navbar {
-    display: flex;
-}
-
+/* drop-down */
 #dd {
     margin: 5px 5px;
     display: flex;

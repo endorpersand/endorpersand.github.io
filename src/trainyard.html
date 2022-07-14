@@ -15,7 +15,7 @@
             </div>
         </div>
         <div id="game"></div>
-        <div class="control-hud">
+        <div class="control-hud reject-level-mode">
             <div id="mistake-controls" class="split-column reject-readonly-mode">
                 <button id="b-erase">Erase</button>
                 <button id="b-undo">Undo</button>
@@ -36,9 +36,20 @@
                 <div id="speed-controls">
                     <input type="range" class="slider">
                     <input type="number" size="2" step="0.01" min="0">
-                    <span class="white">x</span>
+                    <span>x</span>
                 </div>
             </div>
+        </div>
+        <div class="control-hud require-level-mode">
+            <div id="edit-grid">
+                <button>X</button>
+                <button>+</button>
+                <button>O</button>
+                <button>P</button>
+                <button>S</button>
+                <button>R</button>
+            </div>
+            <button id="edit-tile-btn">Edit Tile</button>
         </div>
     </div>
     <script type="module" src="trainyard/frame.ts"></script>
