@@ -100,7 +100,11 @@ export function applyButtons(grid: TileGrid) {
     })
     documentEditMode(grid.editMode);
     
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver(records => {
+        // if (!records.map(m => m.target).every(n => n === document.body)) {
+        //     window.location.href = "";
+        // }
+
         const classList = document.body.classList;
         const {reject, require} = grid.htmlRequire();
         const needsFixes: string[] = [];
@@ -113,7 +117,7 @@ export function applyButtons(grid: TileGrid) {
     observer.observe(document.body, {
         attributes: true, 
         attributeFilter: ['class'],
-        childList: false, 
+        subtree: true, 
         characterData: false
     });
 

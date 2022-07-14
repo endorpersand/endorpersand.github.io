@@ -1,7 +1,8 @@
 <head>
     <meta charset="utf-8">
     <!-- <link href="site.css" rel="stylesheet"> -->
-    <link href="trainyard/page.css" rel="stylesheet">
+    <link href="trainyard/css/condition.css" rel="stylesheet">
+    <link href="trainyard/css/page.css" rel="stylesheet">
     <!-- ok look i know it looks bad but you can still zoom, this is just to prevent weird zoom on input focus -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, user-scalable=0">
 </head>
@@ -14,16 +15,16 @@
             </div>
         </div>
         <div id="game"></div>
-        <div id="controls">
-            <div id="mistake-controls" class="split-column">
+        <div class="control-hud">
+            <div id="mistake-controls" class="split-column reject-readonly-mode">
                 <button id="b-erase">Erase</button>
                 <button id="b-undo">Undo</button>
             </div>
-            <div id="fail-display" class="split-column">
-                <div class="btn" id="fd-pass">
+            <div id="fail-display" class="split-column require-readonly-mode">
+                <div class="btn reject-failed" id="fd-pass">
                     doing well so far!
                 </div>
-                <div class="btn" id="fd-fail">
+                <div class="btn require-failed" id="fd-fail">
                     L
                 </div>
             </div>

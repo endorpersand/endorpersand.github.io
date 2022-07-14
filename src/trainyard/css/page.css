@@ -48,18 +48,40 @@ body.readonly-mode {
     background-color: #555;
 }
 
-#controls {
+.control-hud {
     display: flex;
     gap: 7px;
     padding: 6px;
     background-color: #555;
     height: 130px;
 }
-#controls > #mistake-controls, #fail-display {
+#mistake-controls, #fail-display {
+    flex: 1 1 0;
+    align-items: stretch;
+}
+
+#play-controls {
+    flex: 2 1 0;
+    display: flex;
+    flex-direction: column;
+}
+#play-controls > :first-child {
+    flex: 2 1 0;
+}
+#play-controls > :nth-child(2) {
     flex: 1 1 0;
 }
-#controls > #play-controls {
-    flex: 2 1 0;
+
+#speed-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#speed-controls > :first-child {
+    flex: 7 1 0;
+}
+#speed-controls > :nth-child(2) {
+    flex: 1 1 0;
 }
 
 .split-column {
@@ -76,34 +98,6 @@ body.readonly-mode {
     gap: 3px;
 }
 .split-row > * {
-    flex: 1 1 0;
-}
-
-#mistake-controls, #fail-display {
-    align-items: stretch;
-}
-
-#play-controls {
-    display: flex;
-    flex-direction: column;
-}
-#play-controls > :first-child {
-    flex: 2 1 0;
-}
-#play-controls > :nth-child(2) {
-    flex: 1 1 0;
-}
-
-#speed-controls {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-#speed-controls > :first-child {
-    flex: 7 1 0;
-}
-#speed-controls > :nth-child(2) {
     flex: 1 1 0;
 }
 
@@ -160,13 +154,6 @@ input[type=number]::-webkit-outer-spin-button {
     }
 }
 
-body:not(.readonly-mode) #fail-display {
-    display: none;
-}
-body.readonly-mode #mistake-controls {
-    display: none;
-}
-
 #fd-pass {
     background-color: #131;
     border-color: #020;
@@ -174,12 +161,6 @@ body.readonly-mode #mistake-controls {
 #fd-fail {
     background-color: #311;
     border-color: #200;
-}
-body.failed #fd-pass {
-    display: none;
-}
-body:not(.failed) #fd-fail {
-    display: none;
 }
 
 .white {
