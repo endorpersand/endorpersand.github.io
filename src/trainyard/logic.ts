@@ -942,7 +942,6 @@ class PointerEvents {
         railMarker.cursor = "grab";
         this.#modeLayer("rail").addChild(railMarker);
 
-        // TODO, impl hoverSquare in select on mobile
         const levelSquare = this.#modeLayer("level").addChild(
             this.#hoverSquare(grid.cellSize)
         );
@@ -950,21 +949,48 @@ class PointerEvents {
             this.#hoverSquare(grid.cellSize)
         );
 
+        // yeah i should probably just use a BitSet library but also it's like 3 bits :|
+        
         const enum Condition {
-            IN_BOUNDS, MOUSE_UP, RAILABLE
+            /**
+             * `true` if the pointer isn't in the bounds of the grid
+             * This will always be false if on mobile.
+             */
+            IN_BOUNDS, 
+            /**
+             * `true` if not currently dragging the pointer
+             */
+            NOT_DRAGGING,
+            /**
+             * `true` if the current hovering position can be replaced by a rail
+             */ 
+            RAILABLE
         };
-        let visibility = [
-            false, true, false
-        ];
+        let visibility = 0b010;
 
-        // this syntax is necessary to avoid scoping `this`
-        let updateVisibility = () => {
-            railMarker.visible = visibility.every(t => t);
-            eraseSquare.visible = visibility.every(t => t);
-            levelSquare.visible = visibility[Condition.IN_BOUNDS];
+        const setVis = (condition: number, bit: boolean) => {
+            if (bit) {
+                visibility |=  (1 << condition);
+            } else {
+                visibility &= ~(1 << condition);
+            }
+        };
+        const bit = (condition: number) => !!((visibility >> condition) & 1);
+
+        const updateVis = () => {
+            // note that the layer matching the edit mode is also an implicit condition
+
+            // for rail & erase mode, must be in bounds, must be not dragging, and must be on a railable tile
+            // b/c of in-bounds condition, these do not work on mobile
+            railMarker.visible  = visibility == 0b111;
+            eraseSquare.visible = visibility == 0b111;
+
+            // for level mode, in bounds is sufficient to make it appear.
+            // it must always appear when dragging, even on mobile, so:
+            levelSquare.visible = bit(Condition.IN_BOUNDS) || !bit(Condition.NOT_DRAGGING);
         };
 
-        this.#on(con, "mousemove", (e: PIXI.InteractionEvent) => {
+        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(grid, pos);
             const tile = grid.tile(...cellPos);
@@ -973,12 +999,12 @@ class PointerEvents {
                 let dir = grid.nearestEdge(pos, cellPos);
     
                 if (typeof dir === "undefined") {
-                    visibility[Condition.RAILABLE] = false;
+                    setVis(Condition.RAILABLE, false);
                 } else {
     
                     // If you can place a rail on this tile, mark the tile on the nearest edge
                     if (tile?.railable) {
-                        visibility[Condition.RAILABLE] = true;
+                        setVis(Condition.RAILABLE, true);
                         railMarker.position = Grids.cellToPosition(grid, cellPos);
                         railMarker.angle = -90 * dir;
                     } else {
@@ -986,17 +1012,17 @@ class PointerEvents {
                         let neighbor = grid.tile(...neighborPos);
     
                         if (neighbor?.railable) {
-                            visibility[Condition.RAILABLE] = true;
+                            setVis(Condition.RAILABLE, true);
     
                             railMarker.position = Grids.cellToPosition(grid, neighborPos);
                             railMarker.angle = -90 * Dir.flip(dir);
                         } else {
-                            visibility[Condition.RAILABLE] = false;
+                            setVis(Condition.RAILABLE, false);
                         }
                     }
                 }
             } else if (grid.editMode === "railErase") {
-                visibility[Condition.RAILABLE] = !!(tile?.railable);
+                setVis(Condition.RAILABLE, !!(tile?.railable));
                 eraseSquare.position = Grids.cellToPosition(grid, cellPos);
             } else if (grid.editMode === "level") {
                 levelSquare.position = Grids.cellToPosition(grid, cellPos);
@@ -1007,29 +1033,33 @@ class PointerEvents {
                 let _: never = grid.editMode;
             }
 
-            updateVisibility();
+            updateVis();
         })
 
-        this.#on(con, "mousedown", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = false;
-            updateVisibility();
+        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = Grids.positionToCell(grid, pos);
+            levelSquare.position = Grids.cellToPosition(grid, cellPos);
+
+            setVis(Condition.NOT_DRAGGING, false);
+            updateVis();
         });
-        this.#on(con, "mouseup", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = true;
-            updateVisibility();
+        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
+            setVis(Condition.NOT_DRAGGING, true);
+            updateVis();
         });
-        this.#on(con, "mouseupoutside", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.MOUSE_UP] = true;
-            updateVisibility();
+        this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
+            setVis(Condition.NOT_DRAGGING, true);
+            updateVis();
         });
 
         this.#on(con, "mouseover", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.IN_BOUNDS] = true;
-            updateVisibility();
+            setVis(Condition.IN_BOUNDS, true);
+            updateVis();
         });
         this.#on(con, "mouseout", (e: PIXI.InteractionEvent) => {
-            visibility[Condition.IN_BOUNDS] = false;
-            updateVisibility();
+            setVis(Condition.IN_BOUNDS, false);
+            updateVis();
         });
     }
 
