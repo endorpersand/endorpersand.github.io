@@ -20,6 +20,7 @@ type Event =
     | `exit${Capitalize<EditMode>}`
     | `enter${Capitalize<EditMode>}`
     | "switchEdit"
+    | "load"
     | "fail"
     | "win"
 
@@ -71,6 +72,9 @@ type Layers = {
     [Layer.BOXES]:  GridContainer,
 };
 
+type HandlerOptions = {
+    removeOnReload: boolean
+};
 /**
  A class which holds a grid of the current tiles on board.
  */
@@ -104,12 +108,14 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "level";
+    #editMode: EditMode = "rail";
 
     /**
      * Map keeping track of listeners listening to an event
      */
-    #eventListeners: Partial<{[E in Event]: Array<() => void>}> = {}
+    #eventListeners: Partial<{
+        [E in Event]: (HandlerOptions & {handler: () => void})[]
+    }> = {}
     pointerEvents: PointerEvents;
 
     /**
@@ -352,6 +358,13 @@ export class TileGrid implements Serializable, Grids.Grid {
     #wipeContainer(con: PIXI.Container) {
         removeAllChildren(con, {children: true});
         this.pointerEvents.clearEvents(con);
+
+        // removeOnReload
+        for (let [k, harr] of Object.entries(this.#eventListeners)) {
+            if (harr.some(h => h.removeOnReload)) {
+                this.#eventListeners[k as Event] = harr.filter(h => !h.removeOnReload);
+            }
+        }
     }
 
     /**
@@ -404,6 +417,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         }
 
         this.#rendered = true;
+        this.#dispatchEvent("load");
         return con;
     }
 
@@ -429,9 +443,17 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param event
      * @param handler
      */
-    on(event: Event, handler: () => void) {
-        const listeners = this.#eventListeners[event] ??= [];
-        listeners.push(handler);
+    on(event: Event | Event[], handler: () => void, options: Partial<HandlerOptions> = {}) {
+        if (typeof event === "string") event = [event];
+        const DEFAULT: HandlerOptions = {
+            removeOnReload: false
+        }
+        const opts: HandlerOptions = {...DEFAULT, ...options};
+
+        for (const e of event) {
+            const listeners = this.#eventListeners[e] ??= [];
+            listeners.push({...opts, handler});
+        }
     }
 
     /**
@@ -441,7 +463,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     #dispatchEvent(e: Event) {
         const listeners = this.#eventListeners[e] ??= [];
 
-        for (let f of listeners) f();
+        for (let {handler} of listeners) handler();
     }
 
     /**
@@ -692,11 +714,11 @@ class PointerEvents {
         }
         con.addChild(this.#eventLayer);
 
-        this.#grid.on("switchEdit", () => {
+        this.#grid.on(["switchEdit", "load"], () => {
             for (let c of this.#eventLayer.children) {
                 c.visible = c.name === this.#grid.editMode;
             }
-        });
+        }, {removeOnReload: true});
     }
 
     #addPointersTracker(con: PIXI.Container) {
@@ -1503,7 +1525,10 @@ class TrainState {
     }
 
     sendToExit(preimage: Train, image: NormalizedImage) {
-        if (image === TRAIN_CRASH) image = [];
+        if (image === TRAIN_CRASH) {
+            this.#trackMove(preimage, image, Step.Main);
+            return;
+        }
 
         const pimPairs = image.map(t => [preimage, t] as const);
         

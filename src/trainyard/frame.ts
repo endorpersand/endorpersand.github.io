@@ -49,7 +49,7 @@ function setup() {
     grid = new TileGrid(gridSize, defaults.cellLength, {textures, renderer: app.renderer})
         .load(Dropdowns.currentLevel()!);
     Dropdowns.LevelHandlers.add(b => {
-        grid.editMode = "rail";
+        if (grid.editMode !== "level") grid.editMode = "rail";
         grid.load(b);
         grid.container.position
             .set((app.renderer.width - tgc.width) / 2, (app.renderer.height - tgc.height) / 2);
