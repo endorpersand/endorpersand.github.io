@@ -640,12 +640,24 @@ type DragPointer = DragPointer.FromStart & (DragPointer.DragObjects[EditMode]);
 const DBT_TIMEOUT_MS  = 1000;
 const CLICK_IGNORE_MS = 200;
 
+export enum TTMapping {
+    Blank, 
+    Outlet, 
+    Goal, 
+    Painter, 
+    Splitter, 
+    Rock
+};
+
 class PointerEvents {
     #grid: TileGrid;
     #eventLayer: PIXI.Container;
     pointer?: DragPointer;
     pointers: number = 0;
 
+    editSquare: CellPos = [0, 0];
+    #tt?: {ttButtons: NodeListOf<HTMLInputElement>};
+    
     constructor(grid: TileGrid) {
         this.#grid = grid;
         this.#eventLayer = new PIXI.Container();
@@ -712,6 +724,24 @@ class PointerEvents {
         return layer;
     }
 
+    set tt(v: {ttButtons: NodeListOf<HTMLInputElement>}) {
+        this.#tt = v;
+        this.#updateTT();
+    }
+
+    #updateTT() {
+        if (this.#tt) {
+            const {ttButtons} = this.#tt;
+            const grid = this.#grid;
+            const tile = grid.tile(...this.editSquare)!;
+
+            const selected = TTMapping[tile.constructor.name as keyof typeof TTMapping];
+            if (typeof selected !== "undefined") {
+                ttButtons[selected].checked = true;
+            }
+        }
+    }
+
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -727,7 +757,10 @@ class PointerEvents {
         selectSquare.height = grid.cellSize;
         selectSquare.tint = 0xFF0000;
         selectSquare.alpha = 0.2;
-        selectSquare.visible = false;
+        
+        selectSquare.position = Grids.cellToPosition(this.#grid, this.editSquare);
+        this.#updateTT();
+        
         levelLayer.addChild(selectSquare);
 
         const selectCopy = new PIXI.Container();
@@ -915,6 +948,8 @@ class PointerEvents {
                 if (isClick) {
                     selectSquare.visible = true;
                     selectSquare.position = Grids.cellToPosition(grid, cellPos);
+                    this.editSquare = cellPos;
+                    this.#updateTT();
                 } else {
                     grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
                 }

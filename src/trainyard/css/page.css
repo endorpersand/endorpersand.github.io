@@ -219,6 +219,14 @@ body.readonly-mode {
     padding: 15px 15px;
 }
 
+#edit-grid > input {
+    display: none;
+}
+#edit-grid > input:checked + label {
+    background-color: #354;
+    border-color: #243;
+}
+
 /* button display */
 button, .btn {
     background-color: #333;

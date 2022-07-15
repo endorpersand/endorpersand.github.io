@@ -1,5 +1,5 @@
 import * as LevelData from "./levels";
-import { EditMode, EDIT_MODES, LoadableBoard, TileGrid } from "./logic";
+import { EditMode, EDIT_MODES, LoadableBoard, TileGrid, TTMapping } from "./logic";
 
 export namespace Elements {
     export const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
@@ -13,7 +13,10 @@ export namespace Elements {
 
     export const dd = document.querySelectorAll<HTMLSelectElement>("#navbar select");
     export const modeToggle = document.querySelector("#navbar input[type=checkbox]")! as HTMLInputElement;
+
+    export const ttButtons = document.querySelectorAll<HTMLInputElement>("input[name=tile-type]");
 }
+
 const {slider, input} = Elements;
 
 let _speed: number = 1;
@@ -59,7 +62,7 @@ namespace Computing {
 
 export function speed() { return _speed; }
 
-const {erase, undo, start, step, modeToggle} = Elements;
+const {erase, undo, start, step, modeToggle, ttButtons} = Elements;
 
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
@@ -153,6 +156,7 @@ export function applyButtons(grid: TileGrid) {
         if (modeToggle.checked) grid.editMode = "level";
         else grid.editMode = "rail";
     })
+    grid.pointerEvents.tt = {ttButtons};
 }
 
 const [catDD, levelDD] = Elements.dd;

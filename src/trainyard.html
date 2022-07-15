@@ -50,12 +50,35 @@
         </div>
         <div class="control-hud require-level-mode">
             <div id="edit-grid">
-                <button>X</button>
-                <button>+</button>
-                <button>O</button>
-                <button>P</button>
-                <button>S</button>
-                <button>R</button>
+                <input name="tile-type" id="tt-blank" type="radio">
+                <label for="tt-blank" class="btn">
+                    <span>blank</span>
+                </label>
+
+                <input name="tile-type" id="tt-outlet" type="radio">
+                <label for="tt-outlet" class="btn">
+                    <span>outlet</span>
+                </label>
+
+                <input name="tile-type" id="tt-goal" type="radio">
+                <label for="tt-goal" class="btn">
+                    <span>goal</span>
+                </label>
+
+                <input name="tile-type" id="tt-painter" type="radio">
+                <label for="tt-painter" class="btn">
+                    <span>painter</span>
+                </label>
+
+                <input name="tile-type" id="tt-splitter" type="radio">
+                <label for="tt-splitter" class="btn">
+                    <span>splitter</span>
+                </label>
+
+                <input name="tile-type" id="tt-rock" type="radio">
+                <label for="tt-rock" class="btn">
+                    <span>rock</span>
+                </label>
             </div>
             <button id="edit-tile-btn">Edit Tile</button>
         </div>
