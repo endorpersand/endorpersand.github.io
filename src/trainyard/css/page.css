@@ -48,6 +48,94 @@ body.readonly-mode {
     height: 7vh;
     background-color: #555;
     display: flex;
+    justify-content: space-between;
+    padding: 4px 6px;
+}
+
+/* navbar drop-down */
+#nv-dd {
+    display: flex;
+    gap: 0 5px;
+}
+
+#nv-dd select {
+    font-size: 18px;
+}
+
+/* navbar mode controls */
+#nv-mode-controls {
+    align-self: center;
+
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* The switch - the box around the slider */
+.switch {
+    --switch-width: 40px;
+    --switch-height: 20px;
+    --switch-padding: 2px;
+
+    --ball-color: white;
+    --off-color: #ccc;
+    --on-color: rgb(38, 153, 38);
+    
+    position: relative;
+    display: inline-block;
+    width:  var(--switch-width);
+    height: var(--switch-height);
+}
+  
+/* Hide default HTML checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+  
+/* The slider */
+.switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--off-color);
+    -webkit-transition: .2s;
+    transition: .2s;
+
+    border-radius: var(--switch-height);
+}
+  
+.switch .slider:before {
+    position: absolute;
+    content: "";
+    height: calc(var(--switch-height) - 2 * var(--switch-padding));
+    width:  calc(var(--switch-height) - 2 * var(--switch-padding));
+    left:   var(--switch-padding);
+    bottom: var(--switch-padding);
+    background-color: var(--ball-color);
+    -webkit-transition: .2s;
+    transition: .2s;
+
+    border-radius: 50%;
+}
+  
+.switch input:checked + .slider {
+    background-color: var(--on-color);
+}
+  
+.switch input:focus + .slider {
+    box-shadow: 0 0 1px var(--on-color);
+}
+  
+.switch input:checked + .slider:before {
+    --trans: calc(var(--switch-width) - var(--switch-height));
+    -webkit-transform: translateX(var(--trans));
+    -ms-transform: translateX(var(--trans));
+    transform: translateX(var(--trans));
 }
 
 .control-hud {
@@ -169,7 +257,7 @@ body.readonly-mode button#b-start:active {
 }
 
 /* input settings */
-input {
+input[type=number] {
     width: 0px;
 }
 input[type=number]::-webkit-inner-spin-button, 
@@ -178,15 +266,4 @@ input[type=number]::-webkit-outer-spin-button {
     -moz-appearance: none;
     appearance: none;
     margin: 0; 
-}
-
-/* drop-down */
-#dd {
-    margin: 5px 5px;
-    display: flex;
-    gap: 0 5px;
-}
-
-#dd select {
-    font-size: 20px;
 }

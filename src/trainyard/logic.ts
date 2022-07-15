@@ -147,6 +147,17 @@ export class TileGrid implements Serializable, Grids.Grid {
             this.simulation?.close();
             this.simulation = undefined;
         });
+
+        this.on("enterLevel", () => {
+            const length = this.cellLength;
+
+            this.tiles = Array.from({length}, (_, y) => 
+                Array.from({length}, (_, x) => {
+                    const t = this.#tiles[y][x];
+                    return !(t instanceof Tile.Rail) ? t : new Tile.Blank();
+                })
+            )
+        });
     }
 
     /**

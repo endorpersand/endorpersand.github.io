@@ -11,7 +11,8 @@ export namespace Elements {
     export const start = wrapper.querySelector("button#b-start")! as HTMLButtonElement;
     export const step  = wrapper.querySelector("button#b-step")! as HTMLButtonElement;
 
-    export const dd = document.querySelectorAll("select");
+    export const dd = document.querySelectorAll<HTMLSelectElement>("#navbar select");
+    export const modeToggle = document.querySelector("#navbar input[type=checkbox]")! as HTMLInputElement;
 }
 const {slider, input} = Elements;
 
@@ -58,7 +59,7 @@ namespace Computing {
 
 export function speed() { return _speed; }
 
-const {erase, undo, start, step} = Elements;
+const {erase, undo, start, step, modeToggle} = Elements;
 
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
@@ -139,6 +140,19 @@ export function applyButtons(grid: TileGrid) {
     grid.on("fail", () => {
         document.body.classList.add("failed");
     });
+
+    modeToggle.checked = grid.editMode === "level";
+    grid.on("enterRail", () => {
+        modeToggle.checked = false;
+    })
+    grid.on("enterLevel", () => {
+        modeToggle.checked = true;
+    })
+
+    modeToggle.addEventListener("input", () => {
+        if (modeToggle.checked) grid.editMode = "level";
+        else grid.editMode = "rail";
+    })
 }
 
 const [catDD, levelDD] = Elements.dd;
