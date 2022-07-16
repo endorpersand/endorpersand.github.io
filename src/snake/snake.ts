@@ -25,7 +25,7 @@ const tpu = 75; // ticks per update
 drawGRect([0,0], canvas.width, canvas.height, pal.bg, [0, 0]); // draw bg
 drawGRect(snake[0], s - 2, s - 2, pal.snake); // draw snake
 drawApple();
-let int: number | undefined = setInterval(update, tpu);
+let int: NodeJS.Timer | undefined = setInterval(update, tpu);
 
 document.onkeydown = e => {
     switch (e.code) {
