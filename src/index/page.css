@@ -11,6 +11,7 @@
     filter: none;
 }
 .wrapper .box:hover {
+    cursor: pointer;
     filter: brightness(150%);
 }
 :not(.no-transition) {
