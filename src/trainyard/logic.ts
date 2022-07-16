@@ -677,7 +677,7 @@ class PointerEvents {
     pointer?: DragPointer;
     pointers: number = 0;
 
-    editSquare: CellPos = [0, 0];
+    #editSquare: CellPos = [0, 0];
     #tt?: {ttButtons: NodeListOf<HTMLInputElement>};
     
     constructor(grid: TileGrid) {
@@ -764,6 +764,49 @@ class PointerEvents {
         }
     }
 
+    // TODO, use history rather than preset defaults
+    #getDefaultTile(value: keyof typeof TTMapping) {
+        if (value === "Blank") {
+            return new Tile.Blank();
+        } else if (value === "Goal") {
+            return new Tile.Goal([Color.Red], [Dir.Right]);
+        } else if (value === "Outlet") {
+            return new Tile.Outlet(Dir.Right, [Color.Red]);
+        } else if (value === "Painter") {
+            return new Tile.Painter(Color.Red, Dir.Left, Dir.Right);
+        } else if (value === "Rock") {
+            return new Tile.Rock();
+        } else if (value === "Splitter") {
+            return new Tile.Splitter(Dir.Left);
+        } else {
+            let _: never = value;
+        }
+    }
+
+    get editSquare() {
+        return this.#editSquare;
+    }
+
+    set editSquare(v: CellPos) {
+        this.#editSquare = v;
+
+        const ssq = this.#modeLayer("level").getChildByName("ssq");
+        ssq.position = Grids.cellToPosition(this.#grid, this.#editSquare);
+        this.#updateTT();
+    }
+
+    setSquare(value: string) {
+        if (this.#grid.editMode !== "level") return;
+        this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value as keyof typeof TTMapping));
+    }
+
+    moveSquare(d: Dir) {
+        if (this.#grid.editMode !== "level") return;
+        const shifted = Dir.shift(this.editSquare, d);
+
+        if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
+    }
+
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
@@ -779,11 +822,9 @@ class PointerEvents {
         selectSquare.height = grid.cellSize;
         selectSquare.tint = 0xFF0000;
         selectSquare.alpha = 0.2;
-        
-        selectSquare.position = Grids.cellToPosition(this.#grid, this.editSquare);
-        this.#updateTT();
-        
+        selectSquare.name = "ssq";
         levelLayer.addChild(selectSquare);
+        this.editSquare = this.editSquare;
 
         const selectCopy = new PIXI.Container();
         let ccshift: PIXI.IPointData;
@@ -969,9 +1010,7 @@ class PointerEvents {
                     (performance.now() - start.time <= CLICK_IGNORE_MS);
                 if (isClick) {
                     selectSquare.visible = true;
-                    selectSquare.position = Grids.cellToPosition(grid, cellPos);
                     this.editSquare = cellPos;
-                    this.#updateTT();
                 } else {
                     grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
                 }

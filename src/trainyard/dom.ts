@@ -1,5 +1,6 @@
 import * as LevelData from "./levels";
 import { EditMode, EDIT_MODES, LoadableBoard, TileGrid, TTMapping } from "./logic";
+import { Dir } from "./values";
 
 export namespace Elements {
     export const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
@@ -157,6 +158,33 @@ export function applyButtons(grid: TileGrid) {
         else grid.editMode = "rail";
     })
     grid.pointerEvents.tt = {ttButtons};
+
+    for (let b of ttButtons) {
+        b.addEventListener("input", () => {
+            grid.pointerEvents.setSquare(b.value);
+        })
+    }
+
+    document.addEventListener("keydown", e => {
+        const pointerEvents = grid.pointerEvents;
+
+        if (e.code === "ArrowLeft" || e.code === "KeyA") {
+            pointerEvents.moveSquare(Dir.Left);
+        }
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+            pointerEvents.moveSquare(Dir.Up);
+        }
+        if (e.code === "ArrowRight" || e.code === "KeyD") {
+            pointerEvents.moveSquare(Dir.Right);
+        }
+        if (e.code === "ArrowDown" || e.code === "KeyS") {
+            pointerEvents.moveSquare(Dir.Down);
+        }
+        if (e.code.startsWith("Digit")) {
+            const d = +e.code.slice(5);
+            if (1 <= d && d <= 6) ttButtons[d - 1].click();
+        }
+    })
 }
 
 const [catDD, levelDD] = Elements.dd;
