@@ -51,6 +51,9 @@ function removeAllChildren(con: PIXI.Container, options?: boolean | PIXI.IDestro
     }
 }
 
+function length2D<A extends {length: number}>(arr2D: A[]) {
+    return Math.max(arr2D.length, ...arr2D.map(t => t.length));
+}
 interface Serializable<J = any> {
     /**
      * Designate how to convert this object into JSON.
@@ -200,7 +203,7 @@ export class TileGrid implements Serializable, Grids.Grid {
             tiles = TileGrid.#tilesFromJSON(tiles);
         }
         
-        this.cellLength = tiles.length;
+        this.cellLength = length2D(tiles);
         this.cellSize = cellSize ?? Grids.optimalCellSize(this, this.loadGridSize);
         this.tiles = tiles;
         return this;
@@ -600,7 +603,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      */
     static #tilesFromJSON(o: GridJSON) {
         let {board, tiles} = o;
-        let length = board.length;
+        let length = length2D(board);
 
         let newTiles = Array.from({length}, (_, y) => 
             Array.from<unknown, Tile>({length}, (_, x) => {
