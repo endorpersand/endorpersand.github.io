@@ -7,6 +7,7 @@ specifiers:
   '@parcel/transformer-raw': ^2.6.2
   '@types/katex': ^0.14.0
   '@types/node': ^18.0.0
+  a11y-dialog: ^7.5.0
   complex.js: ^2.1.1
   cross-env: ^7.0.3
   gh-pages: ^4.0.0
@@ -20,6 +21,7 @@ specifiers:
   typescript: ^4.7.4
 
 dependencies:
+  a11y-dialog: 7.5.0
   complex.js: 2.1.1
   katex: 0.15.6
   mathjs: 10.6.1
@@ -1483,6 +1485,12 @@ packages:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
     dev: true
 
+  /a11y-dialog/7.5.0:
+    resolution: {integrity: sha512-UF7cy4lfZQtvjRV5N4xdWFba+Pb1qW6FPp0p58dLjMTJ4PwIGGekTbmqUt3etBBRo9HbTqhlNsXQhzIuXeJpng==}
+    dependencies:
+      focusable-selectors: 0.3.1
+    dev: false
+
   /abortcontroller-polyfill/1.7.3:
     resolution: {integrity: sha512-zetDJxd89y3X99Kvo4qFx8GKlt6GsvN3UcRZHwU6iFA/0KiOmhkTVhe8oRoTBiTVPZu09x3vCra47+w8Yz1+2Q==}
     dev: true
@@ -1841,6 +1849,10 @@ packages:
       locate-path: 5.0.0
       path-exists: 4.0.0
     dev: true
+
+  /focusable-selectors/0.3.1:
+    resolution: {integrity: sha512-5JLtr0e1YJIfmnVlpLiG+av07dd0Xkf/KfswsXcei5KmLfdwOysTQsjF058ynXniujb1fvev7nql1x+CkC5ikw==}
+    dev: false
 
   /fraction.js/4.2.0:
     resolution: {integrity: sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==}

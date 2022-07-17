@@ -83,5 +83,27 @@
             <button id="edit-tile-btn">Edit Tile</button>
         </div>
     </div>
+    <!-- Modal container -->
+    <div
+        id="tile-edit-modal"
+        aria-labelledby="tile-edit-modal-title"
+        aria-hidden="true"
+        class="modal-container"
+    >
+        <!-- Modal overlay -->
+        <div data-a11y-dialog-hide class="modal-overlay"></div>
+        <div role="document" class="modal-content">
+            <!-- Modal header -->
+            <div class="modal-header">
+                <!-- <h1 id="tile-edit-modal-title">Your dialog title</h1> -->
+                <button type="button" data-a11y-dialog-hide aria-label="Close dialog" class="modal-close-btn">
+                    &times;
+                </button>
+            </div>
+            <div class="inner-content">
+                hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!
+            </div>
+        </div>
+    </div>
     <script type="module" src="trainyard/frame.ts"></script>
 </body>

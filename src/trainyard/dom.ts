@@ -17,6 +17,10 @@ export namespace Elements {
     export const modeToggle = document.querySelector<HTMLInputElement>("#navbar input[type=checkbox]")!;
 
     export const ttButtons = document.querySelectorAll<HTMLInputElement>("input[name=tile-type]");
+    export const editTileBtn = document.querySelector<HTMLButtonElement>("button#edit-tile-btn")!;
+    
+    const editModalDiv = document.querySelector<HTMLDivElement>("div#tile-edit-modal")!;
+    export const editModal = new A11yDialog(editModalDiv);
 }
 
 const {slider, input} = Elements;
@@ -64,7 +68,7 @@ namespace Computing {
 
 export function speed() { return _speed; }
 
-const {erase, undo, start, step, modeToggle, ttButtons} = Elements;
+const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, editModal} = Elements;
 
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
@@ -166,6 +170,10 @@ export function applyButtons(grid: TileGrid) {
         })
     }
 
+    editTileBtn.addEventListener("click", () => {
+        editModal.show();
+    })
+    
     document.addEventListener("keydown", e => {
         const pointerEvents = grid.pointerEvents;
 
