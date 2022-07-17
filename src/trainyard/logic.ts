@@ -776,11 +776,11 @@ class PointerEvents {
         if (value === "Blank") {
             return new Tile.Blank();
         } else if (value === "Goal") {
-            return new Tile.Goal([Color.Red], [Dir.Right]);
+            return new Tile.Goal([Dir.Right], [Color.Red]);
         } else if (value === "Outlet") {
             return new Tile.Outlet(Dir.Right, [Color.Red]);
         } else if (value === "Painter") {
-            return new Tile.Painter(Color.Red, Dir.Left, Dir.Right);
+            return new Tile.Painter([Dir.Left, Dir.Right], Color.Red);
         } else if (value === "Rock") {
             return new Tile.Rock();
         } else if (value === "Splitter") {
@@ -1925,7 +1925,7 @@ export namespace Tile {
         readonly targets: readonly Color[];
         readonly serChar = "o";
 
-        constructor(targets: readonly Color[], entrances: Dir[]) {
+        constructor(entrances: readonly Dir[], targets: readonly Color[]) {
             super(...entrances);
             this.targets = targets;
         }
@@ -1963,7 +1963,7 @@ export namespace Tile {
             const targetsR = targets.map(Color.parse);
             const entrances = [...new Dir.Flags(actives)];
 
-            return new Goal(targetsR, entrances);
+            return new Goal(entrances, targetsR);
         }
 
         render(resources: PIXIResources, size: number): PIXI.Container {
@@ -1984,7 +1984,7 @@ export namespace Tile {
         }
 
         clone() {
-            return new Goal([...this.targets], [...this.actives]);
+            return new Goal([...this.actives], [...this.targets]);
         }
     }
     
@@ -1995,8 +1995,9 @@ export namespace Tile {
         readonly color: Color;
         readonly serChar = "p";
 
-        constructor(color: Color, active1: Dir, active2: Dir) {
-            super(active1, active2);
+        constructor(actives: readonly [Dir, Dir], color: Color) {
+            const [a1, a2] = actives;
+            super(a1, a2);
             this.color = color;
         }
     
@@ -2027,7 +2028,7 @@ export namespace Tile {
 
             if (activesR.ones != 2) throw new TypeError("Painter must have 2 active sides");
             const [a1, a2] = activesR;
-            return new Painter(colorR, a1, a2);
+            return new Painter([a1, a2], colorR);
         }
 
         render(resources: PIXIResources, size: number): PIXI.Container {
@@ -2044,7 +2045,7 @@ export namespace Tile {
 
         clone() {
             const [d1, d2] = this.actives;
-            return new Painter(this.color, d1, d2);
+            return new Painter([d1, d2], this.color);
         }
     }
     
