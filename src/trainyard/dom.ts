@@ -1,19 +1,20 @@
+import A11yDialog from "a11y-dialog";
 import * as LevelData from "./levels";
 import { EditMode, EDIT_MODES, LoadableBoard, TileGrid, TTMapping } from "./logic";
 import { Dir } from "./values";
 
 export namespace Elements {
-    export const slider = document.querySelector("#speed-controls > input[type=range]")! as HTMLInputElement;
-    export const input  = document.querySelector("#speed-controls > input[type=number]")! as HTMLInputElement;
+    export const slider = document.querySelector<HTMLInputElement>("#speed-controls > input[type=range]")!;
+    export const input  = document.querySelector<HTMLInputElement>("#speed-controls > input[type=number]")!;
     
-    export const wrapper = document.querySelector("#wrapper")! as HTMLDivElement;
-    export const erase = wrapper.querySelector("button#b-erase")! as HTMLButtonElement;
-    export const undo  = wrapper.querySelector("button#b-undo")! as HTMLButtonElement;
-    export const start = wrapper.querySelector("button#b-start")! as HTMLButtonElement;
-    export const step  = wrapper.querySelector("button#b-step")! as HTMLButtonElement;
+    export const wrapper = document.querySelector<HTMLDivElement>("div#wrapper")!;
+    export const erase = wrapper.querySelector<HTMLButtonElement>("button#b-erase")!;
+    export const undo  = wrapper.querySelector<HTMLButtonElement>("button#b-undo")!;
+    export const start = wrapper.querySelector<HTMLButtonElement>("button#b-start")!;
+    export const step  = wrapper.querySelector<HTMLButtonElement>("button#b-step")!;
 
     export const dd = document.querySelectorAll<HTMLSelectElement>("#navbar select");
-    export const modeToggle = document.querySelector("#navbar input[type=checkbox]")! as HTMLInputElement;
+    export const modeToggle = document.querySelector<HTMLInputElement>("#navbar input[type=checkbox]")!;
 
     export const ttButtons = document.querySelectorAll<HTMLInputElement>("input[name=tile-type]");
 }
