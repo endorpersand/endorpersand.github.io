@@ -670,10 +670,10 @@ function clamp(v, min, max) {
     return Math.max(min, Math.min(v, max));
 }
 
-},{"3a5718b9a991627b":"bivyA","@parcel/transformer-js/src/esmodule-helpers.js":"9HMD5"}],"bivyA":[function(require,module,exports) {
+},{"3a5718b9a991627b":"2afTN","@parcel/transformer-js/src/esmodule-helpers.js":"9HMD5"}],"2afTN":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("gIi11") + "chunkLoader.4cddce1d.js" + "?" + Date.now();
+let url = bundleURL.getBundleURL("gIi11") + "chunkloader.966fd52a.js" + "?" + Date.now();
 module.exports = workerURL(url, bundleURL.getOrigin(url), false);
 
 },{"./helpers/get-worker-url":"jRGBS","./helpers/bundle-url":"cjFer"}],"jRGBS":[function(require,module,exports) {

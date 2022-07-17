@@ -1,0 +1,2 @@
+.wrapper{grid-template-columns:repeat(var(--cols),1fr);width:100%;grid-auto-rows:minmax(200px,auto);gap:10px;display:grid}.wrapper .box{text-align:center;filter:none;background-color:#777}.wrapper .box:hover{cursor:pointer;filter:brightness(150%)}:not(.no-transition){transition:background-color .25s ease-in-out}a{color:#111;text-decoration:none}.box{position:relative}.box>div{margin:5px}.colhex{color:rgba(0,0,0,.498);position:absolute;bottom:5px;right:5px}.title{font-size:110%;font-weight:bolder}
+/*# sourceMappingURL=index.a16c04cf.css.map */

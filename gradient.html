@@ -7,13 +7,8 @@
     </head>
     <body>
         <div class="wrapper">
-            <div>
-                <div>
-                    <input type="radio" name="ipol" id="lin" value="lin">
-                    <label for="lin">Linear interpolation</label><br>
-                    <input type="radio" name="ipol" id="rms" value="rms" checked="">
-                    <label for="rms">RMS interpolation</label>
-                </div>
+            <div id="input">
+                Color stops:
                 <div id="colors">
                     <div>
                         <input type="color" value="#FF0000">
@@ -26,7 +21,22 @@
                     <button id="coloradd">+</button>
                 </div>
             </div>
-            <canvas width="512" height="512"></canvas>
+            <div id="results">
+                <div class="result" id="lin-result">
+                    Linear interpolation
+                    <canvas width="512" height="64"></canvas>
+                </div>
+                <div class="result" id="css-result">
+                    <span>
+                        CSS <code>linear-gradient</code>
+                    </span>
+                    <div id="css-gradient"></div>
+                </div>
+                <div class="result" id="rms-result">
+                    RMS interpolation
+                    <canvas width="512" height="64"></canvas>
+                </div>
+            </div>
         </div>
         <script src="/gradient.189c4587.js" defer=""></script>
     </body>

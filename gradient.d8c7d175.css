@@ -1,2 +1,0 @@
-.wrapper{-ms-flex-direction:row;flex-direction:row;-ms-flex-pack:justify;justify-content:space-between;display:-ms-flexbox;display:flex}.wrapper>:first-child{-ms-flex-direction:column;flex-direction:column;-ms-flex-preferred-size:100%;flex-basis:100%;display:-ms-flexbox;display:flex}#colors{width:100px;-ms-flex-direction:column;flex-direction:column;display:-ms-flexbox;display:flex}#colors>div{grid-template-columns:1fr 1fr;display:grid}@media (max-width:700px){.wrapper{-ms-flex-direction:column;flex-direction:column}}
-/*# sourceMappingURL=gradient.d8c7d175.css.map */
