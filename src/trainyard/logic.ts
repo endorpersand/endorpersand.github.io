@@ -167,6 +167,10 @@ export class TileGrid implements Serializable, Grids.Grid {
                 })
             )
         });
+
+        this.on("switchEdit", () => {
+            this.#actionStack.length = 0;
+        });
     }
 
     /**

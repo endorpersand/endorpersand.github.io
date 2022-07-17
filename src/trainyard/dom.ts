@@ -78,21 +78,61 @@ function documentEditMode(e: EditMode) {
 }
 
 export function applyButtons(grid: TileGrid) {
-    erase.addEventListener("click", () => {
+    const ANY = Symbol("any edit mode");
+
+    function addListener<
+    E extends HTMLElement,
+    K extends keyof HTMLElementEventMap,
+    EM extends EditMode[],
+    >(
+        element: E,
+        event: K,
+        allowedEms: EM | typeof ANY,
+        listener: (this: E, grid: TileGrid & {editMode: EM[number]}, ev: HTMLElementEventMap[K]) => any
+    ): void;
+
+    function addListener<
+    E extends Document,
+    K extends keyof DocumentEventMap,
+    EM extends EditMode[],
+    >(
+        element: E,
+        event: K,
+        allowedEms: EM | typeof ANY,
+        listener: (this: E, grid: TileGrid & {editMode: EM[number]}, ev: DocumentEventMap[K]) => any
+    ): void;
+
+    function addListener<EM extends EditMode[]>(
+        element: HTMLElement | Document,
+        event: string,
+        allowedEms: EM | typeof ANY,
+        listener: (this: typeof element, grid: TileGrid & {editMode: EM[number]}, ev: Event) => any
+    ) {
+        element.addEventListener(event, e => {
+            if (allowedEms === ANY || allowedEms.includes(grid.editMode)) {
+                return listener.call(element, grid as any, e);
+            }
+        });
+    }
+
+    addListener(erase, "click", ["rail", "railErase"], grid => {
         let em = grid.editMode;
         if (em === "rail") grid.editMode = "railErase";
         else if (em === "railErase") grid.editMode = "rail";
     });
-    undo.addEventListener("click", () => {
+
+    addListener(undo, "click", ["rail"], grid => {
         grid.undo();
-    })
-    start.addEventListener("click", () => {
+    });
+
+    addListener(start, "click", ANY, grid => {
         let em = grid.editMode;
 
         if (em === "readonly") grid.editMode = "rail";
         else grid.editMode = "readonly";
-    })
-    step.addEventListener("click", () => {
+    });
+
+    addListener(step, "click", ANY, grid => {
         let em = grid.editMode;
 
         if (em !== "readonly") {
@@ -158,23 +198,23 @@ export function applyButtons(grid: TileGrid) {
         modeToggle.checked = true;
     })
 
-    modeToggle.addEventListener("input", () => {
+    addListener(modeToggle, "input", ANY, grid => {
         if (modeToggle.checked) grid.editMode = "level";
         else grid.editMode = "rail";
-    })
+    });
     grid.pointerEvents.tt = {ttButtons};
 
     for (let b of ttButtons) {
-        b.addEventListener("input", () => {
+        addListener(b, "input", ["level"], grid => {
             grid.pointerEvents.setSquare(b.value);
         })
     }
 
-    editTileBtn.addEventListener("click", () => {
+    addListener(editTileBtn, "click", ["level"], () => {
         editModal.show();
     })
     
-    document.addEventListener("keydown", e => {
+    addListener(document, "keydown", ["level"], (grid, e) => {
         const pointerEvents = grid.pointerEvents;
 
         if (e.code === "ArrowLeft" || e.code === "KeyA") {
