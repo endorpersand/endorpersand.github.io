@@ -316,8 +316,8 @@ button.modal-close-btn {
 }
 
 .hex-row div {
-    background-color: black;
-    filter: brightness(50%);
+    background-color: white;
+    filter: brightness(25%);
 }
 .hex-row label.radio-label input:checked + div {
     filter: none;

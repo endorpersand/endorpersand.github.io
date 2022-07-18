@@ -248,6 +248,8 @@ export function applyButtons(grid: TileGrid) {
         ArrowDown: Dir.Down,
         KeyS: Dir.Down,
     } as const;
+    const HexMapping = [0, 2, 5, 6, 4, 1, 3] as const;
+
     addListener(document, "keydown", ["level"], (grid, e) => {
         const pointerEvents = grid.pointerEvents;
 
@@ -266,6 +268,14 @@ export function applyButtons(grid: TileGrid) {
             if (ag) {
                 if (typeof d !== "undefined") {
                     ag.querySelectorAll("label")[d].click();
+                }
+            }
+            
+            const hg = EditModal.Inner.querySelector(".hex-grid");
+            if (hg) {
+                if (e.code.startsWith("Digit")) {
+                    const d = +e.code.slice(5);
+                    if (1 <= d && d <= 7) hg.querySelectorAll("label")[HexMapping[d - 1]].click();
                 }
             }
         }

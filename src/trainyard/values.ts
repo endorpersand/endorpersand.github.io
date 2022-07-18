@@ -524,12 +524,51 @@ export namespace LevelTiles {
             hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
         } as const;
 
+        /**
+         * Clones a template.
+         * @param template Template ID to clone
+         * @param fillSlot Method to determine how <slot> elements should be changed
+         * @returns the cloned template
+         */
         function cloneTemplate(
             template: keyof typeof Templates, 
-            fillSlots?: (slots: Map<string, number>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
+            fillSlot?: (name: string, i: number, slot: HTMLSlotElement) => Node | void
         ) {
             const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
 
+            fillSlot ??= () => {};
+            const slots = frag.querySelectorAll("slot");
+            const slotCounter = new Map<string, number>();
+
+            for (let s of slots) {
+                const name = s.name;
+                const count = slotCounter.setDefault(name, () => 0);
+                
+                const ns = fillSlot(name, count, s);
+                if (ns) {
+                    s.replaceWith(ns);
+                } else {
+                    s.remove();
+                }
+                slotCounter.set(name, count + 1);
+            }
+            
+            return frag;
+        }
+
+        /**
+         * Clones a template. The `fillSlots` here takes a whole mapping as input.
+         * @param template Template ID to clone
+         * @param fillSlots Method to determine how <slot> elements should be changed. This holds a map of the number of each type of slot.
+         * @returns the cloned template
+         */
+        function cloneTemplateHeavy(
+            template: keyof typeof Templates, 
+            fillSlots?: (slots: Map<string, HTMLSlotElement[]>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
+        ) {
+            const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
+
+            fillSlots ??= () => ({});
             const slots = frag.querySelectorAll("slot");
             const slotMap = new Map<string, HTMLSlotElement[]>();
 
@@ -537,13 +576,8 @@ export namespace LevelTiles {
                 slotMap.setDefault(s.name, () => []).push(s);
             });
 
-            const slotCounter = new Map(
-                Array.from(slotMap.entries(), ([n, slts]) => [n, slts.length])
-            );
 
-            fillSlots ??= () => ({});
-
-            let newSlots = fillSlots(slotCounter);
+            let newSlots = fillSlots(slotMap);
             if (newSlots instanceof Array) {
                 newSlots = Object.fromEntries(newSlots);
             } else if (newSlots instanceof Map) {
@@ -567,50 +601,51 @@ export namespace LevelTiles {
             return frag;
         }
 
-        function selectSet(
+        function label(
+            options: {inputType: "radio" | "checkbox", name: string}, 
+            innerLabel: () => Node
+        ): HTMLLabelElement {
+            const {inputType, name} = options;
+
+            const label = document.createElement("label");
+            label.classList.add("radio-label");
+
+            const input = document.createElement("input");
+            input.name = name;
+            input.type = inputType;
+            
+            label.append(input, innerLabel());
+            return label;
+        };
+
+        function labelSet(
             length: number, 
             options: {inputType: "radio" | "checkbox", name: string}, 
             innerLabel: (i: number) => Node
         ): HTMLLabelElement[] {
-            const {inputType, name} = options;
-            return Array.from({length}, (_, i) => {
-                const label = document.createElement("label");
-                label.classList.add("radio-label");
-
-                const input = document.createElement("input");
-                input.name = name;
-                input.type = inputType;
-                
-                label.append(input, innerLabel(i));
-                return label;
-            })
+            return Array.from({length}, (_, i) => label(options, () => innerLabel(i)));
         }
 
         export function dirEditor(allow: 1 | 2 | 3 | 4) {
-            const nodes = cloneTemplate("activesGrid", slots => {
-                return Array.from(Object.entries(slots), ([name, c]) => {
-                    const set = selectSet(c, {
-                        inputType: allow === 1 ? "radio" : "checkbox",
-                        name
-                    }, i => {
-                        const div = document.createElement("div");
-                        div.textContent = `${i + 1}`;
-                        div.classList.add("btn");
-        
-                        return div;
-                    });
-
-                    return [name, set] as const;
+            const nodes = cloneTemplate("activesGrid", (name, i) => {
+                return label({
+                    inputType: allow === 1 ? "radio" : "checkbox",
+                    name
+                }, () => {
+                    const div = document.createElement("div");
+                    div.textContent = `${i + 1}`;
+                    div.classList.add("btn");
+    
+                    return div;
                 });
             });
 
             if (allow === 1) return nodes;
 
-            const btns = nodes.querySelectorAll<HTMLInputElement>("input[type=radio]");
-            btns.forEach(e => e.type = "checkbox");
-
             if (allow < 4) {
                 const checked: HTMLInputElement[] = [];
+
+                const btns = nodes.querySelectorAll<HTMLInputElement>("input");
                 btns.forEach(e => e.addEventListener("click", () => {
                     e.checked = true;
                     checked.push(e);
@@ -636,27 +671,28 @@ export namespace LevelTiles {
             Color.Green
         ] as const;
 
-        export function hexGrid(allowMultiple: boolean = false) {
-            const grid = cloneTemplate("hexGrid", slots => {
-                return Array.from(Object.entries(slots), ([name, c]) => {
-                    const set = selectSet(c, {
-                        inputType: allowMultiple ? "checkbox" : "radio",
-                        name
-                    }, i => {
-                        const div = document.createElement("div");
+        // TODO fix button mode
+        export function hexGrid(type: "checkbox" | "radio" | "button") {
+            return cloneTemplate("hexGrid", (name, i) => {
+                const color = Palette.Train[HexOrder[i]];
+                const hexStr = `#${color.toString(16).padStart(6, "0")}`;
 
-                        const color = Palette.Train[HexOrder[i]];
-                        const hexStr = `#${color.toString(16).padStart(6, "0")}`;
-                        div.style.backgroundColor = hexStr;
-                        
-                        return div;
-                    });
+                // if (type === "button") {
+                //     const button = document.createElement("button");
+                //     button.style.backgroundColor = hexStr;
+                //     return button;
+                // }
+                if (type === "button") { type = "checkbox"; }
 
-                    return [name, set] as const;
+                return label({
+                    inputType: type,
+                    name
+                }, () => {
+                    const div = document.createElement("div");
+                    div.style.backgroundColor = hexStr;
+                    return div;
                 });
             });
-
-            return grid;
         }
     }
 
@@ -665,29 +701,27 @@ export namespace LevelTiles {
         [Tile.Outlet]: {
             modal: () => {
                 const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid());
+                rs.appendChild(Modal.hexGrid("button"));
                 return [Modal.dirEditor(1), rs];
             }
         },
         [Tile.Goal]: {
             modal: () => {
                 const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid());
+                rs.appendChild(Modal.hexGrid("button"));
                 return [Modal.dirEditor(4), rs];
             }
         },
         [Tile.Painter]: {
             modal: () => {
                 const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid());
+                rs.appendChild(Modal.hexGrid("radio"));
                 return [Modal.dirEditor(2), rs];
             }
         },
         [Tile.Splitter]: {
             modal: () => {
-                const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid());
-                return [Modal.dirEditor(1), rs];
+                return [Modal.dirEditor(1)];
             }
         },
         [Tile.Rock]: {},
