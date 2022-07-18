@@ -507,6 +507,193 @@ export namespace Grids {
     }
 }
 
+export namespace LevelTiles {
+    // export type Tile = keyof typeof Data;
+
+    export enum Tile {
+        Blank, Outlet, Goal, Painter, Splitter, Rock
+    }
+
+    interface TileData {
+        modal?: () => (string | Node)[]
+    }
+
+    namespace Modal {
+        export const Templates = {
+            activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
+            hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
+        } as const;
+
+        function cloneTemplate(
+            template: keyof typeof Templates, 
+            fillSlots?: (slots: Map<string, number>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
+        ) {
+            const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
+
+            const slots = frag.querySelectorAll("slot");
+            const slotMap = new Map<string, HTMLSlotElement[]>();
+
+            slots.forEach(s => {
+                slotMap.setDefault(s.name, () => []).push(s);
+            });
+
+            const slotCounter = new Map(
+                Array.from(slotMap.entries(), ([n, slts]) => [n, slts.length])
+            );
+
+            fillSlots ??= () => ({});
+
+            let newSlots = fillSlots(slotCounter);
+            if (newSlots instanceof Array) {
+                newSlots = Object.fromEntries(newSlots);
+            } else if (newSlots instanceof Map) {
+                newSlots = Object.fromEntries(newSlots.entries());
+            }
+
+            for (let [name, sl] of slotMap.entries()) {
+                const nsl = newSlots[name] ?? [];
+
+                sl.forEach((e, i) => {
+                    const ne = nsl[i];
+
+                    if (typeof ne === "undefined") {
+                        e.remove();
+                    } else {
+                        e.replaceWith(ne);
+                    }
+                });
+            }
+
+            return frag;
+        }
+
+        function selectSet(
+            length: number, 
+            options: {inputType: "radio" | "checkbox", name: string}, 
+            innerLabel: (i: number) => Node
+        ): HTMLLabelElement[] {
+            const {inputType, name} = options;
+            return Array.from({length}, (_, i) => {
+                const label = document.createElement("label");
+                label.classList.add("radio-label");
+
+                const input = document.createElement("input");
+                input.name = name;
+                input.type = inputType;
+                
+                label.append(input, innerLabel(i));
+                return label;
+            })
+        }
+
+        export function dirEditor(allow: 1 | 2 | 3 | 4) {
+            const nodes = cloneTemplate("activesGrid", slots => {
+                return Array.from(Object.entries(slots), ([name, c]) => {
+                    const set = selectSet(c, {
+                        inputType: allow === 1 ? "radio" : "checkbox",
+                        name
+                    }, i => {
+                        const div = document.createElement("div");
+                        div.textContent = `${i + 1}`;
+                        div.classList.add("btn");
+        
+                        return div;
+                    });
+
+                    return [name, set] as const;
+                });
+            });
+
+            if (allow === 1) return nodes;
+
+            const btns = nodes.querySelectorAll<HTMLInputElement>("input[type=radio]");
+            btns.forEach(e => e.type = "checkbox");
+
+            if (allow < 4) {
+                const checked: HTMLInputElement[] = [];
+                btns.forEach(e => e.addEventListener("click", () => {
+                    e.checked = true;
+                    checked.push(e);
+
+                    if (checked.length > allow) checked.shift()!.checked = false;
+                }));
+            }
+ 
+            return nodes;
+        }
+
+        export function rightSideDiv() {
+            const div = document.createElement("div");
+            div.classList.add("modal-right");
+            return div;
+        }
+        
+        const HexOrder = [
+            Color.Red, 
+            Color.Purple, Color.Orange, 
+            Color.Brown,
+            Color.Blue, Color.Yellow,
+            Color.Green
+        ] as const;
+
+        export function hexGrid(allowMultiple: boolean = false) {
+            const grid = cloneTemplate("hexGrid", slots => {
+                return Array.from(Object.entries(slots), ([name, c]) => {
+                    const set = selectSet(c, {
+                        inputType: allowMultiple ? "checkbox" : "radio",
+                        name
+                    }, i => {
+                        const div = document.createElement("div");
+
+                        const color = Palette.Train[HexOrder[i]];
+                        const hexStr = `#${color.toString(16).padStart(6, "0")}`;
+                        div.style.backgroundColor = hexStr;
+                        
+                        return div;
+                    });
+
+                    return [name, set] as const;
+                });
+            });
+
+            return grid;
+        }
+    }
+
+    export const Data: {[T in Tile]: TileData} = {
+        [Tile.Blank]: {},
+        [Tile.Outlet]: {
+            modal: () => {
+                const rs = Modal.rightSideDiv();
+                rs.appendChild(Modal.hexGrid());
+                return [Modal.dirEditor(1), rs];
+            }
+        },
+        [Tile.Goal]: {
+            modal: () => {
+                const rs = Modal.rightSideDiv();
+                rs.appendChild(Modal.hexGrid());
+                return [Modal.dirEditor(4), rs];
+            }
+        },
+        [Tile.Painter]: {
+            modal: () => {
+                const rs = Modal.rightSideDiv();
+                rs.appendChild(Modal.hexGrid());
+                return [Modal.dirEditor(2), rs];
+            }
+        },
+        [Tile.Splitter]: {
+            modal: () => {
+                const rs = Modal.rightSideDiv();
+                rs.appendChild(Modal.hexGrid());
+                return [Modal.dirEditor(1), rs];
+            }
+        },
+        [Tile.Rock]: {},
+    } as const;
+}
+
 export type Atlas = {[name: string]: Texture<Resource>};
 export interface PIXIResources {
     textures: Atlas,

@@ -1,7 +1,7 @@
 import A11yDialog from "a11y-dialog";
 import * as LevelData from "./levels";
-import { EditMode, EDIT_MODES, LoadableBoard, TileGrid, TTMapping } from "./logic";
-import { Dir } from "./values";
+import { EditMode, EDIT_MODES, LoadableBoard, TileGrid } from "./logic";
+import { Dir, LevelTiles } from "./values";
 
 export namespace Elements {
     export const slider = document.querySelector<HTMLInputElement>("#speed-controls > input[type=range]")!;
@@ -19,8 +19,15 @@ export namespace Elements {
     export const ttButtons = document.querySelectorAll<HTMLInputElement>("input[name=tile-type]");
     export const editTileBtn = document.querySelector<HTMLButtonElement>("button#edit-tile-btn")!;
     
-    const editModalDiv = document.querySelector<HTMLDivElement>("div#tile-edit-modal")!;
-    export const editModal = new A11yDialog(editModalDiv);
+    const emDiv = document.querySelector<HTMLDivElement>("div#tile-edit-modal")!;
+    const emInner = emDiv.querySelector<HTMLDivElement>("div.modal-inner")!;
+    const emModal = new A11yDialog(emDiv);
+    export const EditModal = {
+        Div: emDiv,
+        Inner: emInner,
+        Modal: emModal,
+    } as const;
+
 }
 
 const {slider, input} = Elements;
@@ -68,7 +75,7 @@ namespace Computing {
 
 export function speed() { return _speed; }
 
-const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, editModal} = Elements;
+const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, EditModal} = Elements;
 
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
@@ -190,48 +197,77 @@ export function applyButtons(grid: TileGrid) {
         document.body.classList.add("failed");
     });
 
-    modeToggle.checked = grid.editMode === "level";
     grid.on("enterRail", () => {
         modeToggle.checked = false;
     })
     grid.on("enterLevel", () => {
         modeToggle.checked = true;
     })
+    modeToggle.checked = grid.editMode === "level";
 
     addListener(modeToggle, "input", ANY, grid => {
         if (modeToggle.checked) grid.editMode = "level";
         else grid.editMode = "rail";
     });
-    grid.pointerEvents.tt = {ttButtons};
+    grid.pointerEvents.tt = { ttButtons, editTileBtn };
 
-    for (let b of ttButtons) {
+    // TODO: proper modal reloading
+    let reloadModal = true;
+    for (let [i, b] of ttButtons.entries()) {
         addListener(b, "input", ["level"], grid => {
-            grid.pointerEvents.setSquare(b.value);
+            const j: LevelTiles.Tile = i;
+
+            grid.pointerEvents.setSquare(j);
+            reloadModal = true;
+            editTileBtn.disabled = !LevelTiles.Data[j].modal;
         })
     }
+    editTileBtn.disabled = !LevelTiles.Data[grid.pointerEvents.ltTile()].modal;
 
     addListener(editTileBtn, "click", ["level"], () => {
-        editModal.show();
+        if (reloadModal) {
+            const modal = LevelTiles.Data[grid.pointerEvents.ltTile()].modal;
+
+            if (modal) {
+                EditModal.Inner.replaceChildren(...modal());
+                reloadModal = false;
+            } else {
+                return;
+            }
+        }
+        EditModal.Modal.show();
     })
-    
+
+    const DirKeys: { [s: string]: Dir | undefined } = {
+        ArrowLeft: Dir.Left,
+        KeyA: Dir.Left,
+        ArrowUp: Dir.Up,
+        KeyW: Dir.Up,
+        ArrowRight: Dir.Right,
+        KeyD: Dir.Right,
+        ArrowDown: Dir.Down,
+        KeyS: Dir.Down,
+    } as const;
     addListener(document, "keydown", ["level"], (grid, e) => {
         const pointerEvents = grid.pointerEvents;
 
-        if (e.code === "ArrowLeft" || e.code === "KeyA") {
-            pointerEvents.moveSquare(Dir.Left);
-        }
-        if (e.code === "ArrowUp" || e.code === "KeyW") {
-            pointerEvents.moveSquare(Dir.Up);
-        }
-        if (e.code === "ArrowRight" || e.code === "KeyD") {
-            pointerEvents.moveSquare(Dir.Right);
-        }
-        if (e.code === "ArrowDown" || e.code === "KeyS") {
-            pointerEvents.moveSquare(Dir.Down);
-        }
-        if (e.code.startsWith("Digit")) {
-            const d = +e.code.slice(5);
-            if (1 <= d && d <= 6) ttButtons[d - 1].click();
+        const d = DirKeys[e.code];
+        if (EditModal.Div.ariaHidden) {
+            if (typeof d !== "undefined") {
+                pointerEvents.moveSquare(d);
+            }
+
+            if (e.code.startsWith("Digit")) {
+                const d = +e.code.slice(5);
+                if (1 <= d && d <= 6) ttButtons[d - 1].click();
+            }
+        } else {
+            const ag = EditModal.Inner.querySelector(".actives-grid");
+            if (ag) {
+                if (typeof d !== "undefined") {
+                    ag.querySelectorAll("label")[d].click();
+                }
+            }
         }
     })
 }

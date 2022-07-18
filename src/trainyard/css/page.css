@@ -170,14 +170,14 @@ body.readonly-mode {
  * 1. Make the dialog container, and its child overlay spread across
  *    the entire window.
  */
- .modal-container,
- .modal-overlay {
-   position: fixed; /* 1 */
-   top: 0; /* 1 */
-   right: 0; /* 1 */
-   bottom: 0; /* 1 */
-   left: 0; /* 1 */
- }
+.modal-container,
+.modal-overlay {
+    position: fixed; /* 1 */
+    top: 0; /* 1 */
+    right: 0; /* 1 */
+    bottom: 0; /* 1 */
+    left: 0; /* 1 */
+}
  
  /**
   * 1. Make sure the dialog container and all its descendants sits on
@@ -185,55 +185,152 @@ body.readonly-mode {
   * 2. Make the dialog container a flex container to easily center the
   *    dialog.
   */
- .modal-container {
-   z-index: 2; /* 1 */
-   display: flex; /* 2 */
- }
+.modal-container {
+    z-index: 2; /* 1 */
+    display: flex; /* 2 */
+}
  
  /**
   * 1. Make sure the dialog container and all its descendants are not
   *    visible and not focusable when it is hidden.
   */
- .modal-container[aria-hidden='true'] {
-   display: none; /* 1 */
- }
+.modal-container[aria-hidden='true'] {
+    display: none; /* 1 */
+}
  
  /**
   * 1. Make the overlay look like an overlay.
   */
- .modal-overlay {
-   background-color: rgba(43, 46, 56, 0.9); /* 1 */
- }
+.modal-overlay {
+    background-color: rgba(43, 46, 56, 0.9); /* 1 */
+}
  
  /**
   * 1. Vertically and horizontally center the dialog in the page.
   * 2. Make sure the dialog sits on top of the overlay.
   * 3. Make sure the dialog has an opaque background.
   */
- .modal-content {
+.modal-content {
     margin: auto; /* 1 */
     z-index: 2; /* 2 */
     position: relative; /* 2 */
     background-color: #444; /* 3 */
 
-    height: 50%;
+    width: 75%;
+    height: 75%;
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 10px;
  }
 
-.modal-header {
+.modal-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
+    gap: 20px;
 }
 
 button.modal-close-btn {
-    font-size: 2.5em;
-    padding: 0 0;
-    border: none;
-    background: none;
+    font-size: 1.5em;
+    padding: 0.25em;
     /* align-self: center; */
+}
+
+.modal-inner {
+    flex: 1;
+
+    display: flex;
+    align-items: center;
+}
+
+.actives-grid {
+    display: grid;
+    grid-template: 
+        ". b ." 1fr
+        "c e a" 3fr
+        ". d ." 1fr / 1fr 3fr 1fr;
+
+    width: 30%;
+    aspect-ratio: 1 / 1;
+}
+.actives-grid > .btn {
+    padding: 0;
+}
+.actives-grid > :nth-child(1) {
+    grid-area: a;
+}
+.actives-grid > :nth-child(2) {
+    grid-area: b;
+}
+.actives-grid > :nth-child(3) {
+    grid-area: c;
+}
+.actives-grid > :nth-child(4) {
+    grid-area: d;
+}
+.actives-grid > :nth-child(5) {
+    grid-area: e;
+}
+
+.hex-grid {
+    /* modifiable parameters */
+    --h-width: 100px;
+    --h-height: calc(var(--h-width) * 0.8660254038);
+    --h-gap: 4px;
+
+    /* do not touch */
+    --h-top-side: calc(.50 * var(--h-width));
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-gap);
+
+    margin-bottom: calc(var(--h-height) / 2);
+}
+
+.hex-grid.odd > .hex-row:nth-of-type(odd) {
+    margin-left: calc(.75 * var(--h-width) + 2 * var(--h-gap));
+}
+.hex-grid.even > .hex-row:nth-of-type(even) {
+    margin-left: calc(.75 * var(--h-width) + 2 * var(--h-gap));
+}
+
+.hex-row {
+    display: flex;
+    gap: calc(var(--h-top-side) + 4 * var(--h-gap));
+    margin-bottom: calc(var(--h-height) / -2);
+}
+.hex-row div {
+    clip-path: polygon(
+        /* x, y */
+        25% 0%, 
+        calc(100% - 25%) 0%, 
+        100% 50%, 
+        calc(100% - 25%) 100%, 
+        25% 100%, 
+        0% 50%
+        );
+
+    width: var(--h-width);
+    height: var(--h-height);
+}
+
+.hex-row div {
+    background-color: black;
+    filter: brightness(50%);
+}
+.hex-row label.radio-label input:checked + div {
+    filter: none;
+}
+
+.modal-right {
+    flex: 1;
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 /* rail-mode controls */
@@ -286,10 +383,17 @@ button.modal-close-btn {
     padding: 15px 15px;
 }
 
-#edit-grid > input {
+label.radio-label {
+    display: flex;
+    align-items: stretch;
+}
+label.radio-label input {
     display: none;
 }
-#edit-grid > input:checked + label {
+label.radio-label div {
+    flex: 1;
+}
+label.radio-label input:checked + div {
     background-color: #354;
     border-color: #243;
 }
@@ -310,15 +414,21 @@ button, .btn {
     align-items: center;
 }
 
-button:active {
+button:disabled {
+    background-color: #222;
+    border: 3px inset #222;
+    color: #888;
+}
+button:enabled:active {
     background-color: #343;
     border-color: #232;
+    border-style: inset;
 }
 body.railErase-mode button#b-erase {
     background-color: #771;
     border-color: #552;
 }
-body.railErase-mode button#b-erase:active {
+body.railErase-mode button#b-erase:enabled:active {
     background-color: #781;
     border-color: #452;
 }
@@ -326,7 +436,7 @@ body.readonly-mode button#b-start {
     background-color: #233;
     border-color: #122;
 }
-body.readonly-mode button#b-start:active {
+body.readonly-mode button#b-start:enabled:active {
     background-color: #243;
     border-color: #132;
 }

@@ -1,4 +1,4 @@
-import { CellPos, Color, Dir, Focus, Grids, Palette, PixelPos, PIXIResources, Train } from "./values";
+import { CellPos, Color, Dir, Focus, Grids, LevelTiles, Palette, PixelPos, PIXIResources, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
@@ -669,15 +669,6 @@ type DragPointer = DragPointer.FromStart & (DragPointer.DragObjects[EditMode]);
 const DBT_TIMEOUT_MS  = 1000;
 const CLICK_IGNORE_MS = 200;
 
-export enum TTMapping {
-    Blank, 
-    Outlet, 
-    Goal, 
-    Painter, 
-    Splitter, 
-    Rock
-};
-
 class PointerEvents {
     #grid: TileGrid;
     #eventLayer: PIXI.Container;
@@ -685,7 +676,7 @@ class PointerEvents {
     pointers: number = 0;
 
     #editSquare: CellPos = [0, 0];
-    #tt?: {ttButtons: NodeListOf<HTMLInputElement>};
+    #tt?: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement };
     
     constructor(grid: TileGrid) {
         this.#grid = grid;
@@ -753,43 +744,51 @@ class PointerEvents {
         return layer;
     }
 
-    set tt(v: {ttButtons: NodeListOf<HTMLInputElement>}) {
+    set tt(v: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement }) {
         this.#tt = v;
         this.#updateTT();
     }
 
+    ltTile(cellPos: CellPos = this.#editSquare): LevelTiles.Tile {
+        Grids.assertInBounds(this.#grid, ...cellPos);
+        const tile = this.#grid.tile(...cellPos)!;
+
+        return LevelTiles.Tile[tile.constructor.name as keyof typeof LevelTiles.Tile];
+    }
+
     #updateTT() {
         if (this.#tt) {
-            const {ttButtons} = this.#tt;
-            const grid = this.#grid;
-            const tile = grid.tile(...this.editSquare)!;
+            const {ttButtons, editTileBtn} = this.#tt;
+            const selected = this.ltTile();
 
-            const selected = TTMapping[tile.constructor.name as keyof typeof TTMapping];
             if (typeof selected !== "undefined") {
                 ttButtons[selected].checked = true;
             }
+
+            editTileBtn.disabled = !LevelTiles.Data[selected].modal;
         }
     }
 
     // TODO, use history rather than preset defaults
-    #getDefaultTile(value: keyof typeof TTMapping) {
-        if (value === "Blank") {
+    #getDefaultTile(value: LevelTiles.Tile) {
+        if (value === LevelTiles.Tile.Blank) {
             return new Tile.Blank();
-        } else if (value === "Goal") {
+        } else if (value === LevelTiles.Tile.Goal) {
             return new Tile.Goal([Dir.Right], [Color.Red]);
-        } else if (value === "Outlet") {
+        } else if (value === LevelTiles.Tile.Outlet) {
             return new Tile.Outlet(Dir.Right, [Color.Red]);
-        } else if (value === "Painter") {
+        } else if (value === LevelTiles.Tile.Painter) {
             return new Tile.Painter([Dir.Left, Dir.Right], Color.Red);
-        } else if (value === "Rock") {
+        } else if (value === LevelTiles.Tile.Rock) {
             return new Tile.Rock();
-        } else if (value === "Splitter") {
+        } else if (value === LevelTiles.Tile.Splitter) {
             return new Tile.Splitter(Dir.Left);
         } else {
             let _: never = value;
         }
     }
 
+    // LEVEL EDIT MODE SETTINGS
     get editSquare() {
         return this.#editSquare;
     }
@@ -802,9 +801,9 @@ class PointerEvents {
         this.#updateTT();
     }
 
-    setSquare(value: string) {
+    setSquare(value: LevelTiles.Tile) {
         if (this.#grid.editMode !== "level") return;
-        this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value as keyof typeof TTMapping));
+        this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value));
     }
 
     moveSquare(d: Dir) {
@@ -813,6 +812,7 @@ class PointerEvents {
 
         if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
     }
+    //
 
     /**
      * Apply pointer events like click, drag, etc. to a container

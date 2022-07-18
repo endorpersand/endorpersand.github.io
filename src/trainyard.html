@@ -50,34 +50,34 @@
         </div>
         <div class="control-hud require-level-mode">
             <div id="edit-grid">
-                <input name="tile-type" id="tt-blank" type="radio" value="Blank">
-                <label for="tt-blank" class="btn">
-                    <span>blank</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Blank">
+                    <div class="btn">blank</div>
                 </label>
 
-                <input name="tile-type" id="tt-outlet" type="radio" value="Outlet">
-                <label for="tt-outlet" class="btn">
-                    <span>outlet</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Outlet">
+                    <div class="btn">outlet</div>
                 </label>
 
-                <input name="tile-type" id="tt-goal" type="radio" value="Goal">
-                <label for="tt-goal" class="btn">
-                    <span>goal</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Goal">
+                    <div class="btn">goal</div>
                 </label>
 
-                <input name="tile-type" id="tt-painter" type="radio" value="Painter">
-                <label for="tt-painter" class="btn">
-                    <span>painter</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Painter">
+                    <div class="btn">painter</div>
                 </label>
 
-                <input name="tile-type" id="tt-splitter" type="radio" value="Splitter">
-                <label for="tt-splitter" class="btn">
-                    <span>splitter</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Splitter">
+                    <div class="btn">splitter</div>
                 </label>
 
-                <input name="tile-type" id="tt-rock" type="radio" value="Rock">
-                <label for="tt-rock" class="btn">
-                    <span>rock</span>
+                <label class="radio-label">
+                    <input name="tile-type" type="radio" value="Rock">
+                    <div class="btn">rock</div>
                 </label>
             </div>
             <button id="edit-tile-btn">Edit Tile</button>
@@ -93,17 +93,51 @@
         <!-- Modal overlay -->
         <div data-a11y-dialog-hide class="modal-overlay"></div>
         <div role="document" class="modal-content">
-            <!-- Modal header -->
-            <div class="modal-header">
-                <!-- <h1 id="tile-edit-modal-title">Your dialog title</h1> -->
-                <button type="button" data-a11y-dialog-hide aria-label="Close dialog" class="modal-close-btn">
-                    &times;
-                </button>
+            <div class="modal-inner">
+                You should not be able to read this.
             </div>
-            <div class="inner-content">
-                hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!hello!
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <!-- <h1 id="tile-edit-modal-title">Your dialog title</h1> -->
+                <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn">
+                    Cancel
+                </button>
+                <button type="button" aria-label="Ok" class="modal-close-btn">
+                    Ok
+                </button>
             </div>
         </div>
     </div>
+
+    <template id="modal-actives-grid">
+        <div class="actives-grid">
+            <slot name="actives-grid"></slot>
+            <slot name="actives-grid"></slot>
+            <slot name="actives-grid"></slot>
+            <slot name="actives-grid"></slot>
+            <div class="btn">5</div>
+        </div>
+    </template>
+    <template id="modal-hex-color-grid">
+        <div class="hex-grid odd">
+            <div class="hex-row">
+                <slot name="hexagon"></slot>
+            </div>
+            <div class="hex-row">
+                <slot name="hexagon"></slot>
+                <slot name="hexagon"></slot>
+            </div>
+            <div class="hex-row">
+                <slot name="hexagon"></slot>
+            </div>
+            <div class="hex-row">
+                <slot name="hexagon"></slot>
+                <slot name="hexagon"></slot>
+            </div>
+            <div class="hex-row">
+                <slot name="hexagon"></slot>
+            </div>
+        </div>
+    </template>
     <script type="module" src="trainyard/frame.ts"></script>
 </body>
