@@ -266,19 +266,35 @@ export function applyButtons(grid: TileGrid) {
         } else {
             const ag = EditModal.Inner.querySelector(".actives-grid");
             if (ag) {
+                const btns = ag.querySelectorAll<HTMLElement>(":scope > *");
                 if (typeof d !== "undefined") {
-                    ag.querySelectorAll("label")[d].click();
+                    btns[d].click();
                 }
             }
             
             const hg = EditModal.Inner.querySelector(".hex-grid");
             if (hg) {
+                const btns = hg.querySelectorAll<HTMLElement>(".hex-row > *");
+
                 if (e.code.startsWith("Digit")) {
                     const d = +e.code.slice(5);
-                    if (1 <= d && d <= 7) hg.querySelectorAll("label")[HexMapping[d - 1]].click();
+                    if (1 <= d && d <= 7) {
+                        const btn = btns[HexMapping[d - 1]];
+
+                        if (!btn.classList.contains("active")) {
+                            btn.click();
+                            btn.classList.add("active");
+                        }
+                    }
                 }
             }
         }
+    });
+
+    addListener(document, "keyup", ANY, () => {
+        const hg = EditModal.Inner.querySelector(".hex-grid");
+        const btns = hg?.querySelectorAll<HTMLButtonElement>(".hex-row > button");
+        btns?.forEach(b => b.classList.remove("active"));
     })
 }
 

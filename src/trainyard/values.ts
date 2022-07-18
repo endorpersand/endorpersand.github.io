@@ -522,6 +522,8 @@ export namespace LevelTiles {
         export const Templates = {
             activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
             hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
+            trainList: document.querySelector<HTMLTemplateElement>("template#modal-train-list")!,
+            trainListSlot: document.querySelector<HTMLTemplateElement>("template#modal-tl-slot")!,
         } as const;
 
         /**
@@ -657,12 +659,22 @@ export namespace LevelTiles {
             return nodes;
         }
 
-        export function rightSideDiv() {
+        function div(classes: string[], ...children: (string | Node)[]) {
             const div = document.createElement("div");
-            div.classList.add("modal-right");
+            div.classList.add(...classes);
+            div.append(...children);
+
             return div;
         }
+
+        export function box(...children: (string | Node)[]) {
+            return div(["modal-box"], ...children);
+        }
         
+        export function trioBox(...children: (string | Node)[]) {
+            return div(["modal-trio"], ...children);
+        }
+
         const HexOrder = [
             Color.Red, 
             Color.Purple, Color.Orange, 
@@ -671,18 +683,16 @@ export namespace LevelTiles {
             Color.Green
         ] as const;
 
-        // TODO fix button mode
         export function hexGrid(type: "checkbox" | "radio" | "button") {
             return cloneTemplate("hexGrid", (name, i) => {
                 const color = Palette.Train[HexOrder[i]];
                 const hexStr = `#${color.toString(16).padStart(6, "0")}`;
 
-                // if (type === "button") {
-                //     const button = document.createElement("button");
-                //     button.style.backgroundColor = hexStr;
-                //     return button;
-                // }
-                if (type === "button") { type = "checkbox"; }
+                if (type === "button") {
+                    const button = document.createElement("button");
+                    button.style.backgroundColor = hexStr;
+                    return button;
+                }
 
                 return label({
                     inputType: type,
@@ -694,29 +704,49 @@ export namespace LevelTiles {
                 });
             });
         }
+        
+        export function trainList() {
+            return cloneTemplate("trainList", name => {
+                if (name === "tl-slot") return cloneTemplate("trainListSlot");
+            });
+        }
     }
 
     export const Data: {[T in Tile]: TileData} = {
         [Tile.Blank]: {},
         [Tile.Outlet]: {
             modal: () => {
-                const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid("button"));
-                return [Modal.dirEditor(1), rs];
+                const trio = Modal.trioBox(
+                    Modal.box(Modal.trainList()),
+                    Modal.box(Modal.dirEditor(1)),
+                    Modal.box(Modal.hexGrid("button"))
+                )
+                
+                return [trio];
             }
         },
         [Tile.Goal]: {
             modal: () => {
-                const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid("button"));
-                return [Modal.dirEditor(4), rs];
+                const trio = Modal.trioBox(
+                    Modal.box(Modal.trainList()),
+                    Modal.box(Modal.dirEditor(4)),
+                    Modal.box(Modal.hexGrid("button"))
+                )
+                
+                return [trio];
             }
         },
         [Tile.Painter]: {
             modal: () => {
-                const rs = Modal.rightSideDiv();
-                rs.appendChild(Modal.hexGrid("radio"));
-                return [Modal.dirEditor(2), rs];
+                const ls = Modal.box(
+                    Modal.dirEditor(2),
+                );
+
+                const rs = Modal.box(
+                    Modal.hexGrid("radio")
+                );
+
+                return [ls, rs];
             }
         },
         [Tile.Splitter]: {

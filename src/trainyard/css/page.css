@@ -241,6 +241,7 @@ button.modal-close-btn {
 
     display: flex;
     align-items: center;
+    justify-content: space-around;
 }
 
 .actives-grid {
@@ -250,11 +251,17 @@ button.modal-close-btn {
         "c e a" 3fr
         ". d ." 1fr / 1fr 3fr 1fr;
 
-    width: 30%;
+    min-width: 150px;
     aspect-ratio: 1 / 1;
 }
-.actives-grid > .btn {
+.actives-grid .btn {
     padding: 0;
+}
+.ag-tile {
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .actives-grid > :nth-child(1) {
     grid-area: a;
@@ -288,9 +295,7 @@ button.modal-close-btn {
     margin-bottom: calc(var(--h-height) / 2);
 }
 
-.hex-grid.odd > .hex-row:nth-of-type(odd) {
-    margin-left: calc(.75 * var(--h-width) + 2 * var(--h-gap));
-}
+.hex-grid.odd > .hex-row:nth-of-type(odd),
 .hex-grid.even > .hex-row:nth-of-type(even) {
     margin-left: calc(.75 * var(--h-width) + 2 * var(--h-gap));
 }
@@ -300,7 +305,8 @@ button.modal-close-btn {
     gap: calc(var(--h-top-side) + 4 * var(--h-gap));
     margin-bottom: calc(var(--h-height) / -2);
 }
-.hex-row div {
+.hex-row div,
+.hex-row button {
     clip-path: polygon(
         /* x, y */
         25% 0%, 
@@ -313,24 +319,106 @@ button.modal-close-btn {
 
     width: var(--h-width);
     height: var(--h-height);
-}
 
-.hex-row div {
+    border: none;
     background-color: white;
     filter: brightness(25%);
 }
-.hex-row label.radio-label input:checked + div {
+
+.hex-row label.radio-label input:checked + div,
+.hex-row button:active,
+.hex-row button.active {
     filter: none;
 }
 
-.modal-right {
-    flex: 1;
+.modal-box {
     align-self: stretch;
 
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-around;
     align-items: center;
+}
+
+.modal-trio {
+    flex: 1;
+    align-self: stretch;
+    
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-around;
+    align-content: space-around;
+}
+
+.modal-trio > :first-child {
+    flex: 1 1 100%;
+}
+
+.train-list {
+    display: flex;
+    flex-flow: row wrap;
+    --slot-gap: 3px;
+    --divider-size: 3px;
+
+    gap: var(--slot-gap);
+}
+
+.train-list > :first-child {
+    padding-left: var(--slot-gap);
+    border-left: var(--divider-size) solid black;
+}
+.train-list > :nth-of-type(9n),
+.train-list > :last-child {
+    padding-right: var(--slot-gap);
+    border-right: var(--divider-size) solid black;
+}
+
+.tl-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+
+    width: 30px;
+}
+
+.tl-slot-inner {
+    background-color: #333;
+    aspect-ratio: 1 / 2;
+}
+.tl-slot .btn {
+    padding: 0;
+}
+
+@media (width < 700px) {
+    .modal-content {
+        width: calc(100% - 15vw);
+        height: calc(100% - 15vw);
+    }
+
+    .modal-inner {
+        flex-direction: column;
+    }
+
+    .hex-grid {
+        --h-width: 75px;
+        --h-gap: 2px;
+    }
+
+    .modal-trio {
+        flex-flow: column nowrap;
+        justify-content: space-evenly;
+    }
+
+    .modal-trio > :first-child {
+        flex: none;
+        order: 2;
+    }
+    .modal-trio > :nth-child(2) {
+        order: 1;
+    }
+    .modal-trio > :nth-child(3) {
+        order: 3;
+    }
 }
 
 /* rail-mode controls */
@@ -390,16 +478,17 @@ label.radio-label {
 label.radio-label input {
     display: none;
 }
-label.radio-label div {
+label.radio-label input + div {
     flex: 1;
 }
-label.radio-label input:checked + div {
+label.radio-label input:checked + div.btn {
     background-color: #354;
     border-color: #243;
+    border-style: inset;
 }
 
 /* button display */
-button, .btn {
+.btn {
     background-color: #333;
     border: 3px outset #222;
     color: white;
@@ -408,18 +497,18 @@ button, .btn {
     text-align: center;
     vertical-align: middle;
 }
-.btn {
+.btn:not(button) {
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-button:disabled {
+button.btn:disabled {
     background-color: #222;
     border: 3px inset #222;
     color: #888;
 }
-button:enabled:active {
+button.btn:enabled:active {
     background-color: #343;
     border-color: #232;
     border-style: inset;
