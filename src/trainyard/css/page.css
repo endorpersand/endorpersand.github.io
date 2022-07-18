@@ -9,9 +9,85 @@
     -ms-user-select: none;
 }
 
+:root {
+    --pal-bg: #222;
+    --pal-text: #FFF;
+    --pal-bg-ui: #555;
+
+    /* Toggle switch */
+    --pal-switch-ball: #FFF;
+    --pal-switch-off: #CCC;
+    --pal-switch-on: #269926;
+
+    /* Modal settings */
+    --pal-modal-overlay: #2B2E38E5;
+    --pal-modal-content: #474747;
+    /*
+        Darker than var(--pal-modal-content).
+        Used for 
+            - (TEMP) the center tile in the dir selector
+            - train slots
+    */
+    --pal-modal-darker: #333;
+    /* DEBUG: 
+        in case color isn't assigned normally, 
+        the hexagon falls back to this */
+    --pal-modal-hex-placeholder: #FFF;
+    --pal-modal-tl-divider: #000; /* The divider every 9 trains */
+
+    /* Buttons & modes */
+    --pal-button: #333;
+    --pal-button-shadow: #111;
+    --pal-button-tint: #777;
+
+    --pal-button-active: #333; /* #2a4c3b; */
+    --pal-button-active-shadow: #111; /* #082a19; */
+    --pal-button-active-tint: #777; /* #6e907f; */
+
+    --pal-button-held: #1a3c2b;
+    --pal-button-held-shadow: #001a09;
+    --pal-button-held-tint: #5e806f;
+
+    --pal-button-disabled: #222;
+    --pal-button-disabled-shadow: #000;
+    --pal-button-disabled-tint: #666;
+    --pal-button-disabled-text: #888;
+
+
+    --pal-bg-erase: #442;
+
+    --pal-button-erase: #771;
+    --pal-button-erase-shadow: #552;
+    --pal-button-erase-tint: #aa5;
+
+    --pal-button-erase-active: #771;
+    --pal-button-erase-active-shadow: #552;
+    --pal-button-erase-active-tint: #aa5;
+
+
+    --pal-bg-readonly: #244;
+
+    --pal-button-return: #244;
+    --pal-button-return-shadow: #022;
+    --pal-button-return-tint: #688;
+
+    --pal-button-return-active: #244;
+    --pal-button-return-active-shadow: #022;
+    --pal-button-return-active-tint: #688;
+
+
+    --pal-button-pass: #252;
+    --pal-button-pass-shadow: #020;
+    --pal-button-pass-tint: #474;
+
+    --pal-button-fail: #411;
+    --pal-button-fail-shadow: #200;
+    --pal-button-fail-tint: #744;
+}
+
 body {
-    background-color: #222;
-    color: white;
+    background-color: var(--pal-bg);
+    color: var(--pal-text);
     display: flex;
     justify-content: center;
     align-items: stretch;
@@ -24,10 +100,10 @@ body * {
 }
 
 body.railErase-mode {
-    background: linear-gradient(#222 25%, #442)
+    background: linear-gradient(var(--pal-bg) 25%, var(--pal-bg-erase))
 }
 body.readonly-mode {
-    background: linear-gradient(#222 25%, #233)
+    background: linear-gradient(var(--pal-bg) 25%, var(--pal-bg-readonly))
 }
 
 #wrapper {
@@ -46,7 +122,7 @@ body.readonly-mode {
 
 #navbar {
     height: 7vh;
-    background-color: #555;
+    background-color: var(--pal-bg-ui);
     display: flex;
     justify-content: space-between;
     padding: 4px 6px;
@@ -76,10 +152,6 @@ body.readonly-mode {
     --switch-width: 40px;
     --switch-height: 20px;
     --switch-padding: 2px;
-
-    --ball-color: white;
-    --off-color: #ccc;
-    --on-color: rgb(38, 153, 38);
     
     position: relative;
     display: inline-block;
@@ -102,7 +174,7 @@ body.readonly-mode {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--off-color);
+    background-color: var(--pal-switch-off);
     -webkit-transition: .2s;
     transition: .2s;
 
@@ -116,7 +188,7 @@ body.readonly-mode {
     width:  calc(var(--switch-height) - 2 * var(--switch-padding));
     left:   var(--switch-padding);
     bottom: var(--switch-padding);
-    background-color: var(--ball-color);
+    background-color: var(--pal-switch-ball);
     -webkit-transition: .2s;
     transition: .2s;
 
@@ -124,11 +196,11 @@ body.readonly-mode {
 }
   
 .switch input:checked + .slider {
-    background-color: var(--on-color);
+    background-color: var(--pal-switch-on);
 }
   
 .switch input:focus + .slider {
-    box-shadow: 0 0 1px var(--on-color);
+    box-shadow: 0 0 1px var(--pal-switch-on);
 }
   
 .switch input:checked + .slider:before {
@@ -142,7 +214,7 @@ body.readonly-mode {
     display: flex;
     gap: 7px;
     padding: 6px;
-    background-color: #555;
+    background-color: var(--pal-bg-ui);
     height: 130px;
 }
 
@@ -202,7 +274,7 @@ body.readonly-mode {
   * 1. Make the overlay look like an overlay.
   */
 .modal-overlay {
-    background-color: rgba(43, 46, 56, 0.9); /* 1 */
+    background-color: var(--pal-modal-overlay); /* 1 */
 }
  
  /**
@@ -214,7 +286,7 @@ body.readonly-mode {
     margin: auto; /* 1 */
     z-index: 2; /* 2 */
     position: relative; /* 2 */
-    background-color: #444; /* 3 */
+    background-color: var(--pal-modal-content); /* 3 */
 
     width: 75%;
     height: 75%;
@@ -258,7 +330,7 @@ button.modal-close-btn {
     padding: 0;
 }
 .ag-tile {
-    background-color: #333;
+    background-color: var(--pal-modal-darker);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -321,11 +393,12 @@ button.modal-close-btn {
     height: var(--h-height);
 
     border: none;
-    background-color: white;
+    background-color: var(--pal-modal-hex-placeholder);
     filter: brightness(25%);
 }
 
 .hex-row label.radio-label input:checked + div,
+.hex-row label.radio-label input:active + div,
 .hex-row button:active,
 .hex-row button.active {
     filter: none;
@@ -365,12 +438,12 @@ button.modal-close-btn {
 
 .train-list > :first-child {
     padding-left: var(--slot-gap);
-    border-left: var(--divider-size) solid black;
+    border-left: var(--divider-size) solid var(--pal-modal-tl-divider);
 }
 .train-list > :nth-of-type(9n),
 .train-list > :last-child {
     padding-right: var(--slot-gap);
-    border-right: var(--divider-size) solid black;
+    border-right: var(--divider-size) solid var(--pal-modal-tl-divider);
 }
 
 .tl-slot {
@@ -382,7 +455,7 @@ button.modal-close-btn {
 }
 
 .tl-slot-inner {
-    background-color: #333;
+    background-color: var(--pal-modal-darker);
     aspect-ratio: 1 / 2;
 }
 .tl-slot .btn {
@@ -450,14 +523,19 @@ button.modal-close-btn {
     flex: 1 1 0;
 }
 
-
-#fd-pass {
-    background-color: #131;
-    border-color: #020;
+#fail-display .btn {
+    border-color: var(--button-inset);
 }
-#fd-fail {
-    background-color: #311;
-    border-color: #200;
+
+.btn#fd-pass {
+    background-color: var(--pal-button-pass);
+    --button-shadow: var(--pal-button-pass-shadow);
+    --button-tint: var(--pal-button-pass-tint);
+}
+.btn#fd-fail {
+    background-color: var(--pal-button-fail);
+    --button-shadow: var(--pal-button-fail-shadow);
+    --button-tint: var(--pal-button-fail-tint);
 }
 
 /* level-mode controls */
@@ -481,17 +559,24 @@ label.radio-label input {
 label.radio-label input + div {
     flex: 1;
 }
-label.radio-label input:checked + div.btn {
-    background-color: #354;
-    border-color: #243;
-    border-style: inset;
-}
 
 /* button display */
 .btn {
-    background-color: #333;
-    border: 3px outset #222;
-    color: white;
+    background-color: var(--pal-button);
+    --button-shadow: var(--pal-button-shadow);
+    --button-tint: var(--pal-button-tint);
+
+    /* hardcoding inset/outset because it's Different in Different Browsers (((((safari))))) */
+    /* DO NOT SET THESE. */
+    /* Set border-color to the respective variable. */
+    --button-outset: var(--button-tint) var(--button-shadow) var(--button-shadow) var(--button-tint);;
+    --button-inset: var(--button-shadow) var(--button-tint) var(--button-tint) var(--button-shadow);;
+    
+    border-style: solid;
+    border-width: 3px;
+    border-color: var(--button-outset);
+
+    color: var(--pal-text);
     padding: 15px 0px;
     font-size: 18px;
     text-align: center;
@@ -504,30 +589,50 @@ label.radio-label input:checked + div.btn {
 }
 
 button.btn:disabled {
-    background-color: #222;
-    border: 3px inset #222;
-    color: #888;
+    background-color: var(--pal-button-disabled);
+    --button-shadow: var(--pal-button-disabled-shadow);
+    --button-tint: var(--pal-button-disabled-tint);
+    color: var(--pal-button-disabled-text);
 }
-button.btn:enabled:active {
-    background-color: #343;
-    border-color: #232;
-    border-style: inset;
+
+button.btn:enabled:active,
+label.radio-label input:active + div.btn {
+    background-color: var(--pal-button-active);
+    --button-shadow: var(--pal-button-active-shadow);
+    --button-tint: var(--pal-button-active-tint);
 }
+label.radio-label input:checked + div.btn {
+    background-color: var(--pal-button-held);
+    --button-shadow: var(--pal-button-held-shadow);
+    --button-tint: var(--pal-button-held-tint);
+}
+
+button.btn:disabled,
+button.btn:enabled:active,
+label.radio-label input:active + div.btn,
+label.radio-label input:checked + div.btn {
+    border-color: var(--button-inset);
+}
+
 body.railErase-mode button#b-erase {
-    background-color: #771;
-    border-color: #552;
+    background-color: var(--pal-button-erase);
+    --button-shadow: var(--pal-button-erase-shadow);
+    --button-tint: var(--pal-button-erase-tint);
 }
 body.railErase-mode button#b-erase:enabled:active {
-    background-color: #781;
-    border-color: #452;
+    background-color: var(--pal-button-erase-active);
+    --button-shadow: var(--pal-button-erase-active-shadow);
+    --button-tint: var(--pal-button-erase-active-tint);
 }
 body.readonly-mode button#b-start {
-    background-color: #233;
-    border-color: #122;
+    background-color: var(--pal-button-return);
+    --button-shadow: var(--pal-button-return-shadow);
+    --button-tint: var(--pal-button-return-tint);
 }
 body.readonly-mode button#b-start:enabled:active {
-    background-color: #243;
-    border-color: #132;
+    background-color: var(--pal-button-return-active);
+    --button-shadow: var(--pal-button-return-active-shadow);
+    --button-tint: var(--pal-button-return-active-tint);
 }
 
 /* input settings */
