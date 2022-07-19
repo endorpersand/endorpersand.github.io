@@ -922,11 +922,7 @@ class PointerEvents {
                 
                 const ccmin = Grids.cellToPosition(grid, cellPos);
                 ccshift = {x: pos.x - ccmin.x, y: pos.y - ccmin.y};
-
-                selectCopy.position = {
-                    x: e.data.global.x - ccshift.x, 
-                    y: e.data.global.y - ccshift.y
-                };
+                selectCopy.position = ccmin;
             } else {
                 let _: never = editMode;
             }
@@ -1035,8 +1031,8 @@ class PointerEvents {
             } else if (editMode === "level") {
                 selectCopy.visible = true;
                 selectCopy.position = {
-                    x: e.data.global.x - ccshift.x, 
-                    y: e.data.global.y - ccshift.y
+                    x: pos.x - ccshift.x, 
+                    y: pos.y - ccshift.y
                 };
             } else {
                 let _: never = editMode;
