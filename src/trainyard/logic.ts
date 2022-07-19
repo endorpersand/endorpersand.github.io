@@ -1,4 +1,4 @@
-import { CellPos, Color, Dir, Focus, Grids, LevelTiles, Palette, PixelPos, PIXIResources, Train } from "./values";
+import { CellPos, Color, Dir, Focus, Grids, Modal, Palette, PixelPos, PIXIResources, Train } from "./values";
 import * as PIXI from "pixi.js";
 import * as TileGraphics from "./graphics/components";
 import { GridContainer, TrainContainer } from "./graphics/grid";
@@ -54,12 +54,25 @@ function removeAllChildren(con: PIXI.Container, options?: boolean | PIXI.IDestro
 function length2D<A extends {length: number}>(arr2D: A[]) {
     return Math.max(arr2D.length, ...arr2D.map(t => t.length));
 }
-interface Serializable<J = any> {
+
+function assertEditMode<E extends EditMode[]>(em: EditMode, ...assertion: E): asserts em is E[number] {
+    if (!assertion.includes(em)) throw new Error(`Unexpected edit mode. Expected: ${assertion}`)
+}
+
+
+interface Serializable<J = unknown> {
     /**
      * Designate how to convert this object into JSON.
      */
     toJSON(): J;
     // static fromJSON(o: J): this;
+}
+
+function nonNullable(o: unknown): o is {} {
+    return typeof o !== "undefined" && o !== null;
+}
+function serializable(o: unknown): o is Serializable {
+    return nonNullable(o) && "toJSON" in o;
 }
 
 interface GridJSON {
@@ -587,9 +600,9 @@ export class TileGrid implements Serializable, Grids.Grid {
             for (let x = 0; x < length; x++) {
                 let tile = this.tile(x, y);
 
-                row += tile?.serChar ?? " ";
+                row += Tile.isStageTile(tile) ? tile.serChar : " ";
 
-                if (typeof tile !== "undefined" && "toJSON" in tile) {
+                if (typeof tile !== "undefined" && serializable(tile)) {
                     tiles[y * length + x] = tile;
                 }
             }
@@ -749,39 +762,63 @@ class PointerEvents {
         this.#updateTT();
     }
 
-    ltTile(cellPos: CellPos = this.#editSquare): LevelTiles.Tile {
+    /**
+     * Provide the stage tile at the given position.
+     * @param cellPos 
+     * @returns 
+     */
+    #stageTileAt(cellPos: CellPos): StageTile {
         Grids.assertInBounds(this.#grid, ...cellPos);
         const tile = this.#grid.tile(...cellPos)!;
 
-        return LevelTiles.Tile[tile.constructor.name as keyof typeof LevelTiles.Tile];
+        if (Tile.isStageTile(tile)) {
+            return tile;
+        }
+        throw new Error(`There is no stage tile at (${cellPos})`);
+    }
+
+    /**
+     * Provide the button order (in the edit UI) of the tile at the position
+     * @param cellPos position of the tile to find the order of (or the current edit position if unspecified)
+     * @returns the button order
+     */
+    buttonOrderAt(cellPos: CellPos = this.#editSquare): StageTile.Order {
+        const tile = this.#stageTileAt(cellPos)!;
+
+        // enums can take string->number, so do that.
+        const tileName = tile.constructor.name as keyof typeof StageTile.Order;
+        return StageTile.Order[tileName];
+    }
+
+    stagePropertiesAt(cellPos: CellPos = this.#editSquare): Staged {
+        return this.#stageTileAt(cellPos);
     }
 
     #updateTT() {
         if (this.#tt) {
             const {ttButtons, editTileBtn} = this.#tt;
-            const selected = this.ltTile();
+            const selected = this.buttonOrderAt();
 
-            if (typeof selected !== "undefined") {
-                ttButtons[selected].checked = true;
-            }
+            const but = ttButtons[selected];
+            if (typeof but !== "undefined") but.checked = true;
 
-            editTileBtn.disabled = !LevelTiles.Data[selected].modal;
+            editTileBtn.disabled = !this.stagePropertiesAt().modal;
         }
     }
 
     // TODO, use history rather than preset defaults
-    #getDefaultTile(value: LevelTiles.Tile) {
-        if (value === LevelTiles.Tile.Blank) {
+    #getDefaultTile(value: StageTile.Order) {
+        if (value === StageTile.Order.Blank) {
             return new Tile.Blank();
-        } else if (value === LevelTiles.Tile.Goal) {
+        } else if (value === StageTile.Order.Goal) {
             return new Tile.Goal([Dir.Right], [Color.Red]);
-        } else if (value === LevelTiles.Tile.Outlet) {
+        } else if (value === StageTile.Order.Outlet) {
             return new Tile.Outlet(Dir.Right, [Color.Red]);
-        } else if (value === LevelTiles.Tile.Painter) {
+        } else if (value === StageTile.Order.Painter) {
             return new Tile.Painter([Dir.Left, Dir.Right], Color.Red);
-        } else if (value === LevelTiles.Tile.Rock) {
+        } else if (value === StageTile.Order.Rock) {
             return new Tile.Rock();
-        } else if (value === LevelTiles.Tile.Splitter) {
+        } else if (value === StageTile.Order.Splitter) {
             return new Tile.Splitter(Dir.Left);
         } else {
             let _: never = value;
@@ -801,13 +838,13 @@ class PointerEvents {
         this.#updateTT();
     }
 
-    setSquare(value: LevelTiles.Tile) {
-        if (this.#grid.editMode !== "level") return;
+    setSquare(value: StageTile.Order) {
+        assertEditMode(this.#grid.editMode, "level");
         this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value));
     }
 
     moveSquare(d: Dir) {
-        if (this.#grid.editMode !== "level") return;
+        assertEditMode(this.#grid.editMode, "level");
         const shifted = Dir.shift(this.editSquare, d);
 
         if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
@@ -1725,11 +1762,6 @@ class TrainState {
 
 export abstract class Tile {
     /**
-     * Char this is represented with during serialization. If not serialized, serChar is " ".
-     */
-    readonly serChar: string = " ";
-
-    /**
      * Which layer of the grid container is this object rendered on?
      */
     readonly layer: number = Layer.BOXES;
@@ -1832,12 +1864,38 @@ export abstract class StatefulTile<S extends TileState = TileState> extends Tile
     abstract clone(): StatefulTile;
 }
 
+/**
+ * This applies to all interfaces that are a part of the stage, rather than being created on play.
+ */
+interface Staged {
+    /**
+     * Character this tile is represented with during serialization. 
+     */
+    readonly serChar: string;
+
+    /**
+     * How the edit modal for this type should be created
+     */
+    modal?: (this: Staged) => (string | Node)[]
+}
+
+type StageTile = Staged & Tile;
+export namespace StageTile {
+    /**
+     * Designates the order of stage tiles in the edit UI
+     */
+    export enum Order {Blank, Outlet, Goal, Painter, Splitter, Rock}
+}
+
 export namespace Tile {
+    export function isStageTile(t?: Tile): t is StageTile {
+        return nonNullable(t) && "serChar" in t;
+    }
 
     /**
      * Tile which trains appear from.
      */
-    export class Outlet extends StatefulTile implements Serializable {
+    export class Outlet extends StatefulTile implements Staged, Serializable {
         /**
          * The output side.
          */
@@ -1904,6 +1962,16 @@ export namespace Tile {
             return con;
         }
 
+        modal() {
+            const trio = Modal.trioBox(
+                Modal.box(Modal.trainList()),
+                Modal.box(Modal.dirEditor(1)),
+                Modal.box(Modal.hexGrid("button"))
+            )
+            
+            return [trio];
+        }
+
         clone() {
             return new Outlet(this.out, [...this.colors]);
         }
@@ -1918,7 +1986,7 @@ export namespace Tile {
     /**
      * Tiles which trains must go to.
      */
-    export class Goal extends StatefulTile<GoalState> implements Serializable {
+    export class Goal extends StatefulTile<GoalState> implements Staged, Serializable {
         /**
          * The train colors this goal block wants. If met, the color is switched to undefined.
          */
@@ -1983,6 +2051,16 @@ export namespace Tile {
             return con;
         }
 
+        modal() {
+            const trio = Modal.trioBox(
+                Modal.box(Modal.trainList()),
+                Modal.box(Modal.dirEditor(4)),
+                Modal.box(Modal.hexGrid("button"))
+            )
+            
+            return [trio];
+        }
+
         clone() {
             return new Goal([...this.actives], [...this.targets]);
         }
@@ -1991,7 +2069,7 @@ export namespace Tile {
     /**
     * Tiles which paint the train.
     */
-    export class Painter extends StatefulTile implements Serializable {
+    export class Painter extends StatefulTile implements Staged, Serializable {
         readonly color: Color;
         readonly serChar = "p";
 
@@ -2043,6 +2121,18 @@ export namespace Tile {
             return con;
         }
 
+        modal() {
+            const ls = Modal.box(
+                Modal.dirEditor(2),
+            );
+
+            const rs = Modal.box(
+                Modal.hexGrid("radio")
+            );
+
+            return [ls, rs];
+        }
+
         clone() {
             const [d1, d2] = this.actives;
             return new Painter([d1, d2], this.color);
@@ -2052,7 +2142,7 @@ export namespace Tile {
     /**
      * Tiles which split the train into 2 trains.
      */
-    export class Splitter extends StatefulTile implements Serializable {
+    export class Splitter extends StatefulTile implements Staged, Serializable {
         /**
          * The active side.
          * Note that: If this goal accepts right-facing trains, it has a left-facing active side.
@@ -2118,12 +2208,16 @@ export namespace Tile {
             return con;
         }
 
+        modal() {
+            return [Modal.dirEditor(1)];
+        }
+
         clone() {
             return new Splitter(this.active);
         }
     }
     
-    export class Blank extends Tile {
+    export class Blank extends Tile implements Staged {
         readonly serChar = " ";
         readonly railable = true;
 
@@ -2147,7 +2241,7 @@ export namespace Tile {
         }
     }
 
-    export class Rock extends Tile {
+    export class Rock extends Tile implements Staged {
         readonly serChar = "r";
 
         render(resources: PIXIResources, size: number): PIXI.Container {

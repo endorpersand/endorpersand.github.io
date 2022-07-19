@@ -507,255 +507,198 @@ export namespace Grids {
     }
 }
 
-export namespace LevelTiles {
-    // export type Tile = keyof typeof Data;
-
-    export enum Tile {
-        Blank, Outlet, Goal, Painter, Splitter, Rock
-    }
-
-    interface TileData {
-        modal?: () => (string | Node)[]
-    }
-
-    namespace Modal {
-        export const Templates = {
-            activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
-            hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
-            trainList: document.querySelector<HTMLTemplateElement>("template#modal-train-list")!,
-            trainListSlot: document.querySelector<HTMLTemplateElement>("template#modal-tl-slot")!,
-        } as const;
-
-        /**
-         * Clones a template.
-         * @param template Template ID to clone
-         * @param fillSlot Method to determine how <slot> elements should be changed
-         * @returns the cloned template
-         */
-        function cloneTemplate(
-            template: keyof typeof Templates, 
-            fillSlot?: (name: string, i: number, slot: HTMLSlotElement) => Node | void
-        ) {
-            const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
-
-            fillSlot ??= () => {};
-            const slots = frag.querySelectorAll("slot");
-            const slotCounter = new Map<string, number>();
-
-            for (let s of slots) {
-                const name = s.name;
-                const count = slotCounter.setDefault(name, () => 0);
-                
-                const ns = fillSlot(name, count, s);
-                if (ns) {
-                    s.replaceWith(ns);
-                } else {
-                    s.remove();
-                }
-                slotCounter.set(name, count + 1);
-            }
-            
-            return frag;
-        }
-
-        /**
-         * Clones a template. The `fillSlots` here takes a whole mapping as input.
-         * @param template Template ID to clone
-         * @param fillSlots Method to determine how <slot> elements should be changed. This holds a map of the number of each type of slot.
-         * @returns the cloned template
-         */
-        function cloneTemplateHeavy(
-            template: keyof typeof Templates, 
-            fillSlots?: (slots: Map<string, HTMLSlotElement[]>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
-        ) {
-            const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
-
-            fillSlots ??= () => ({});
-            const slots = frag.querySelectorAll("slot");
-            const slotMap = new Map<string, HTMLSlotElement[]>();
-
-            slots.forEach(s => {
-                slotMap.setDefault(s.name, () => []).push(s);
-            });
-
-
-            let newSlots = fillSlots(slotMap);
-            if (newSlots instanceof Array) {
-                newSlots = Object.fromEntries(newSlots);
-            } else if (newSlots instanceof Map) {
-                newSlots = Object.fromEntries(newSlots.entries());
-            }
-
-            for (let [name, sl] of slotMap.entries()) {
-                const nsl = newSlots[name] ?? [];
-
-                sl.forEach((e, i) => {
-                    const ne = nsl[i];
-
-                    if (typeof ne === "undefined") {
-                        e.remove();
-                    } else {
-                        e.replaceWith(ne);
-                    }
-                });
-            }
-
-            return frag;
-        }
-
-        function label(
-            options: {inputType: "radio" | "checkbox", name: string}, 
-            innerLabel: () => Node
-        ): HTMLLabelElement {
-            const {inputType, name} = options;
-
-            const label = document.createElement("label");
-            label.classList.add("radio-label");
-
-            const input = document.createElement("input");
-            input.name = name;
-            input.type = inputType;
-            
-            label.append(input, innerLabel());
-            return label;
-        };
-
-        function labelSet(
-            length: number, 
-            options: {inputType: "radio" | "checkbox", name: string}, 
-            innerLabel: (i: number) => Node
-        ): HTMLLabelElement[] {
-            return Array.from({length}, (_, i) => label(options, () => innerLabel(i)));
-        }
-
-        export function dirEditor(allow: 1 | 2 | 3 | 4) {
-            const nodes = cloneTemplate("activesGrid", (name, i) => {
-                return label({
-                    inputType: allow === 1 ? "radio" : "checkbox",
-                    name
-                }, () => {
-                    const div = document.createElement("div");
-                    div.textContent = `${i + 1}`;
-                    div.classList.add("btn");
-    
-                    return div;
-                });
-            });
-
-            if (allow === 1) return nodes;
-
-            if (allow < 4) {
-                const checked: HTMLInputElement[] = [];
-
-                const btns = nodes.querySelectorAll<HTMLInputElement>("input");
-                btns.forEach(e => e.addEventListener("click", () => {
-                    e.checked = true;
-                    checked.push(e);
-
-                    if (checked.length > allow) checked.shift()!.checked = false;
-                }));
-            }
- 
-            return nodes;
-        }
-
-        function div(classes: string[], ...children: (string | Node)[]) {
-            const div = document.createElement("div");
-            div.classList.add(...classes);
-            div.append(...children);
-
-            return div;
-        }
-
-        export function box(...children: (string | Node)[]) {
-            return div(["modal-box"], ...children);
-        }
-        
-        export function trioBox(...children: (string | Node)[]) {
-            return div(["modal-trio"], ...children);
-        }
-
-        const HexOrder = [
-            Color.Red, 
-            Color.Purple, Color.Orange, 
-            Color.Brown,
-            Color.Blue, Color.Yellow,
-            Color.Green
-        ] as const;
-
-        export function hexGrid(type: "checkbox" | "radio" | "button") {
-            return cloneTemplate("hexGrid", (name, i) => {
-                const color = Palette.Train[HexOrder[i]];
-                const hexStr = `#${color.toString(16).padStart(6, "0")}`;
-
-                if (type === "button") {
-                    const button = document.createElement("button");
-                    button.style.backgroundColor = hexStr;
-                    return button;
-                }
-
-                return label({
-                    inputType: type,
-                    name
-                }, () => {
-                    const div = document.createElement("div");
-                    div.style.backgroundColor = hexStr;
-                    return div;
-                });
-            });
-        }
-        
-        export function trainList() {
-            return cloneTemplate("trainList", name => {
-                if (name === "tl-slot") return cloneTemplate("trainListSlot");
-            });
-        }
-    }
-
-    export const Data: {[T in Tile]: TileData} = {
-        [Tile.Blank]: {},
-        [Tile.Outlet]: {
-            modal: () => {
-                const trio = Modal.trioBox(
-                    Modal.box(Modal.trainList()),
-                    Modal.box(Modal.dirEditor(1)),
-                    Modal.box(Modal.hexGrid("button"))
-                )
-                
-                return [trio];
-            }
-        },
-        [Tile.Goal]: {
-            modal: () => {
-                const trio = Modal.trioBox(
-                    Modal.box(Modal.trainList()),
-                    Modal.box(Modal.dirEditor(4)),
-                    Modal.box(Modal.hexGrid("button"))
-                )
-                
-                return [trio];
-            }
-        },
-        [Tile.Painter]: {
-            modal: () => {
-                const ls = Modal.box(
-                    Modal.dirEditor(2),
-                );
-
-                const rs = Modal.box(
-                    Modal.hexGrid("radio")
-                );
-
-                return [ls, rs];
-            }
-        },
-        [Tile.Splitter]: {
-            modal: () => {
-                return [Modal.dirEditor(1)];
-            }
-        },
-        [Tile.Rock]: {},
+export namespace Modal {
+    export const Templates = {
+        activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
+        hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
+        trainList: document.querySelector<HTMLTemplateElement>("template#modal-train-list")!,
+        trainListSlot: document.querySelector<HTMLTemplateElement>("template#modal-tl-slot")!,
     } as const;
+
+    /**
+     * Clones a template.
+     * @param template Template ID to clone
+     * @param fillSlot Method to determine how <slot> elements should be changed
+     * @returns the cloned template
+     */
+    function cloneTemplate(
+        template: keyof typeof Templates, 
+        fillSlot?: (name: string, i: number, slot: HTMLSlotElement) => Node | void
+    ) {
+        const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
+
+        fillSlot ??= () => {};
+        const slots = frag.querySelectorAll("slot");
+        const slotCounter = new Map<string, number>();
+
+        for (let s of slots) {
+            const name = s.name;
+            const count = slotCounter.setDefault(name, () => 0);
+            
+            const ns = fillSlot(name, count, s);
+            if (ns) {
+                s.replaceWith(ns);
+            } else {
+                s.remove();
+            }
+            slotCounter.set(name, count + 1);
+        }
+        
+        return frag;
+    }
+
+    /**
+     * Clones a template. The `fillSlots` here takes a whole mapping as input.
+     * @param template Template ID to clone
+     * @param fillSlots Method to determine how <slot> elements should be changed. This holds a map of the number of each type of slot.
+     * @returns the cloned template
+     */
+    function cloneTemplateHeavy(
+        template: keyof typeof Templates, 
+        fillSlots?: (slots: Map<string, HTMLSlotElement[]>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
+    ) {
+        const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
+
+        fillSlots ??= () => ({});
+        const slots = frag.querySelectorAll("slot");
+        const slotMap = new Map<string, HTMLSlotElement[]>();
+
+        slots.forEach(s => {
+            slotMap.setDefault(s.name, () => []).push(s);
+        });
+
+
+        let newSlots = fillSlots(slotMap);
+        if (newSlots instanceof Array) {
+            newSlots = Object.fromEntries(newSlots);
+        } else if (newSlots instanceof Map) {
+            newSlots = Object.fromEntries(newSlots.entries());
+        }
+
+        for (let [name, sl] of slotMap.entries()) {
+            const nsl = newSlots[name] ?? [];
+
+            sl.forEach((e, i) => {
+                const ne = nsl[i];
+
+                if (typeof ne === "undefined") {
+                    e.remove();
+                } else {
+                    e.replaceWith(ne);
+                }
+            });
+        }
+
+        return frag;
+    }
+
+    function label(
+        options: {inputType: "radio" | "checkbox", name: string}, 
+        innerLabel: () => Node
+    ): HTMLLabelElement {
+        const {inputType, name} = options;
+
+        const label = document.createElement("label");
+        label.classList.add("radio-label");
+
+        const input = document.createElement("input");
+        input.name = name;
+        input.type = inputType;
+        
+        label.append(input, innerLabel());
+        return label;
+    };
+
+    function labelSet(
+        length: number, 
+        options: {inputType: "radio" | "checkbox", name: string}, 
+        innerLabel: (i: number) => Node
+    ): HTMLLabelElement[] {
+        return Array.from({length}, (_, i) => label(options, () => innerLabel(i)));
+    }
+
+    export function dirEditor(allow: 1 | 2 | 3 | 4) {
+        const nodes = cloneTemplate("activesGrid", (name, i) => {
+            return label({
+                inputType: allow === 1 ? "radio" : "checkbox",
+                name
+            }, () => {
+                const div = document.createElement("div");
+                div.textContent = `${i + 1}`;
+                div.classList.add("btn");
+
+                return div;
+            });
+        });
+
+        if (allow === 1) return nodes;
+
+        if (allow < 4) {
+            const checked: HTMLInputElement[] = [];
+
+            const btns = nodes.querySelectorAll<HTMLInputElement>("input");
+            btns.forEach(e => e.addEventListener("click", () => {
+                e.checked = true;
+                checked.push(e);
+
+                if (checked.length > allow) checked.shift()!.checked = false;
+            }));
+        }
+
+        return nodes;
+    }
+
+    function div(classes: string[], ...children: (string | Node)[]) {
+        const div = document.createElement("div");
+        div.classList.add(...classes);
+        div.append(...children);
+
+        return div;
+    }
+
+    export function box(...children: (string | Node)[]) {
+        return div(["modal-box"], ...children);
+    }
+    
+    export function trioBox(...children: (string | Node)[]) {
+        return div(["modal-trio"], ...children);
+    }
+
+    const HexOrder = [
+        Color.Red, 
+        Color.Purple, Color.Orange, 
+        Color.Brown,
+        Color.Blue, Color.Yellow,
+        Color.Green
+    ] as const;
+
+    export function hexGrid(type: "checkbox" | "radio" | "button") {
+        return cloneTemplate("hexGrid", (name, i) => {
+            const color = Palette.Train[HexOrder[i]];
+            const hexStr = `#${color.toString(16).padStart(6, "0")}`;
+
+            if (type === "button") {
+                const button = document.createElement("button");
+                button.style.backgroundColor = hexStr;
+                return button;
+            }
+
+            return label({
+                inputType: type,
+                name
+            }, () => {
+                const div = document.createElement("div");
+                div.style.backgroundColor = hexStr;
+                return div;
+            });
+        });
+    }
+    
+    export function trainList() {
+        return cloneTemplate("trainList", name => {
+            if (name === "tl-slot") return cloneTemplate("trainListSlot");
+        });
+    }
 }
 
 export type Atlas = {[name: string]: Texture<Resource>};

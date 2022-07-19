@@ -1,7 +1,7 @@
 import A11yDialog from "a11y-dialog";
 import * as LevelData from "./levels";
-import { EditMode, EDIT_MODES, LoadableBoard, TileGrid } from "./logic";
-import { Dir, LevelTiles } from "./values";
+import { EditMode, EDIT_MODES, LoadableBoard, StageTile, TileGrid } from "./logic";
+import { Dir } from "./values";
 
 export namespace Elements {
     export const slider = document.querySelector<HTMLInputElement>("#speed-controls > input[type=range]")!;
@@ -215,21 +215,22 @@ export function applyButtons(grid: TileGrid) {
     let reloadModal = true;
     for (let [i, b] of ttButtons.entries()) {
         addListener(b, "input", ["level"], grid => {
-            const j: LevelTiles.Tile = i;
+            const j: StageTile.Order = i;
+            const pointerEvents = grid.pointerEvents;
 
-            grid.pointerEvents.setSquare(j);
+            pointerEvents.setSquare(j);
             reloadModal = true;
-            editTileBtn.disabled = !LevelTiles.Data[j].modal;
+            editTileBtn.disabled = !pointerEvents.stagePropertiesAt().modal;
         })
     }
-    editTileBtn.disabled = !LevelTiles.Data[grid.pointerEvents.ltTile()].modal;
+    editTileBtn.disabled = !grid.pointerEvents.stagePropertiesAt().modal;
 
-    addListener(editTileBtn, "click", ["level"], () => {
+    addListener(editTileBtn, "click", ["level"], grid => {
         if (reloadModal) {
-            const modal = LevelTiles.Data[grid.pointerEvents.ltTile()].modal;
+            const modal = grid.pointerEvents.stagePropertiesAt().modal?.();
 
             if (modal) {
-                EditModal.Inner.replaceChildren(...modal());
+                EditModal.Inner.replaceChildren(...modal);
                 reloadModal = false;
             } else {
                 return;
