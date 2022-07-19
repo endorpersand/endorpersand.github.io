@@ -1,5 +1,5 @@
 import { create, all } from "mathjs";
-import { ChunkData, Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
+import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
 const wrapper     = document.querySelector('#wrapper')!     as HTMLDivElement,
@@ -196,7 +196,7 @@ scaleForm.addEventListener('submit', e => {
     }
 });
 
-let resizeCheck: number | undefined;
+let resizeCheck: NodeJS.Timer | undefined;
 window.addEventListener("resize", e => {
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
 
