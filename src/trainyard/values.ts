@@ -507,8 +507,11 @@ export namespace Grids {
     }
 }
 
+/**
+ * Elements to use in edit modals
+ */
 export namespace Modal {
-    export const Templates = {
+    const Templates = {
         activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
         hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
         trainList: document.querySelector<HTMLTemplateElement>("template#modal-train-list")!,
@@ -548,55 +551,16 @@ export namespace Modal {
     }
 
     /**
-     * Clones a template. The `fillSlots` here takes a whole mapping as input.
-     * @param template Template ID to clone
-     * @param fillSlots Method to determine how <slot> elements should be changed. This holds a map of the number of each type of slot.
-     * @returns the cloned template
+     * Create a label with a custom display (rather than the regular input button)
+     * @param options properties for the input element
+     * @param innerLabel the custom display
+     * @returns this label
      */
-    function cloneTemplateHeavy(
-        template: keyof typeof Templates, 
-        fillSlots?: (slots: Map<string, HTMLSlotElement[]>) => {[s: string]: Node[]} | (readonly [string, Node[]])[] | Map<string, Node[]>
-    ) {
-        const frag: DocumentFragment = Templates[template].content.cloneNode(true) as any;
-
-        fillSlots ??= () => ({});
-        const slots = frag.querySelectorAll("slot");
-        const slotMap = new Map<string, HTMLSlotElement[]>();
-
-        slots.forEach(s => {
-            slotMap.setDefault(s.name, () => []).push(s);
-        });
-
-
-        let newSlots = fillSlots(slotMap);
-        if (newSlots instanceof Array) {
-            newSlots = Object.fromEntries(newSlots);
-        } else if (newSlots instanceof Map) {
-            newSlots = Object.fromEntries(newSlots.entries());
-        }
-
-        for (let [name, sl] of slotMap.entries()) {
-            const nsl = newSlots[name] ?? [];
-
-            sl.forEach((e, i) => {
-                const ne = nsl[i];
-
-                if (typeof ne === "undefined") {
-                    e.remove();
-                } else {
-                    e.replaceWith(ne);
-                }
-            });
-        }
-
-        return frag;
-    }
-
     function label(
-        options: {inputType: "radio" | "checkbox", name: string}, 
+        options: {inputType: "radio" | "checkbox", name: string, checked?: boolean }, 
         innerLabel: () => Node
     ): HTMLLabelElement {
-        const {inputType, name} = options;
+        const {inputType, name, checked} = options;
 
         const label = document.createElement("label");
         label.classList.add("radio-label");
@@ -604,24 +568,25 @@ export namespace Modal {
         const input = document.createElement("input");
         input.name = name;
         input.type = inputType;
-        
+        if (checked) input.checked = checked;
+
         label.append(input, innerLabel());
         return label;
     };
 
-    function labelSet(
-        length: number, 
-        options: {inputType: "radio" | "checkbox", name: string}, 
-        innerLabel: (i: number) => Node
-    ): HTMLLabelElement[] {
-        return Array.from({length}, (_, i) => label(options, () => innerLabel(i)));
-    }
-
-    export function dirEditor(allow: 1 | 2 | 3 | 4) {
+    /**
+     * UI element that helps user configure the active/passive directions on the tile
+     * @param allow maximum number of directions that can be enabled at once
+     * @param data The directions that are enabled on the dir editor
+     * @returns the dir editor
+     */
+    export function dirEditor(allow: 1 | 2 | 3 | 4, data?: {actives: Iterable<Dir>}) {
+        const actives = Array.from(data?.actives ?? []);
         const nodes = cloneTemplate("activesGrid", (name, i) => {
             return label({
                 inputType: allow === 1 ? "radio" : "checkbox",
-                name
+                name,
+                checked: actives.includes(i)
             }, () => {
                 const div = document.createElement("div");
                 div.textContent = `${i + 1}`;
@@ -648,6 +613,12 @@ export namespace Modal {
         return nodes;
     }
 
+    /**
+     * Fast div util.
+     * @param classes Classes on the div
+     * @param children Children of the div.
+     * @returns `<div>`
+     */
     function div(classes: string[], ...children: (string | Node)[]) {
         const div = document.createElement("div");
         div.classList.add(...classes);
@@ -656,10 +627,20 @@ export namespace Modal {
         return div;
     }
 
+    /**
+     * Creates a box. This box automatically centers internal elements and expands throughout the column.
+     * @param children Children of the box
+     * @returns the box
+     */
     export function box(...children: (string | Node)[]) {
         return div(["modal-box"], ...children);
     }
     
+    /**
+     * BOX. Use it with trainList, dirEditor, hexGrid. in that order.
+     * @param children trainList, dirEditor, hexGrid
+     * @returns the box.
+     */
     export function trioBox(...children: (string | Node)[]) {
         return div(["modal-trio"], ...children);
     }
@@ -672,7 +653,15 @@ export namespace Modal {
         Color.Green
     ] as const;
 
-    export function hexGrid(type: "checkbox" | "radio" | "button") {
+    /**
+     * UI element that allows the user configure the colors of the tile. 
+     * If in button mode, this can be paired with `trainList` to configure trains.
+     * @param type Type of the input boxes
+     * @param data the colors that are toggled on on the hex grid. this will not work for "button"-type hex grids.
+     * @returns hex grid
+     */
+    export function hexGrid(type: "checkbox" | "radio" | "button", data?: {colors: Iterable<Color>}): DocumentFragment {
+        const enabled = Array.from(data?.colors ?? [], c => HexOrder.indexOf(c));
         return cloneTemplate("hexGrid", (name, i) => {
             const color = Palette.Train[HexOrder[i]];
             const hexStr = `#${color.toString(16).padStart(6, "0")}`;
@@ -685,7 +674,8 @@ export namespace Modal {
 
             return label({
                 inputType: type,
-                name
+                name,
+                checked: enabled.includes(i)
             }, () => {
                 const div = document.createElement("div");
                 div.style.backgroundColor = hexStr;
@@ -694,7 +684,7 @@ export namespace Modal {
         });
     }
     
-    export function trainList() {
+    export function trainList(data?: {trains?: Iterable<Color>}) {
         return cloneTemplate("trainList", name => {
             if (name === "tl-slot") return cloneTemplate("trainListSlot");
         });

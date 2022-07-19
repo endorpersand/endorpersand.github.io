@@ -627,17 +627,20 @@ export class TileGrid implements Serializable, Grids.Grid {
                 let index = y * length + x;
                 let tileChar: string = board[y][x];
 
-                type Values<T> = T[keyof T];
-                // @ts-ignore
-                let TileType: Values<typeof Tile.deserChars> | undefined = Tile.deserChars[tileChar];
-                let tileData = tiles[index];
+                let tileType = Tile.flatDeserChars[tileChar];
+                let tileData: any = tiles[index];
 
-                if (TileType === Tile.Rock || TileType === Tile.Blank) {
-                    return new TileType();
-                }
-                if (typeof TileType !== "undefined" && typeof tileData !== "undefined") {
-                    // @ts-ignore
-                    return TileType.fromJSON(tileData);
+                if (typeof tileType === "string") {
+                    
+                    if (tileType === "Rock" || tileType === "Blank") {
+                        const TileType = Tile[tileType];
+                        return new TileType();
+                    }
+                    
+                    if (typeof tileData !== "undefined") {
+                        const TileType = Tile[tileType];
+                        return TileType.fromJSON(tileData);
+                    }
                 }
 
                 return new Tile.Blank();
@@ -1960,9 +1963,9 @@ export namespace Tile {
 
         modal() {
             const trio = Modal.trioBox(
-                Modal.box(Modal.trainList()),
-                Modal.box(Modal.dirEditor(1)),
-                Modal.box(Modal.hexGrid("button"))
+                Modal.box(Modal.trainList({trains: this.colors})),
+                Modal.box(Modal.dirEditor(1, this)),
+                Modal.box(Modal.hexGrid("button", this))
             )
             
             return [trio];
@@ -2049,9 +2052,9 @@ export namespace Tile {
 
         modal() {
             const trio = Modal.trioBox(
-                Modal.box(Modal.trainList()),
-                Modal.box(Modal.dirEditor(4)),
-                Modal.box(Modal.hexGrid("button"))
+                Modal.box(Modal.trainList({trains: this.targets})),
+                Modal.box(Modal.dirEditor(4, this)),
+                Modal.box(Modal.hexGrid("button", {colors: this.targets}))
             )
             
             return [trio];
@@ -2119,11 +2122,11 @@ export namespace Tile {
 
         modal() {
             const ls = Modal.box(
-                Modal.dirEditor(2),
+                Modal.dirEditor(2, this),
             );
 
             const rs = Modal.box(
-                Modal.hexGrid("radio")
+                Modal.hexGrid("radio", {colors: [this.color]})
             );
 
             return [ls, rs];
@@ -2205,7 +2208,7 @@ export namespace Tile {
         }
 
         modal() {
-            return [Modal.dirEditor(1)];
+            return [Modal.dirEditor(1, this)];
         }
 
         clone() {
@@ -2460,11 +2463,14 @@ export namespace Tile {
     }
 
     export let deserChars = {
-        " ": Blank,
-        "+": Outlet,
-        "o": Goal,
-        "p": Painter,
-        "s": Splitter,
-        "r": Rock
-    }
+        " ": "Blank",
+        "+": "Outlet",
+        "o": "Goal",
+        "p": "Painter",
+        "s": "Splitter",
+        "r": "Rock"
+    } as const;
+    export let flatDeserChars: {
+        [s: string]: typeof deserChars[keyof typeof deserChars] | undefined
+    } = deserChars;
 }
