@@ -1,1 +1,51 @@
-<!DOCTYPE html><html><head><script type="module" src="complexgrapher.3f8c3f9a.js"></script><script nomodule="" defer src="complexgrapher.803d8665.js"></script><script nomodule="" defer src="complexgrapher.cf6c6a2f.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="index.66be04bc.css" rel="stylesheet"><link href="complexgrapher.56b5d4a0.css" rel="stylesheet"></head><body> <div id="wrapper"> <div id="controls"> <div class="smallgap"> <div id="zcoord">Loading page...</div> <div id="funcControls"> <span>f(z) = </span> <form id="funcForm"> <input value="z"> </form> <button id="graphButton" disabled>Graph!</button> </div> </div> <div id="zoomButtonControls"> <button class="zoom">Zoom in</button> <button class="zoom">Reset zoom</button> <button class="zoom">Zoom out</button> </div> <div> <span>Current zoom: <form id="zoomForm"> <input value="1" size="4"> </form>x </span> <div id="scaleControls"> <span>Current radius: </span> <form id="scaleForm"> <input type="number" value="250" size="4" required> </form> <span>px</span> </div> <div> Current domain: <code class="domain">-2 - 2i</code> to <code class="domain">2 + 2i</code> </div> </div> <a href="https://mathjs.org/docs/reference/functions.html">Functions</a> <div id="warning" style="display:none">(⚠️ Larger images may take much longer to load.)</div> </div>  </div> <script type="module" src="complexgrapher.de6bdb4e.js"></script><script src="complexgrapher.701c010e.js" nomodule="" defer></script> </body></html>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/index.91e221aa.css" rel="stylesheet">
+        <link href="/complexgrapher.8621e7ea.css" rel="stylesheet">
+    </head>
+    <body>
+        <div id="wrapper">
+            <div id="controls">
+                <div class="smallgap">
+                    <div id="zcoord">Loading page...</div>
+                    <div id="funcControls">
+                        <span>f(z) = </span>
+                        <form id="funcForm">
+                            <input value="z">
+                        </form>
+                        <button id="graphButton" disabled="">Graph!</button>
+                    </div>
+                </div>
+                <div id="zoomButtonControls">
+                    <button class="zoom">Zoom in</button>
+                    <button class="zoom">Reset zoom</button>
+                    <button class="zoom">Zoom out</button>
+                </div>
+                <div>
+                    <span>Current zoom: 
+                        <form id="zoomForm">
+                            <input value="1" size="4">
+                        </form>x
+                    </span>
+                    <div id="scaleControls">
+                        <span>Current radius: </span>
+                        <form id="scaleForm">
+                            <input type="number" value="250" size="4" required="">
+                        </form>
+                        <span>px</span>
+                    </div>
+                    <div>
+                        Current domain: <code class="domain">-2 - 2i</code> to <code class="domain">2 + 2i</code>
+                    </div>
+                </div>
+                <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>
+                <div id="warning" style="display: none">(⚠️ Larger images may take much longer to load.)</div>
+            </div>
+            <!-- <canvas></canvas> -->
+        </div>
+        <script src="/complexgrapher.39fee83e.js" defer=""></script>
+    </body>
+</html>

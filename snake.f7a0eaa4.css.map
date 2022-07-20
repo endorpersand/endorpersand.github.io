@@ -1,0 +1,1 @@
+{"mappings":"AAAA;;;;;;AAKA","sources":["src/snake/page.css"],"sourcesContent":["body {\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n}\ncanvas {\n    border: 3px white solid;\n    margin: 0px 0px;\n    padding: 0px 0px;\n}"],"names":[],"version":3,"file":"snake.f7a0eaa4.css.map","sourceRoot":"/__parcel_source_root/"}
