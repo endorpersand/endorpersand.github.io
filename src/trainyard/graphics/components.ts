@@ -63,12 +63,12 @@ namespace Symbols {
  */
 export class TwoAnchorSprite extends PIXI.Sprite {
     private _posAnchor: PIXI.ObservablePoint;
-    private _position: PIXI.ObservablePoint;
+    private __position: PIXI.ObservablePoint;
 
     constructor(texture: PIXI.Texture) {
         super(texture);
         this._posAnchor = this._makePoint(0, 0);
-        this._position = this._makePoint(this.transform.position.x, this.transform.position.y);
+        this.__position = this._makePoint(this.transform.position.x, this.transform.position.y);
 
         const anchorCB = this._anchor.cb;
         this._anchor.cb = function() {
@@ -96,7 +96,7 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         // dx, dy = -16, -16
         // panchor is 16, 16 up/left from anchor
 
-        const {x, y} = this._position;
+        const {x, y} = this.__position;
         this.transform.position.set(x - dx, y - dy);
     }
     updatePosition() { return this._updatePosition(); }
@@ -117,10 +117,10 @@ export class TwoAnchorSprite extends PIXI.Sprite {
     }
 
     get position(): PIXI.ObservablePoint {
-        return this._position;
+        return this.__position;
     }
     set position(v: PIXI.IPointData) {
-        this._position.copyFrom(v);
+        this.__position.copyFrom(v);
     }
 
     get width() {
