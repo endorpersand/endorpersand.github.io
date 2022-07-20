@@ -130,7 +130,7 @@ export function applyButtons(grid: TileGrid) {
         else if (em === "railErase") grid.editMode = "rail";
     });
 
-    addListener(undo, "click", ["rail"], grid => {
+    addListener(undo, "click", ["rail", "railErase"], grid => {
         grid.undo();
     });
 
@@ -181,17 +181,17 @@ export function applyButtons(grid: TileGrid) {
     });
 
     grid.on("enterRailErase", () => {
-        erase.textContent = "Stop Erasing";
+        erase.querySelector("span")!.textContent = "Stop Erasing";
     });
     grid.on("exitRailErase", () => {
-        erase.textContent = "Erase";
+        erase.querySelector("span")!.textContent = "Erase";
     });
 
     grid.on("enterReadonly", () => {
-        start.textContent = "Return";
+        start.querySelector("span")!.textContent = "Return";
     });
     grid.on("exitReadonly", () => {
-        start.textContent = "Start";
+        start.querySelector("span")!.textContent = "Start";
         document.body.classList.remove("failed");
     });
 
@@ -276,7 +276,6 @@ export function applyButtons(grid: TileGrid) {
         ArrowDown: Dir.Down,
         KeyS: Dir.Down,
     } as const;
-    const HexMapping = [0, 2, 5, 6, 4, 1, 3] as const;
 
     addListener(document, "keydown", ["level"], (grid, e) => {
         const pointerEvents = grid.pointerEvents;
@@ -290,6 +289,10 @@ export function applyButtons(grid: TileGrid) {
             if (e.code.startsWith("Digit")) {
                 const d = +e.code.slice(5);
                 if (1 <= d && d <= 6) ttButtons[d - 1].click();
+            }
+
+            if (e.code === "Enter") {
+                editTileBtn.click();
             }
         } else {
             const ag = EditModal.Inner.querySelector(".actives-grid");
@@ -307,22 +310,74 @@ export function applyButtons(grid: TileGrid) {
                 if (e.code.startsWith("Digit")) {
                     const d = +e.code.slice(5);
                     if (1 <= d && d <= 7) {
-                        const btn = btns[HexMapping[d - 1]];
+                        const btn = btns[Modal.HexMapping[d - 1]];
 
-                        if (!btn.classList.contains("active")) {
+                        if (btn instanceof HTMLButtonElement && !btn.classList.contains("active")) {
                             btn.click();
                             btn.classList.add("active");
+                        } else {
+                            btn.click();
                         }
                     }
                 }
             }
+
+            const tl = EditModal.Inner.querySelector(".train-list");
+            if (tl) {
+                if (e.code === "Backspace") {
+                    const delButs = tl.querySelectorAll<HTMLButtonElement>("button:enabled");
+                    delButs[delButs.length - 1]?.click();
+                }
+            }
+
+            if (e.code === "Enter") {
+                EditModal.Footer.querySelector<HTMLButtonElement>("button#edit-modal-ok")!.click();
+                // TODO: figure out why modal doesn't hide?
+                // EditModal.Modal.hide();
+            }
         }
     });
 
-    addListener(document, "keyup", ANY, () => {
+    addListener(document, "keydown", ["rail"], (grid, e) => {
+        if (e.code === "KeyE") grid.editMode = "railErase" as any;
+    });
+
+    addListener(document, "keydown", ["rail", "railErase", "readonly"], (grid, e) => {
+        if (e.code === "Enter") {
+            if (e.getModifierState("Shift")) {
+                step.click();
+            } else {
+                start.click();
+            }
+        }
+
+        if (grid.editMode === "rail" || grid.editMode === "railErase") {
+            if (e.code === "Backspace") {
+                undo.click();
+            }
+
+            // TODO: hold down without flicker
+            if (e.code === "KeyR") {
+                erase.click();
+            }
+        }
+    });
+
+    addListener(document, "keydown", ANY, (grid, e) => {
+        if (e.code === "Backquote") {
+            document.body.classList.add("show-keys");
+        }
+    })
+    addListener(document, "keyup", ANY, (grid, e) => {
         const hg = EditModal.Inner.querySelector(".hex-grid");
         const btns = hg?.querySelectorAll<HTMLButtonElement>(".hex-row > button");
         btns?.forEach(b => b.classList.remove("active"));
+
+        document.body.classList.remove("show-keys");
+
+        if (e.code === "KeyE" && grid.editMode === "railErase") {
+            grid.editMode = "rail";
+        }
     })
 }
 

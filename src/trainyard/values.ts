@@ -605,10 +605,9 @@ export namespace Modal {
                 name,
                 checked: actives.includes(i)
             }, () => {
-                const div = document.createElement("div");
-                div.textContent = `${i + 1}`;
-                div.classList.add("btn");
-
+                // TODO, map to user's keyboard
+                const key = element("div", ["key"], "DWAS"[i]);
+                const div = element("div", ["keyed", "btn"], `${i + 1}`, key);
                 return div;
             });
         });
@@ -639,17 +638,18 @@ export namespace Modal {
     }
 
     /**
-     * Fast div util.
+     * Fast element util.
+     * @param element Element tag to create
      * @param classes Classes on the div
      * @param children Children of the div.
      * @returns `<div>`
      */
-    function div(classes: string[], ...children: (string | Node)[]) {
-        const div = document.createElement("div");
-        div.classList.add(...classes);
-        div.append(...children);
+    function element<E extends keyof HTMLElementTagNameMap>(element: E, classes: string[], ...children: (string | Node)[]) {
+        const el = document.createElement(element);
+        el.classList.add(...classes);
+        el.append(...children);
 
-        return div;
+        return el;
     }
 
     /**
@@ -658,7 +658,7 @@ export namespace Modal {
      * @returns the box
      */
     export function box(...children: (string | Node)[]) {
-        return div(["modal-box"], ...children);
+        return element("div", ["modal-box"], ...children);
     }
     
     /**
@@ -667,7 +667,7 @@ export namespace Modal {
      * @returns the box.
      */
     export function trioBox(...children: (string | Node)[]) {
-        return div(["modal-trio"], ...children);
+        return element("div", ["modal-trio"], ...children);
     }
 
     function hexStr(n: number): `#${string}` {
@@ -686,6 +686,15 @@ export namespace Modal {
     ] as const;
 
     /**
+     * Takes a button key (though, zero-indexed) and converts it to the index of the hexagon in DOM
+     */
+    export const HexMapping = [0, 2, 5, 6, 4, 1, 3] as const;
+
+    /**
+     * Takes the index of the hexagon in DOM and converts it to a button key (zero-indexed)
+     */
+    export const HMInverse = new Map<number, number>(Array.from(HexMapping, (v, k) => [v, k] as const));
+    /**
      * UI element that allows the user configure the colors of the tile. 
      * If in button mode, this can be paired with `trainList` to configure trains.
      * @param type Type of the input boxes
@@ -695,23 +704,29 @@ export namespace Modal {
     export function hexGrid(type: "checkbox" | "radio" | "button", data?: {colors: Iterable<Color>}) {
         const enabled = Array.from(data?.colors ?? [], c => HexOrder.indexOf(c));
         return cloneTemplate("hexGrid", (name, i) => {
-
             const hex = hexStr(Palette.Train[HexOrder[i]]);
+
+            const key = element("div", ["key"]);
+            key.textContent = "" + (HMInverse.get(i)! + 1);
+            const hexagon = element("div", ["hexagon"]);
+            hexagon.style.backgroundColor = hex;
+            const wrapper = new DocumentFragment(); 
+            wrapper.append(hexagon, key);
+
+            let tile;
             if (type === "button") {
-                const button = document.createElement("button");
-                button.style.backgroundColor = hex;
-                return button;
+                tile = document.createElement("button");
+                tile.appendChild(wrapper);
+            } else {
+                tile = label({
+                    inputType: type,
+                    name,
+                    checked: enabled.includes(i)
+                }, () => wrapper);
             }
 
-            return label({
-                inputType: type,
-                name,
-                checked: enabled.includes(i)
-            }, () => {
-                const div = document.createElement("div");
-                div.style.backgroundColor = hex;
-                return div;
-            });
+            tile.classList.add("keyed");
+            return tile;
         });
     }
     
@@ -737,18 +752,20 @@ export namespace Modal {
     /**
      * Creates a list of train slots.
      * @param data The color of the trains in the slots
-     * @returns the train slots
+     * @returns the train slots (in a box)
      */
     function trainList(data?: {trains?: Iterable<Color>}) {
         const iterator = (data?.trains ?? [])[Symbol.iterator]();
 
-        return cloneTemplate("trainList", name => {
+        const frag = cloneTemplate("trainList", name => {
             if (name === "tl-slot") {
                 const c = iterator.next();
 
                 return tlSlot(!c.done ? c.value : undefined);
             }
         });
+
+        return element("div", ["keyed"], frag, element("div", ["key"], "Backspace"));
     }
 
     /**

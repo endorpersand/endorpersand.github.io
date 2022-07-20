@@ -25,8 +25,14 @@
         <div id="game"></div>
         <div class="control-hud reject-level-mode">
             <div id="mistake-controls" class="split-column reject-readonly-mode">
-                <button class="btn" id="b-erase">Erase</button>
-                <button class="btn" id="b-undo">Undo</button>
+                <button class="keyed btn" id="b-erase">
+                    <span>Erase</span>
+                    <div class="key">E / R</div>
+                </button>
+                <button class="keyed btn" id="b-undo">
+                    <span>Undo</span>
+                    <div class="key">Backspace</div>
+                </button>
             </div>
             <div id="fail-display" class="split-column require-readonly-mode">
                 <div class="btn reject-failed" id="fd-pass">
@@ -38,8 +44,14 @@
             </div>
             <div id="play-controls">
                 <div class="split-row">
-                    <button class="btn" id="b-step">Step</button>
-                    <button class="btn" id="b-start">Start</button>
+                    <button class="keyed btn" id="b-step">
+                        <span>Step</span>
+                        <div class="key">Shift + Enter</div>
+                    </button>
+                    <button class="keyed btn" id="b-start">
+                        <span>Start</span>
+                        <div class="key">Enter</div>
+                    </button>
                 </div>
                 <div id="speed-controls">
                     <input type="range" class="slider">
@@ -52,35 +64,56 @@
             <div id="edit-grid">
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Blank">
-                    <div class="btn">blank</div>
+                    <div class="keyed btn">
+                        <span>blank</span>
+                        <div class="key">1</div>
+                    </div>
                 </label>
 
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Outlet">
-                    <div class="btn">outlet</div>
+                    <div class="keyed btn">
+                        <span>outlet</span>
+                        <div class="key">2</div>
+                    </div>
                 </label>
 
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Goal">
-                    <div class="btn">goal</div>
+                    <div class="keyed btn">
+                        <span>goal</span>
+                        <div class="key">3</div>
+                    </div>
                 </label>
 
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Painter">
-                    <div class="btn">painter</div>
+                    <div class="keyed btn">
+                        <span>painter</span>
+                        <div class="key">4</div>
+                    </div>
                 </label>
 
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Splitter">
-                    <div class="btn">splitter</div>
+                    <div class="keyed btn">
+                        <span>splitter</span>
+                        <div class="key">5</div>
+                    </div>
                 </label>
 
                 <label class="radio-label">
                     <input name="tile-type" type="radio" value="Rock">
-                    <div class="btn">rock</div>
+                    <div class="keyed btn">
+                        <span>rock</span>
+                        <div class="key">6</div>
+                    </div>
                 </label>
             </div>
-            <button class="btn" id="edit-tile-btn">Edit Tile</button>
+            <button class="keyed btn" id="edit-tile-btn">
+                <span>Edit Tile</span>
+                <div class="key">Enter</div>
+            </button>
         </div>
     </div>
     <!-- Modal container -->
@@ -99,11 +132,13 @@
             <!-- Modal footer -->
             <div class="modal-footer">
                 <!-- <h1 id="tile-edit-modal-title">Your dialog title</h1> -->
-                <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn btn">
-                    Cancel
+                <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn keyed btn">
+                    <span>Cancel</span>
+                    <div class="key">Escape</div>
                 </button>
-                <button type="button" aria-label="Ok" class="modal-close-btn btn" id="edit-modal-ok">
-                    Ok
+                <button type="button" aria-label="Ok" class="modal-close-btn keyed btn" id="edit-modal-ok">
+                    <span>Ok</span>
+                    <div class="key">Enter</div>
                 </button>
             </div>
         </div>

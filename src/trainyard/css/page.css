@@ -307,7 +307,7 @@ body.readonly-mode {
 
 button.modal-close-btn {
     font-size: 1.5em;
-    padding: 0.25em;
+    padding: 0.65em;
     /* align-self: center; */
 }
 
@@ -332,6 +332,11 @@ button.modal-close-btn {
 .actives-grid .btn {
     padding: 0;
 }
+.actives-grid .keyed .key {
+    bottom: 0;
+    right: 2;
+}
+
 .ag-tile {
     background-color: var(--pal-modal-darker);
     display: flex;
@@ -380,8 +385,17 @@ button.modal-close-btn {
     gap: calc(var(--h-top-side) + 4 * var(--h-gap));
     margin-bottom: calc(var(--h-height) / -2);
 }
-.hex-row div,
+
+/*  */
 .hex-row button {
+    outline: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+.hex-row .hexagon {
     clip-path: polygon(
         /* x, y */
         25% 0%, 
@@ -390,7 +404,7 @@ button.modal-close-btn {
         calc(100% - 25%) 100%, 
         25% 100%, 
         0% 50%
-        );
+    );
 
     width: var(--h-width);
     height: var(--h-height);
@@ -400,10 +414,10 @@ button.modal-close-btn {
     filter: brightness(25%);
 }
 
-.hex-row label.radio-label input:checked + div,
-.hex-row label.radio-label input:active + div,
-.hex-row button:active,
-.hex-row button.active {
+.hex-row label.radio-label input:checked + div.hexagon,
+.hex-row label.radio-label.active input + div.hexagon,
+.hex-row button:active .hexagon,
+.hex-row button.active .hexagon {
     filter: none;
 }
 
@@ -585,15 +599,42 @@ label.radio-label input + div {
     border-color: var(--button-outset);
 
     color: var(--pal-text);
-    padding: 15px 0px;
     font-size: 18px;
-    text-align: center;
-    vertical-align: middle;
-}
-.btn:not(button) {
+    
     display: flex;
     justify-content: center;
     align-items: center;
+
+    padding: 0 0;
+}
+
+.show-keys .keyed {
+    position: relative;
+}
+
+.key {
+    --key-text: var(--pal-text);
+}
+.btn .key {
+    --key-text: var(--button-tint);
+}
+
+.keyed .key {
+    font-size: 14px;
+    position: absolute;
+    bottom: 5;
+    right: 5;
+    margin: 0;
+    color: var(--key-text);
+}
+.keyed .hexagon ~ .key {
+    bottom: calc(var(--h-height) / 5);
+    right: calc(var(--h-width) / 5);
+    margin: 0;
+}
+
+body:not(.show-keys) .keyed .key {
+    display: none;
 }
 
 button.btn:disabled {
@@ -604,7 +645,7 @@ button.btn:disabled {
 }
 
 button.btn:enabled:active,
-label.radio-label input:active + div.btn {
+label.radio-label.active input + div.btn {
     background-color: var(--pal-button-active);
     --button-shadow: var(--pal-button-active-shadow);
     --button-tint: var(--pal-button-active-tint);
@@ -617,7 +658,7 @@ label.radio-label input:checked + div.btn {
 
 button.btn:disabled,
 button.btn:enabled:active,
-label.radio-label input:active + div.btn,
+label.radio-label.active input + div.btn,
 label.radio-label input:checked + div.btn {
     border-color: var(--button-inset);
 }
