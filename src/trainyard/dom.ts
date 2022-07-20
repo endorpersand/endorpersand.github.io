@@ -220,6 +220,8 @@ export function applyButtons(grid: TileGrid) {
 
             pointerEvents.setSquarePos(j);
             editTileBtn.disabled = !pointerEvents.stagePropertiesAt().modal;
+
+            Dropdowns.markLevelEdited();
         })
     }
     editTileBtn.disabled = !grid.pointerEvents.stagePropertiesAt().modal;
@@ -256,6 +258,8 @@ export function applyButtons(grid: TileGrid) {
                 : undefined;
                     
                 grid.pointerEvents.setSquare( parse({ dirs, gridClrs }) );
+
+                Dropdowns.markLevelEdited();
                 EditModal.Modal.hide();
             });
             //
@@ -399,12 +403,21 @@ export namespace Dropdowns {
         return catDD.value as any;
     }
 
-    export function currentLevel(): LoadableBoard | null {
+    export function currentLevel(): LoadableBoard | null | undefined {
         const ld = LevelData.ProvidedLevels[selectedCat()] as any;
         return ld?.[levelDD.value];
     }
 
-    
+    export function markLevelEdited() {
+        if (currentLevel()) {
+            const option = document.createElement("option");
+            option.value = "__custom";
+            option.textContent = levelDD.value + "*";
+            option.selected = true;
+            levelDD.append(option);
+        }
+    }
+
     export namespace LevelHandlers {
         type Handler = (b: LoadableBoard) => void;
         const handlers: Handler[] = [];
@@ -451,5 +464,6 @@ catDD.addEventListener("input", () => {
     Dropdowns.LevelHandlers.call();
 });
 levelDD.addEventListener("input", () => {
+    levelDD.querySelectorAll('option[value="__custom"]').forEach(e => e.remove());
     Dropdowns.LevelHandlers.call();
 });
