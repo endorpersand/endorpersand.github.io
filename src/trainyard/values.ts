@@ -88,55 +88,55 @@ export enum Dir {
 
 export namespace Dir {
     export class Flags {
-        #flags: number;
-        static #MAX_BITS: number = 4;
+        private _flags: number;
+        private static _MAX_BITS: number = 4;
     
         constructor(dirs: Dir[] | Flags | number = []) {
             if (dirs instanceof Flags) {
-                this.#flags = dirs.#flags;
+                this._flags = dirs._flags;
             } else if (typeof dirs === "number") {
-                this.#flags = dirs;
+                this._flags = dirs;
             } else {
-                this.#flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
+                this._flags = dirs.reduce(((acc, cv) => acc | (1 << cv)), 0b0000);
             }
     
-            let f = this.#flags;
-            if (f < 0 || f >= (1 << Flags.#MAX_BITS)) {
+            let f = this._flags;
+            if (f < 0 || f >= (1 << Flags._MAX_BITS)) {
                 throw new Error("Invalid direction entered");
             }
         }
     
-        get bits() { return this.#flags; }
+        get bits() { return this._flags; }
     
         get ones() { return Array.from(this, () => 1).reduce((acc, cv) => acc + cv, 0); }
     
         has(dir: Dir) {
-            return !!(this.#flags & (1 << dir));
+            return !!(this._flags & (1 << dir));
         }
     
         // only works given all inputs are valid and flags only has 2 dirs in it
         dirExcluding(dir: Dir): Dir {
-            let bits = this.#flags ^ (1 << dir);
+            let bits = this._flags ^ (1 << dir);
             return 31 - Math.clz32(bits);
         }
     
         equals(df: Flags) {
-            return this.#flags === df.#flags;
+            return this._flags === df._flags;
         }
     
         or(df: Flags) {
             let out = new Flags();
-            out.#flags = this.#flags | df.#flags;
+            out._flags = this._flags | df._flags;
             return out;
         }
         and(df: Flags) {
             let out = new Flags();
-            out.#flags = this.#flags & df.#flags;
+            out._flags = this._flags & df._flags;
             return out;
         }
     
         *[Symbol.iterator](): Generator<Dir> {
-            let f = this.#flags;
+            let f = this._flags;
             let i = 0;
     
             while (f > 0) {
@@ -324,82 +324,82 @@ export namespace Focus {
 
     type FMK = `${number}_${number | undefined}`;
     export class FocusMap<V> implements Map<Absolute | Relative, V> {
-        #grid: Grids.Grid;
-        #map = new Map<FMK, [Absolute, V]>();
+        private _grid: Grids.Grid;
+        private _map = new Map<FMK, [Absolute, V]>();
 
         constructor(grid: Grids.Grid) {
 
-            this.#grid = grid;
+            this._grid = grid;
         }
 
-        #realKey(k: Absolute | Relative): FMK {
+        private _realKey(k: Absolute | Relative): FMK {
             if (isRelative(k)) k = intoAbsolute(k);
             const [c1, c2] = k;
 
-            const i1 = Grids.cellToIndex(this.#grid, c1);
+            const i1 = Grids.cellToIndex(this._grid, c1);
             if (typeof c2 === "undefined") return `${i1}_${undefined}`;
 
-            const i2 = Grids.cellToIndex(this.#grid, c2);
+            const i2 = Grids.cellToIndex(this._grid, c2);
             if (i1 > i2) return `${i2}_${i1}`;
             return `${i1}_${i2}`;
         }
 
         get(key: Absolute | Relative): V | undefined {
-            return this.#map.get(this.#realKey(key))?.[1];
+            return this._map.get(this._realKey(key))?.[1];
         }
 
         has(key: Absolute | Relative): boolean {
-            return this.#map.has(this.#realKey(key));
+            return this._map.has(this._realKey(key));
         }
 
         set(key: Absolute | Relative, value: V): this {
             if (isRelative(key)) key = intoAbsolute(key);
             
-            this.#map.set(this.#realKey(key), [key, value]);
+            this._map.set(this._realKey(key), [key, value]);
             return this;
         }
 
         clear(): void {
-            this.#map.clear();
+            this._map.clear();
         }
 
         delete(key: Relative | Absolute): boolean {
-            return this.#map.delete(this.#realKey(key));
+            return this._map.delete(this._realKey(key));
         }
 
         forEach(callbackfn: (value: V, key: Absolute, map: Map<Relative | Absolute, V>) => void // primaries
             , thisArg?: any): void {
-                this.#map.forEach(v => callbackfn(v[1], v[0], this), thisArg);
+                this._map.forEach(v => callbackfn(v[1], v[0], this), thisArg);
         }
 
         get size() {
-            return this.#map.size;
+            return this._map.size;
         }
 
         entries(): IterableIterator<[Absolute, V]> {
-            return this.#map.values();
+            return this._map.values();
         }
 
         *keys(): IterableIterator<Absolute> {
-            for (let [k] of this.#map.values()) {
+            for (let [k] of this._map.values()) {
                 yield k;
             }
         }
 
         *values(): IterableIterator<V> {
-            for (let [_, v] of this.#map.values()) {
+            for (let [_, v] of this._map.values()) {
                 yield v;
             }
         }
 
         popItem(k: Relative | Absolute): V | undefined {
-            return this.#map.popItem(this.#realKey(k))?.[1];
+            return this._map.popItem(this._realKey(k))?.[1];
         }
         
         setDefault(k: Relative | Absolute, def: () => V): V {
             const key = isRelative(k) ? intoAbsolute(k) : k;
 
-            return this.#map.setDefault(this.#realKey(key), () => [key, def()])[1];
+            return this._map.setDefault(this._realKey(key), () => [key, def()])[1];
         }
 
         [Symbol.iterator](): IterableIterator<[Relative | Absolute, V]> {

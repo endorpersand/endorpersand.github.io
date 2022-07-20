@@ -98,7 +98,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * The tiles.
      */
-    #tiles: Tile[][];
+    private _tiles: Tile[][];
     /**
      * Each cell is [size x size] big.
      */
@@ -113,8 +113,8 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Cache for this.container
      */
-    #container: PIXI.Container = new PIXI.Container();
-    #rendered: boolean = false;
+    private _container: PIXI.Container = new PIXI.Container();
+    private _rendered: boolean = false;
 
     /**
      * Object references coming from PIXI
@@ -124,12 +124,12 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Determines what can be edited on the grid
      */
-    #editMode: EditMode = "rail";
+    private _editMode: EditMode = "rail";
 
     /**
      * Map keeping track of listeners listening to an event
      */
-    #eventListeners: Partial<{
+    private _eventListeners: Partial<{
         [E in Event]: (HandlerOptions & {handler: () => void})[]
     }> = {}
     pointerEvents: PointerEvents;
@@ -137,7 +137,7 @@ export class TileGrid implements Serializable, Grids.Grid {
     /**
      * Stack keeping track of all the past actions (allowing for undoing)
      */
-    #actionStack: Action[] = [];
+    private _actionStack: Action[] = [];
 
     simulation?: Simulation.Simulator;
 
@@ -157,7 +157,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         this.cellLength = cellLength;
         this.loadGridSize = gridSize;
         this.cellSize = Grids.optimalCellSize(this, gridSize);
-        this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
+        this._tiles = TileGrid._normalizeTileMatrix(tiles, cellLength);
 
         this.pixi = pixi;
         this.pointerEvents = new PointerEvents(this);
@@ -175,14 +175,14 @@ export class TileGrid implements Serializable, Grids.Grid {
 
             this.tiles = Array.from({length}, (_, y) => 
                 Array.from({length}, (_, x) => {
-                    const t = this.#tiles[y][x];
+                    const t = this._tiles[y][x];
                     return !(t instanceof Tile.Rail) ? t : new Tile.Blank();
                 })
             )
         });
 
         this.on("switchEdit", () => {
-            this.#actionStack.length = 0;
+            this._actionStack.length = 0;
         });
     }
 
@@ -190,34 +190,34 @@ export class TileGrid implements Serializable, Grids.Grid {
      * The PIXI container for this TileGrid
      */
     get container(): PIXI.Container {
-        if (!this.#rendered) return this.#renderContainer();
-        return this.#container;
+        if (!this._rendered) return this._renderContainer();
+        return this._container;
     }
     layer<L extends Layer>(layer: L): Layers[L] {
         const con = this.container.getChildByName("layers") as PIXI.Container;
         return con.getChildAt(layer) as any;
     }
     maybeLayer<L extends Layer>(layer: L): Layers[L] | undefined {
-        if (this.#rendered) return this.layer(layer);
+        if (this._rendered) return this.layer(layer);
     }
 
-    static #normalizeTileMatrix(mat: (Tile | undefined)[][] | undefined, length: number): Tile[][] {
+    private static _normalizeTileMatrix(mat: (Tile | undefined)[][] | undefined, length: number): Tile[][] {
         return Array.from({length}, (_, y) => 
             Array.from({length}, (_, x) => mat?.[y]?.[x] ?? new Tile.Blank())
         );
     }
 
-    get tiles(): Tile[][] { return this.#tiles; }
+    get tiles(): Tile[][] { return this._tiles; }
     set tiles(mat: (Tile | undefined)[][]) {
-        this.#tiles = TileGrid.#normalizeTileMatrix(mat, this.cellLength);
-        this.#actionStack = []; // the tiles got reset, so can't do undos from here
+        this._tiles = TileGrid._normalizeTileMatrix(mat, this.cellLength);
+        this._actionStack = []; // the tiles got reset, so can't do undos from here
 
-        this.#renderContainer(true);
+        this._renderContainer(true);
     }
 
     load(tiles: LoadableBoard, cellSize?: number): this {
         if ("board" in tiles) {
-            tiles = TileGrid.#tilesFromJSON(tiles);
+            tiles = TileGrid._tilesFromJSON(tiles);
         }
         
         this.cellLength = length2D(tiles);
@@ -226,15 +226,15 @@ export class TileGrid implements Serializable, Grids.Grid {
         return this;
     }
 
-    get editMode(): EditMode { return this.#editMode; }
+    get editMode(): EditMode { return this._editMode; }
     set editMode(em: EditMode) {
-        if (this.#editMode !== em) {
-            this.#dispatchEvent(`exit${capitalize(this.#editMode)}`);
+        if (this._editMode !== em) {
+            this._dispatchEvent(`exit${capitalize(this._editMode)}`);
             
-            this.#editMode = em;
+            this._editMode = em;
             
-            this.#dispatchEvent(`enter${capitalize(em)}`);
-            this.#dispatchEvent("switchEdit");
+            this._dispatchEvent(`enter${capitalize(em)}`);
+            this._dispatchEvent("switchEdit");
         }
     }
 
@@ -245,7 +245,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @returns a tile, or `undefined` if out of bounds
      */
     tile(x: number, y: number) {
-        const tile = this.#tiles?.[y]?.[x];
+        const tile = this._tiles?.[y]?.[x];
         if (typeof tile === "undefined") {
             return Grids.inBounds(this, x, y) ? new Tile.Blank() : undefined;
         }
@@ -269,12 +269,12 @@ export class TileGrid implements Serializable, Grids.Grid {
             return;
         }
         if (canUndo) {
-            this.#actionStack.push({time: performance.now(), replaced: current, cellPos: [x, y]});
+            this._actionStack.push({time: performance.now(), replaced: current, cellPos: [x, y]});
         }
 
         t ??= new Tile.Blank();
-        this.#tiles[y] ??= [];
-        this.#tiles[y][x] = t;
+        this._tiles[y] ??= [];
+        this._tiles[y][x] = t;
 
         this.rerenderTileInContainer(x, y);
     }
@@ -296,15 +296,15 @@ export class TileGrid implements Serializable, Grids.Grid {
     }
 
     undo() {
-        if (this.#actionStack.length == 0) return;
-        let actions: Action[] = [this.#actionStack.pop()!];
+        if (this._actionStack.length == 0) return;
+        let actions: Action[] = [this._actionStack.pop()!];
         
-        while (this.#actionStack.length > 0) {
+        while (this._actionStack.length > 0) {
             let fwd = actions.at(-1)!;
-            let rwd = this.#actionStack.at(-1)!;
+            let rwd = this._actionStack.at(-1)!;
 
             if (Math.abs(fwd.time - rwd.time) > TileGrid.UNDO_THRESHOLD_MS) break;
-            actions.push(this.#actionStack.pop()!);
+            actions.push(this._actionStack.pop()!);
         }
 
         for (let action of actions) {
@@ -338,7 +338,7 @@ export class TileGrid implements Serializable, Grids.Grid {
 
 
     dispatchFailEvent() {
-        this.#dispatchEvent("fail");
+        this._dispatchEvent("fail");
     }
     get failed() {
         return !this.simulation?.passing ?? false;
@@ -347,7 +347,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         const buckets: [string[], string[]] = [[], []];
         
         for (let e of EDIT_MODES) {
-            const include = this.#editMode === e;
+            const include = this._editMode === e;
             buckets[+include].push(`${e}-mode`);
         }
         
@@ -375,14 +375,14 @@ export class TileGrid implements Serializable, Grids.Grid {
         return con;
     }
 
-    #wipeContainer(con: PIXI.Container) {
+    private _wipeContainer(con: PIXI.Container) {
         removeAllChildren(con, {children: true});
         this.pointerEvents.clearEvents(con);
 
         // removeOnReload
-        for (let [k, harr] of Object.entries(this.#eventListeners)) {
+        for (let [k, harr] of Object.entries(this._eventListeners)) {
             if (harr.some(h => h.removeOnReload)) {
-                this.#eventListeners[k as Event] = harr.filter(h => !h.removeOnReload);
+                this._eventListeners[k as Event] = harr.filter(h => !h.removeOnReload);
             }
         }
     }
@@ -392,10 +392,10 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Use this.container to fallback to cache if already created
      * @returns the container
      */
-    #renderContainer(force=false): PIXI.Container {
-        const con = this.#container;
-        if (force || !this.#rendered) {
-            this.#wipeContainer(con);
+    private _renderContainer(force=false): PIXI.Container {
+        const con = this._container;
+        if (force || !this._rendered) {
+            this._wipeContainer(con);
             // const con = new PIXI.Container();
 
             // background
@@ -436,8 +436,8 @@ export class TileGrid implements Serializable, Grids.Grid {
             this.pointerEvents.applyEvents(con);
         }
 
-        this.#rendered = true;
-        this.#dispatchEvent("load");
+        this._rendered = true;
+        this._dispatchEvent("load");
         return con;
     }
 
@@ -471,7 +471,7 @@ export class TileGrid implements Serializable, Grids.Grid {
         const opts: HandlerOptions = {...DEFAULT, ...options};
 
         for (const e of event) {
-            const listeners = this.#eventListeners[e] ??= [];
+            const listeners = this._eventListeners[e] ??= [];
             listeners.push({...opts, handler});
         }
     }
@@ -480,8 +480,8 @@ export class TileGrid implements Serializable, Grids.Grid {
      * Call all the event handlers for this event
      * @param e event
      */
-    #dispatchEvent(e: Event) {
-        const listeners = this.#eventListeners[e] ??= [];
+    private _dispatchEvent(e: Event) {
+        const listeners = this._eventListeners[e] ??= [];
 
         for (let {handler} of listeners) handler();
     }
@@ -618,7 +618,7 @@ export class TileGrid implements Serializable, Grids.Grid {
      * @param o the serialized JSON
      * @returns a function which accepts a size and texture parameter and gives out a TileGrid
      */
-    static #tilesFromJSON(o: GridJSON) {
+    private static _tilesFromJSON(o: GridJSON) {
         let {board, tiles} = o;
         let length = length2D(board);
 
@@ -686,84 +686,84 @@ const DBT_TIMEOUT_MS  = 1000;
 const CLICK_IGNORE_MS = 200;
 
 class PointerEvents {
-    #grid: TileGrid;
-    #eventLayer: PIXI.Container;
+    private _grid: TileGrid;
+    private _eventLayer: PIXI.Container;
     pointer?: DragPointer;
     pointers: number = 0;
 
-    #editSquare: CellPos = [0, 0];
-    #tt?: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement };
+    private _editSquare: CellPos = [0, 0];
+    private _tt?: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement };
     
     constructor(grid: TileGrid) {
-        this.#grid = grid;
-        this.#eventLayer = new PIXI.Container();
+        this._grid = grid;
+        this._eventLayer = new PIXI.Container();
     }
 
     applyEvents(con: PIXI.Container) {
-        this.#addEventLayer(con);
-        this.#addPointersTracker(con);
-        this.#applyHoverEvents(con);
-        this.#applyPointerEvents(con);
+        this._addEventLayer(con);
+        this._addPointersTracker(con);
+        this._applyHoverEvents(con);
+        this._applyPointerEvents(con);
     }
 
     clearEvents(con: PIXI.Container) {
-        for (let [name, h] of this.#containerEvents) con.off(name, h);
-        this.#containerEvents.length = 0;
+        for (let [name, h] of this._containerEvents) con.off(name, h);
+        this._containerEvents.length = 0;
     }
 
-    #containerEvents: [string | symbol, (e: PIXI.InteractionEvent) => void][] = [];
+    private _containerEvents: [string | symbol, (e: PIXI.InteractionEvent) => void][] = [];
 
-    #on<T extends string | symbol>(
+    private _onPixi<T extends string | symbol>(
         emitter: PIXI.utils.EventEmitter<T>, 
         event: T, 
         listener: (e: PIXI.InteractionEvent) => void
     ) {
-        this.#containerEvents.push([event, listener]);
+        this._containerEvents.push([event, listener]);
         emitter.on(event, listener);
     }
 
-    #addEventLayer(con: PIXI.Container) {
-        if (this.#eventLayer.destroyed) {
-            this.#eventLayer = new PIXI.Container();
+    private _addEventLayer(con: PIXI.Container) {
+        if (this._eventLayer.destroyed) {
+            this._eventLayer = new PIXI.Container();
         }
-        con.addChild(this.#eventLayer);
+        con.addChild(this._eventLayer);
 
-        this.#grid.on(["switchEdit", "load"], () => {
-            for (let c of this.#eventLayer.children) {
-                c.visible = c.name === this.#grid.editMode;
+        this._grid.on(["switchEdit", "load"], () => {
+            for (let c of this._eventLayer.children) {
+                c.visible = c.name === this._grid.editMode;
             }
         }, {removeOnReload: true});
     }
 
-    #addPointersTracker(con: PIXI.Container) {
-        this.#on(con, "pointerdown", () => {
+    private _addPointersTracker(con: PIXI.Container) {
+        this._onPixi(con, "pointerdown", () => {
             this.pointers++;
         });
 
         const pointerup = () => {
             this.pointers = Math.max(this.pointers - 1, 0);
         }
-        this.#on(con, "pointerup", pointerup);
-        this.#on(con, "pointerupoutside", pointerup);
+        this._onPixi(con, "pointerup", pointerup);
+        this._onPixi(con, "pointerupoutside", pointerup);
 
-        this.#on(con, "pointercancel", () => {
+        this._onPixi(con, "pointercancel", () => {
             this.pointers = 0;
         })
     }
 
-    #modeLayer(m: EditMode) {
-        let layer = this.#eventLayer.getChildByName(m) as PIXI.Container;
+    private _modeLayer(m: EditMode) {
+        let layer = this._eventLayer.getChildByName(m) as PIXI.Container;
         if (layer) return layer;
 
-        layer = this.#eventLayer.addChild(new PIXI.Container());
+        layer = this._eventLayer.addChild(new PIXI.Container());
         layer.name = m;
         return layer;
     }
 
     // LEVEL EDIT MODE SETTINGS
     set tt(v: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement }) {
-        this.#tt = v;
-        this.#updateTT();
+        this._tt = v;
+        this._updateTT();
     }
 
     /**
@@ -771,9 +771,9 @@ class PointerEvents {
      * @param cellPos 
      * @returns 
      */
-    #stageTileAt(cellPos: CellPos): StageTile {
-        Grids.assertInBounds(this.#grid, ...cellPos);
-        const tile = this.#grid.tile(...cellPos)!;
+    private _stageTileAt(cellPos: CellPos): StageTile {
+        Grids.assertInBounds(this._grid, ...cellPos);
+        const tile = this._grid.tile(...cellPos)!;
 
         if (Tile.isStageTile(tile)) {
             return tile;
@@ -781,7 +781,7 @@ class PointerEvents {
         throw new Error(`There is no stage tile at (${cellPos})`);
     }
 
-    #stOrder(t: StageTile): StageTile.Order {
+    private _stOrder(t: StageTile): StageTile.Order {
         // enums can take string->number, so do that.
         return StageTile.Order[t.constructor.name as keyof typeof StageTile.Order];
     }
@@ -791,18 +791,18 @@ class PointerEvents {
      * @param cellPos position of the tile to find the order of (or the current edit position if unspecified)
      * @returns the button order
      */
-    buttonOrderAt(cellPos: CellPos = this.#editSquare): StageTile.Order {
-        const tile = this.#stageTileAt(cellPos)!;
-        return this.#stOrder(tile);
+    buttonOrderAt(cellPos: CellPos = this._editSquare): StageTile.Order {
+        const tile = this._stageTileAt(cellPos)!;
+        return this._stOrder(tile);
     }
 
-    stagePropertiesAt(cellPos: CellPos = this.#editSquare): Staged {
-        return this.#stageTileAt(cellPos);
+    stagePropertiesAt(cellPos: CellPos = this._editSquare): Staged {
+        return this._stageTileAt(cellPos);
     }
 
-    #updateTT() {
-        if (this.#tt) {
-            const {ttButtons, editTileBtn} = this.#tt;
+    private _updateTT() {
+        if (this._tt) {
+            const {ttButtons, editTileBtn} = this._tt;
             const selected = this.buttonOrderAt();
 
             const but = ttButtons[selected];
@@ -812,10 +812,10 @@ class PointerEvents {
         }
     }
 
-    #history: Partial<{[T in StageTile.Order]: StageTile}> = {};
+    private _history: Partial<{[T in StageTile.Order]: StageTile}> = {};
 
-    #getDefaultTile(value: StageTile.Order) {
-        const last = this.#history[value];
+    private _getDefaultTile(value: StageTile.Order) {
+        const last = this._history[value];
         if (last) return last.clone();
 
         if (value === StageTile.Order.Blank) {
@@ -836,34 +836,34 @@ class PointerEvents {
     }
 
     get editSquare() {
-        return this.#editSquare;
+        return this._editSquare;
     }
 
     set editSquare(v: CellPos) {
-        this.#editSquare = v;
+        this._editSquare = v;
 
-        const ssq = this.#modeLayer("level").getChildByName("ssq");
-        ssq.position = Grids.cellToPosition(this.#grid, this.#editSquare);
-        this.#updateTT();
+        const ssq = this._modeLayer("level").getChildByName("ssq");
+        ssq.position = Grids.cellToPosition(this._grid, this._editSquare);
+        this._updateTT();
     }
 
     setSquarePos(value: StageTile.Order) {
-        assertEditMode(this.#grid.editMode, "level");
-        this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value));
+        assertEditMode(this._grid.editMode, "level");
+        this._grid.setTile(...this.editSquare, this._getDefaultTile(value));
     }
 
     moveSquarePos(d: Dir) {
-        assertEditMode(this.#grid.editMode, "level");
+        assertEditMode(this._grid.editMode, "level");
         const shifted = Dir.shift(this.editSquare, d);
 
-        if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
+        if (Grids.inBounds(this._grid, ...shifted)) this.editSquare = shifted;
     }
 
     setSquare(t: StageTile) {
-        assertEditMode(this.#grid.editMode, "level");
+        assertEditMode(this._grid.editMode, "level");
 
-        this.#history[this.#stOrder(t)] = t.clone() as any;
-        this.#grid.setTile(...this.editSquare, t);
+        this._history[this._stOrder(t)] = t.clone() as any;
+        this._grid.setTile(...this.editSquare, t);
     }
     //
 
@@ -871,10 +871,10 @@ class PointerEvents {
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
      */
-    #applyPointerEvents(con: PIXI.Container) {
-        const grid = this.#grid;
+    private _applyPointerEvents(con: PIXI.Container) {
+        const grid = this._grid;
         
-        const levelLayer = this.#modeLayer("level");
+        const levelLayer = this._modeLayer("level");
 
         // TODO: make actual sprite for this
         const selectSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
@@ -944,7 +944,7 @@ class PointerEvents {
             }
         };
 
-        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointerdown", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(grid, pos);
 
@@ -957,7 +957,7 @@ class PointerEvents {
                 // tap 2
                 if (cellPos.equals(dbtTile)) {
                     clearTimeout(dbtTimeout);
-                    this.#onDoubleTap(dbtTile);
+                    this._onDoubleTap(dbtTile);
                     dbtTile = undefined;
                 }
             }
@@ -985,9 +985,9 @@ class PointerEvents {
             }
         });
 
-        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
-            const cellPos = Grids.positionToCell(this.#grid, pos);
+            const cellPos = Grids.positionToCell(this._grid, pos);
             // pointer === 1 implies drag
             if (this.pointers !== 1) {
                 // can't really make sense of pointer if there's more than one finger dragging
@@ -1055,7 +1055,7 @@ class PointerEvents {
             }
         });
 
-        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointerup", (e: PIXI.InteractionEvent) => {
             if (this.pointer?.editMode === "level") {
                 const pos = e.data.getLocalPosition(con);
                 const cellPos = Grids.positionToCell(grid, pos);
@@ -1069,19 +1069,19 @@ class PointerEvents {
                     this.editSquare = cellPos;
                 } else {
                     grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
-                    this.#updateTT();
+                    this._updateTT();
                 }
             }
 
             invalidateDrag();
         });
-        this.#on(con, "pointerupoutside", invalidateDrag);
-        this.#on(con, "pointercancel", invalidateDrag);
+        this._onPixi(con, "pointerupoutside", invalidateDrag);
+        this._onPixi(con, "pointercancel", invalidateDrag);
 
-        // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
+        // this._onPixi(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
 
-    #hoverSquare(size: number) {
+    private _hoverSquare(size: number) {
         const hoverSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
         hoverSquare.width = size;
         hoverSquare.height = size;
@@ -1096,21 +1096,21 @@ class PointerEvents {
      * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
      * @param con Container to apply to
      */
-    #applyHoverEvents(con: PIXI.Container) {
-        const grid = this.#grid;
+    private _applyHoverEvents(con: PIXI.Container) {
+        const grid = this._grid;
 
         const railMarker = TileGraphics.hoverIndicator(grid.pixi, grid.cellSize);
         railMarker.tint = Palette.Hover;
         railMarker.visible = false;
         railMarker.interactive = true;
         railMarker.cursor = "grab";
-        this.#modeLayer("rail").addChild(railMarker);
+        this._modeLayer("rail").addChild(railMarker);
 
-        const levelSquare = this.#modeLayer("level").addChild(
-            this.#hoverSquare(grid.cellSize)
+        const levelSquare = this._modeLayer("level").addChild(
+            this._hoverSquare(grid.cellSize)
         );
-        const eraseSquare = this.#modeLayer("railErase").addChild(
-            this.#hoverSquare(grid.cellSize)
+        const eraseSquare = this._modeLayer("railErase").addChild(
+            this._hoverSquare(grid.cellSize)
         );
 
         // yeah i should probably just use a BitSet library but also it's like 3 bits :|
@@ -1154,7 +1154,7 @@ class PointerEvents {
             levelSquare.visible = bit(Condition.IN_BOUNDS) || !bit(Condition.NOT_DRAGGING);
         };
 
-        this.#on(con, "pointermove", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointermove", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(grid, pos);
             const tile = grid.tile(...cellPos);
@@ -1200,7 +1200,7 @@ class PointerEvents {
             updateVis();
         })
 
-        this.#on(con, "pointerdown", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointerdown", (e: PIXI.InteractionEvent) => {
             const pos = e.data.getLocalPosition(con);
             const cellPos = Grids.positionToCell(grid, pos);
             levelSquare.position = Grids.cellToPosition(grid, cellPos);
@@ -1208,20 +1208,20 @@ class PointerEvents {
             setVis(Condition.NOT_DRAGGING, false);
             updateVis();
         });
-        this.#on(con, "pointerup", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointerup", (e: PIXI.InteractionEvent) => {
             setVis(Condition.NOT_DRAGGING, true);
             updateVis();
         });
-        this.#on(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "pointerupoutside", (e: PIXI.InteractionEvent) => {
             setVis(Condition.NOT_DRAGGING, true);
             updateVis();
         });
 
-        this.#on(con, "mouseover", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "mouseover", (e: PIXI.InteractionEvent) => {
             setVis(Condition.IN_BOUNDS, true);
             updateVis();
         });
-        this.#on(con, "mouseout", (e: PIXI.InteractionEvent) => {
+        this._onPixi(con, "mouseout", (e: PIXI.InteractionEvent) => {
             setVis(Condition.IN_BOUNDS, false);
             updateVis();
         });
@@ -1231,10 +1231,10 @@ class PointerEvents {
      * Handles what happens when a tile is double tapped
      * @param dbtTile the tile that was double tapped
      */
-    #onDoubleTap(dbtTile: CellPos) {
-        if (this.#grid.editMode === "rail") {
+    private _onDoubleTap(dbtTile: CellPos) {
+        if (this._grid.editMode === "rail") {
             // double tap to swap rails (on a double rail)
-            this.#grid.replaceTile(...dbtTile, t => {
+            this._grid.replaceTile(...dbtTile, t => {
                 if (t instanceof Tile.DoubleRail) {
                     return t.flipped();
                 }
@@ -1246,12 +1246,12 @@ class PointerEvents {
 }
 
 class GridCursor {
-    #grid: TileGrid;
-    #pos: CellPos;
+    private _grid: TileGrid;
+    private _pos: CellPos;
 
     constructor(grid: TileGrid, pos: CellPos) {
-        this.#grid = grid;
-        this.#pos = pos;
+        this._grid = grid;
+        this._pos = pos;
     }
 
     /**
@@ -1260,12 +1260,12 @@ class GridCursor {
      * @returns the neighbor tile
      */
     neighbor(direction: Dir) {
-        return this.#grid.tile(...Dir.shift(this.#pos, direction));
+        return this._grid.tile(...Dir.shift(this._pos, direction));
     }
 
     updateRender(progress: number, call: (con: PIXI.Container) => void) {
-        const updates = this.#grid.simulation!.renderUpdates;
-        const result = [progress, () => call(this.#grid.cellAt(this.#pos))] as const;
+        const updates = this._grid.simulation!.renderUpdates;
+        const result = [progress, () => call(this._grid.cellAt(this._pos))] as const;
 
         let gtIndex = updates.findIndex(([p, _]) => progress < p);
 
@@ -1330,28 +1330,28 @@ namespace Simulation {
 
     export class Simulator {
 
+        private _grid: TileGrid;
+        private _peeked: GridStep[] = [];
+        private _trainCon: TrainContainer;
         iterator: Iterator;
-        #grid: TileGrid;
-        #trainCon: TrainContainer;
-        #peeked: GridStep[] = [];
         passing: boolean = true;
         progress: number = 0;
         renderUpdates: (readonly [progress: number, call: () => void])[] = [];
 
         constructor(grid: TileGrid, tc: TrainContainer) {
-            this.#grid = grid;
-            this.#trainCon = tc;
+            this._grid = grid;
+            this._trainCon = tc;
     
-            for (let [pos, tile] of this.#grid.statefulTiles()) {
+            for (let [pos, tile] of this._grid.statefulTiles()) {
                 tile.initState();
 
                 // render trains
                 for (let t of tile.state!.trainState.trains) {
-                    this.#trainCon.createBody(pos, undefined, t);
+                    this._trainCon.createBody(pos, undefined, t);
                 }
             }
 
-            this.iterator = new Iterator(this.#grid);
+            this.iterator = new Iterator(this._grid);
         }
 
         /**
@@ -1359,14 +1359,14 @@ namespace Simulation {
          * @param advance Number of moves to look forward. By default, 1.
          */
         peek(advance = 1) {
-            while (this.#peeked.length < advance && !this.iterator.done) {
+            while (this._peeked.length < advance && !this.iterator.done) {
                 const ent = this.iterator.next();
                 if (ent.done) return undefined;
 
-                this.#peeked.push(ent.value);
+                this._peeked.push(ent.value);
             }
 
-            return this.#peeked[advance - 1];
+            return this._peeked[advance - 1];
         }
 
         /**
@@ -1382,7 +1382,7 @@ namespace Simulation {
             // }
             // console.log("next move");
 
-            return this.#peeked.shift() ?? this.iterator.next().value;
+            return this._peeked.shift() ?? this.iterator.next().value;
         }
 
         /**
@@ -1418,10 +1418,10 @@ namespace Simulation {
          */
         render(step: GridStep) {
             for (let [i, deployedTrains] of step.entries()) {
-                const pos = Grids.indexToCell(this.#grid, +i);
+                const pos = Grids.indexToCell(this._grid, +i);
 
                 if (deployedTrains.some(m => m.move == "destroy" && m.crashed)) this.fail();
-                this.#trainCon.moveBodies(pos, deployedTrains);
+                this._trainCon.moveBodies(pos, deployedTrains);
             }
 
             for (let [_, call] of this.renderUpdates) call();
@@ -1430,8 +1430,8 @@ namespace Simulation {
 
         renderPartial(step: GridStep) {
             for (let [i, deployedTrains] of step.entries()) {
-                const pos = Grids.indexToCell(this.#grid, +i);
-                this.#trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
+                const pos = Grids.indexToCell(this._grid, +i);
+                this._trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
             }
 
             while (this.renderUpdates.length > 0 && this.renderUpdates[0][0] <= this.progress) {
@@ -1445,7 +1445,7 @@ namespace Simulation {
         fail() {
             if (this.passing) {
                 this.passing = false;
-                this.#grid.dispatchFailEvent();
+                this._grid.dispatchFailEvent();
             }
         }
 
@@ -1453,27 +1453,27 @@ namespace Simulation {
          * Wipes all state. Resets simulating state.
          */
         close() {
-            for (let [pos, tile] of this.#grid.statefulTiles()) {
+            for (let [pos, tile] of this._grid.statefulTiles()) {
                 tile.state = undefined;
-                this.#grid.rerenderTileInContainer(...pos);
+                this._grid.rerenderTileInContainer(...pos);
             }
 
-            this.#trainCon.clearBodies();
-            this.#grid.simulation = undefined;
+            this._trainCon.clearBodies();
+            this._grid.simulation = undefined;
         }
     }
 
     class Iterator implements IterableIterator<GridStep> {
-        #grid: TileGrid;
+        private _grid: TileGrid;
         done: boolean = false;
         curs: Map<StatefulTile, GridCursor>;
     
         constructor(grid: TileGrid) {
-            this.#grid = grid;
+            this._grid = grid;
 
             this.curs = new Map(
                 Array.from(
-                    this.#grid.statefulTiles(), 
+                    this._grid.statefulTiles(), 
                     ([pos, tile]) => [tile, new GridCursor(grid, pos)] as const
                 )
             );
@@ -1494,7 +1494,7 @@ namespace Simulation {
             let deploys: GridStep = new Map();
             let done = true;
 
-            for (let [_, tile] of this.#grid.statefulTiles()) {
+            for (let [_, tile] of this._grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
     
                 if (trainState.length > 0) {
@@ -1507,10 +1507,10 @@ namespace Simulation {
                 return {value: undefined, done: true as const};
             }
     
-            let trainEdges = new Focus.FocusMap<[TrainState, Train][]>(this.#grid);
+            let trainEdges = new Focus.FocusMap<[TrainState, Train][]>(this._grid);
 
             // check intra collisions
-            for (let [pos, tile] of this.#grid.statefulTiles()) {
+            for (let [pos, tile] of this._grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
 
                 for (let t of trainState.exitingTrains) {
@@ -1530,19 +1530,19 @@ namespace Simulation {
             }
 
             // deploy
-            for (let [pos, tile] of this.#grid.statefulTiles()) {
+            for (let [pos, tile] of this._grid.statefulTiles()) {
                 const trainState = tile.state!.trainState;
                 trainState.deployExiting(this.curs.get(tile)!);
 
                 if (trainState.tileMoves.length > 0) {
-                    const i = Grids.cellToIndex(this.#grid, pos);
+                    const i = Grids.cellToIndex(this._grid, pos);
                     deploys.set(i, [...trainState.tileMoves]);
                     trainState.tileMoves.length = 0;
                 }
             }
 
             // finalize
-            for (let [_, tile] of this.#grid.statefulTiles()) {
+            for (let [_, tile] of this._grid.statefulTiles()) {
                 tile.state!.trainState.finalize();
             }
     
@@ -1565,22 +1565,22 @@ class TrainState {
     /**
      * A list of the trains currently on the tile.
      */
-    #trains: Train[];
+    private _trains: Train[];
 
     /**
      * Trains that are entering this tile in finalization.
      */
-    #enteringTrains: Train[] = [];
+    private _enteringTrains: Train[] = [];
 
     /**
      * Trains that will be exiting this tile in deploy.
      */
-    #exitingTrains: Train[] = [];
+    private _exitingTrains: Train[] = [];
 
     /**
      * Path that a train took through this tile.
      */
-    #paths: (readonly [pre: Train, im: Train])[] = []
+    private _paths: (readonly [pre: Train, im: Train])[] = []
     /**
      * A mapping keeping track of which trains moved to where during the step calculation.
      * It is used during finalization to move train sprites on the stage.
@@ -1588,18 +1588,18 @@ class TrainState {
     tileMoves: Move[] = [];
 
     constructor(iter: Iterable<Train> = []) {
-        this.#trains = Array.from(iter);
+        this._trains = Array.from(iter);
     }
 
     get length() {
-        return this.#trains.length;
+        return this._trains.length;
     }
 
     get trains(): readonly Train[] {
-        return this.#trains;
+        return this._trains;
     }
     get exitingTrains(): readonly Train[] {
-        return this.#exitingTrains;
+        return this._exitingTrains;
     }
     
     replaceExit(exiting: number | Train, newExiting: Train, step: Step) {
@@ -1616,21 +1616,21 @@ class TrainState {
             throw new Error(`Train[color=${color}, dir=${dir}] isn't exiting`);
         }
         if (exiting === newExiting) return;
-        this.#exitingTrains[i] = newExiting;
-        this.#trackMove(exiting, [newExiting], step);
+        this._exitingTrains[i] = newExiting;
+        this._trackMove(exiting, [newExiting], step);
     }
 
     sendToExit(preimage: Train, image: NormalizedImage) {
         if (image === TRAIN_CRASH) {
-            this.#trackMove(preimage, image, Step.Main);
+            this._trackMove(preimage, image, Step.Main);
             return;
         }
 
         const pimPairs = image.map(t => [preimage, t] as const);
         
-        this.#trackMove(preimage, image, Step.Main);
-        this.#exitingTrains.push(...image);
-        this.#paths.push(...pimPairs);
+        this._trackMove(preimage, image, Step.Main);
+        this._exitingTrains.push(...image);
+        this._paths.push(...pimPairs);
     }
 
     mergePass(m: Move.Pass) {
@@ -1643,7 +1643,7 @@ class TrainState {
     deployExiting(cur: GridCursor) {
         // merge trains that are leaving the same edge
         const groupMap = new Map<Dir, Train[]>();
-        for (let t of this.#exitingTrains) {
+        for (let t of this._exitingTrains) {
             groupMap.setDefault(t.dir, () => []).push(t);
         }
 
@@ -1654,19 +1654,19 @@ class TrainState {
             if (trains.length > 1) {
                 const tc = trains.map(t => t.color);
                 t = {dir: d, color: Color.mixMany(tc)!};
-                this.#trackMerge(trains, t, Step.Deploy);
+                this._trackMerge(trains, t, Step.Deploy);
             } else {
                 t = trains[0];
             }
 
             if (nb?.accepts(t)) {
-                nb.state!.trainState.#enteringTrains.push(t);
+                nb.state!.trainState._enteringTrains.push(t);
             } else {
-                this.#trackMove(t, TRAIN_CRASH, Step.Deploy);
+                this._trackMove(t, TRAIN_CRASH, Step.Deploy);
             }
         }
 
-        this.#exitingTrains.length = 0;
+        this._exitingTrains.length = 0;
     }
 
     /**
@@ -1674,18 +1674,18 @@ class TrainState {
      */
     finalize() {
         // do train collapsing here
-        this.#trains.push(...this.#enteringTrains);
-        this.#enteringTrains = [];
+        this._trains.push(...this._enteringTrains);
+        this._enteringTrains = [];
     }
 
-    #trackMerge(preimage: Train[], image: Train, step: Step) {
+    private _trackMerge(preimage: Train[], image: Train, step: Step) {
         // if only 1 preimage, this is just an extension of the previous move
         if (preimage.length == 1) {
             const im = this.tileMoves.find((m): m is Move.Pass => m.move == "pass" && m.image == preimage[0]);
             if (im) {
                 im.image = image;
             } else {
-                this.#trackMove(preimage[0], [image], step);
+                this._trackMove(preimage[0], [image], step);
             }
         } else {
             this.tileMoves.push({
@@ -1696,7 +1696,7 @@ class TrainState {
             });
         }
     }
-    #trackMove(preimage: Train, image: NormalizedImage, step: Step) {
+    private _trackMove(preimage: Train, image: NormalizedImage, step: Step) {
         let move: Move;
         
         if (image === TRAIN_CRASH) {
@@ -1733,7 +1733,7 @@ class TrainState {
         return move;
     }
 
-    #normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
+    private _normalizeImage(image: ReturnType<TrainDeploy>): NormalizedImage {
         image ??= [];
 
         if (image === TRAIN_CRASH) {
@@ -1743,8 +1743,8 @@ class TrainState {
         if (!(image instanceof Array)) image = [image];
         return image;
     }
-    #computeImage(preimage: Train, f?: TrainDeploy): NormalizedImage {
-        return f ? this.#normalizeImage(f(preimage)) : [preimage];
+    private _computeImage(preimage: Train, f?: TrainDeploy): NormalizedImage {
+        return f ? this._normalizeImage(f(preimage)) : [preimage];
     }
 
     /**
@@ -1753,11 +1753,11 @@ class TrainState {
      *     The direction of the train designates which neighbor the train goes to.
      */
     deployOne(f?: TrainDeploy) {
-        const preimage = this.#trains.shift()!;
+        const preimage = this._trains.shift()!;
 
         if (preimage) {
             // convert image result into Train[]
-            let image = this.#computeImage(preimage, f);
+            let image = this._computeImage(preimage, f);
 
             this.sendToExit(preimage, image);
         }
@@ -1769,7 +1769,7 @@ class TrainState {
      *     The direction of the train designates which neighbor the train goes to.
      */
     deployAll(f?: TrainDeploy) {
-        while (this.#trains.length > 0) this.deployOne(f);
+        while (this._trains.length > 0) this.deployOne(f);
     }
 }
 
@@ -2392,7 +2392,7 @@ export namespace Tile {
 
     export class DoubleRail extends Rail<DoubleRailState> {
         readonly paths: readonly [Dir.Flags, Dir.Flags];
-        readonly #overlapping: boolean;
+        private readonly _overlapping: boolean;
     
         constructor(paths: [Dir.Flags, Dir.Flags]) {
             let [e0, e1] = paths;
@@ -2401,7 +2401,7 @@ export namespace Tile {
             }
             super(e0.or(e1));
             this.paths = paths;
-            this.#overlapping = [...this.actives].length < 4;
+            this._overlapping = [...this.actives].length < 4;
         }
     
         createState(): DoubleRailState {
@@ -2426,7 +2426,7 @@ export namespace Tile {
             }
 
             let pathColors: [Color, Color];
-            if (!this.#overlapping && this.crossesOver) { // + rail
+            if (!this._overlapping && this.crossesOver) { // + rail
                 const color = Color.mixMany(trains.map(t => t.color))!; // there has to be trains if step was called
                 pathColors = [color, color];
             } else {
@@ -2459,7 +2459,7 @@ export namespace Tile {
 
             const rails = this.paths.map(p => TileGraphics.rail(resources, [...p], size));
 
-            if (this.#overlapping) {
+            if (this._overlapping) {
                 rails[1].tint = Palette.Shadow;
             }
             
@@ -2483,7 +2483,7 @@ export namespace Tile {
         }
 
         get crossesOver() {
-            if (this.#overlapping) return true;
+            if (this._overlapping) return true;
 
             const [[a1, a2], [b1, b2]] = this.paths;
 

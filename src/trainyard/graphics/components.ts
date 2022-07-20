@@ -62,18 +62,18 @@ namespace Symbols {
  * while the new anchor (`posAnchor`) is used as the translational anchor.
  */
 export class TwoAnchorSprite extends PIXI.Sprite {
-    #posAnchor: PIXI.ObservablePoint;
-    #position: PIXI.ObservablePoint;
+    private _posAnchor: PIXI.ObservablePoint;
+    private _position: PIXI.ObservablePoint;
 
     constructor(texture: PIXI.Texture) {
         super(texture);
-        this.#posAnchor = this.#makePoint(0, 0);
-        this.#position = this.#makePoint(this.transform.position.x, this.transform.position.y);
+        this._posAnchor = this._makePoint(0, 0);
+        this._position = this._makePoint(this.transform.position.x, this.transform.position.y);
 
         const anchorCB = this._anchor.cb;
         this._anchor.cb = function() {
             anchorCB();
-            this.#updatePosition();
+            this._updatePosition();
         }
     }
 
@@ -86,8 +86,8 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         return sprite;
     }
 
-    #updatePosition() {
-        const panchor = this.#panchor;
+    private _updatePosition() {
+        const panchor = this._panchor;
         const anchor = this.anchor;
         
         const dx = (panchor.x - anchor.x) * this.width;
@@ -96,31 +96,31 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         // dx, dy = -16, -16
         // panchor is 16, 16 up/left from anchor
 
-        const {x, y} = this.#position;
+        const {x, y} = this._position;
         this.transform.position.set(x - dx, y - dy);
     }
-    updatePosition() { return this.#updatePosition(); }
-    #makePoint(x: number, y: number) {
-        return new PIXI.ObservablePoint( this.#updatePosition, this, x, y );
+    updatePosition() { return this._updatePosition(); }
+    private _makePoint(x: number, y: number) {
+        return new PIXI.ObservablePoint( this._updatePosition, this, x, y );
     }
 
-    get #panchor() {
-        return this.#posAnchor ?? this._anchor;
+    private get _panchor() {
+        return this._posAnchor ?? this._anchor;
     }
 
     /** The positional origin point of the sprite */
     get posAnchor(): PIXI.ObservablePoint {
-        return this.#posAnchor;
+        return this._posAnchor;
     }
     set posAnchor(v: PIXI.ObservablePoint) {
-        this.#posAnchor.copyFrom(v);
+        this._posAnchor.copyFrom(v);
     }
 
     get position(): PIXI.ObservablePoint {
-        return this.#position;
+        return this._position;
     }
     set position(v: PIXI.IPointData) {
-        this.#position.copyFrom(v);
+        this._position.copyFrom(v);
     }
 
     get width() {
@@ -128,14 +128,14 @@ export class TwoAnchorSprite extends PIXI.Sprite {
     }
     set width(w: number) {
         super.width = w;
-        this.#updatePosition();
+        this._updatePosition();
     }
     get height() {
         return super.height;
     }
     set height(h: number) {
         super.height = h;
-        this.#updatePosition();
+        this._updatePosition();
     }
 }
 

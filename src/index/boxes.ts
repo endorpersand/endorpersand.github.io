@@ -5,8 +5,8 @@ type RGB = [number, number, number];
 let wrapper = document.querySelector('.wrapper')!;
 
 class SquareTracker {
-    static #MIN_ROWS = 3;
-    #cols: number;
+    private static _MIN_ROWS = 3;
+    private _cols: number;
     readonly projectSquares: HTMLElement[];
     placeholderSquares: HTMLElement[];
     corners: [RGB, RGB, RGB, RGB] = [ // top right, bottom right, top left, bottom left
@@ -17,7 +17,7 @@ class SquareTracker {
     ];
 
     constructor() {
-        this.#cols = +getComputedStyle(document.documentElement).getPropertyValue('--cols');
+        this._cols = +getComputedStyle(document.documentElement).getPropertyValue('--cols');
 
         this.projectSquares = [...wrapper.querySelectorAll('a')];
         for (let s of this.projectSquares) {
@@ -29,8 +29,8 @@ class SquareTracker {
         }
 
         this.placeholderSquares = [];
-        for (let i = this.squares; i < (this.cols * SquareTracker.#MIN_ROWS); i++) {
-            this.#addSquare();
+        for (let i = this.squares; i < (this.cols * SquareTracker._MIN_ROWS); i++) {
+            this._addSquare();
         }
     }
 
@@ -39,12 +39,12 @@ class SquareTracker {
     }
 
     get cols() {
-        return this.#cols;
+        return this._cols;
     }
     set cols(value) {
-        if (value != this.#cols) {
-            this.#cols = value;
-            this.#rebalance();
+        if (value != this._cols) {
+            this._cols = value;
+            this._rebalance();
         }
     }
 
@@ -52,7 +52,7 @@ class SquareTracker {
         return this.squares / this.cols;
     }
 
-    #addSquare() {
+    private _addSquare() {
         let box = document.createElement('div');
         let title = document.createElement('div');
         let desc = document.createElement('div');
@@ -70,24 +70,24 @@ class SquareTracker {
         this.placeholderSquares.push(box);
     }
 
-    #removeSquare() {
+    private _removeSquare() {
         this.placeholderSquares.pop()?.remove();
     }
 
-    #rebalance() {
+    private _rebalance() {
         let squares = this.squares;
         // n = number of squares that should be on board
-        let n = Math.max(this.#cols * SquareTracker.#MIN_ROWS, this.projectSquares.length);
-        n = Math.ceil(n / this.#cols) * this.#cols;
+        let n = Math.max(this._cols * SquareTracker._MIN_ROWS, this.projectSquares.length);
+        n = Math.ceil(n / this._cols) * this._cols;
 
         if (squares == n) return;
         if (squares > n) {
             for (let i = squares; i > n; i--) {
-                this.#removeSquare();
+                this._removeSquare();
             }
         } else if (squares < n) {
             for (let i = squares; i < n; i++) {
-                this.#addSquare();
+                this._addSquare();
             }
         }
 
@@ -104,7 +104,7 @@ class SquareTracker {
         if (!useCurrentCorners) this.corners = Array.from({length: 4}, () => randRGB(0x50)) as [RGB, RGB, RGB, RGB];
         let corners = this.corners;
         
-        if (this.#cols < 3) {
+        if (this._cols < 3) {
             // use TL + BR boxes rather than the corners to make a consistent grid (rather than 2 columns of color)
             let corners2: [RGB, RGB] = [corners[2], corners[1]];
             this.assignColors(i => interpolate2(corners2, asCoord(i)), useCurrentCorners);

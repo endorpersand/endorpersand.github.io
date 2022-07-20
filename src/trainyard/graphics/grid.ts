@@ -34,14 +34,14 @@ export class GridContainer extends AbsGriddedContainer {
     constructor(options: GridContainerOptions) {
         super(options);
 
-        if (options.drawGrid ?? true) this.#drawGrid();
+        if (options.drawGrid ?? true) this._drawGrid();
 
         const cells = this.cells = new PIXI.Container();
         cells.name = "cells";
         this.addChild(cells);
     }
 
-    #drawGrid() {
+    private _drawGrid() {
         const TILE_GAP = Grids.TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
         const GRID_SIZE = Grids.gridSize(this);
@@ -139,7 +139,7 @@ export class TrainContainer extends AbsGriddedContainer {
         super(options);
     }
 
-    #interp(pos: CellPos, d1: Dir | undefined, d2: Dir | undefined, progress: number): {pos: PIXI.IPointData, rotation?: number} {
+    private _interp(pos: CellPos, d1: Dir | undefined, d2: Dir | undefined, progress: number): {pos: PIXI.IPointData, rotation?: number} {
         const edge1 = Grids.cellToPosition(this, pos, Dir.edge(d1, this.cellSize));
         const edge2 = Grids.cellToPosition(this, pos, Dir.edge(d2, this.cellSize));
 
@@ -214,7 +214,7 @@ export class TrainContainer extends AbsGriddedContainer {
 
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, _] = this.trainBodies.popItem(preimage)!;
-                    this.#passBody(trainBody, preImagePos, image);
+                    this._passBody(trainBody, preImagePos, image);
                 }
             } else if (m.move == "split") {
                 const {preimage, image} = m;
@@ -222,7 +222,7 @@ export class TrainContainer extends AbsGriddedContainer {
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, _] = this.trainBodies.popItem(preimage)!;
 
-                    this.#passBody(trainBody, preImagePos, image.shift()!);
+                    this._passBody(trainBody, preImagePos, image.shift()!);
     
                     for (let t of image) {
                         this.createBody(Dir.shift(preImagePos, t.dir), Dir.flip(t.dir), t);
@@ -244,7 +244,7 @@ export class TrainContainer extends AbsGriddedContainer {
                 if (this.trainBodies.has(first)) {
                     const [trainBody, _] = this.trainBodies.popItem(first)!;
 
-                    this.#passBody(trainBody, preImagePos, image);
+                    this._passBody(trainBody, preImagePos, image);
     
                     for (let t of preimage) {
                         if (this.trainBodies.has(t)) {
@@ -273,11 +273,11 @@ export class TrainContainer extends AbsGriddedContainer {
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, initDir] = this.trainBodies.get(preimage)!;
 
-                    const transform = this.#interp(preImagePos, initDir, image.dir, progress);
+                    const transform = this._interp(preImagePos, initDir, image.dir, progress);
 
                     // after progress 0.5, the trains likely intersected, so color changes
                     const c = progress > 0.5 ? image : preimage;
-                    this.#redressBody(trainBody, {...transform, train: c});
+                    this._redressBody(trainBody, {...transform, train: c});
                 }
             } else if (m.move == "split") {
                 const {preimage, image} = m;
@@ -299,14 +299,14 @@ export class TrainContainer extends AbsGriddedContainer {
                     if (this.trainBodies.has(t)) {
                         const tbd = this.trainBodies.get(t)!;
                         const [trainBody, initDir] = tbd;
-                        const {pos, rotation} = this.#interp(preImagePos, initDir, t.dir, progress);
+                        const {pos, rotation} = this._interp(preImagePos, initDir, t.dir, progress);
 
                         // after the trains are deep inside (and not visible), we can do color change
                         if (progress > 0.5) {
                             // prevent recoloring changes until the trains have moved in
-                            this.#redressBody(trainBody, {pos, rotation, train: t});
+                            this._redressBody(trainBody, {pos, rotation, train: t});
                         } else {
-                            this.#redressBody(trainBody, {pos, rotation});
+                            this._redressBody(trainBody, {pos, rotation});
                         }
                     }
                 });
@@ -316,9 +316,9 @@ export class TrainContainer extends AbsGriddedContainer {
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, initDir] = this.trainBodies.get(preimage)!;
     
-                    const transform = this.#interp(preImagePos, initDir, preimage.dir, progress);
+                    const transform = this._interp(preImagePos, initDir, preimage.dir, progress);
 
-                    this.#redressBody(trainBody, transform);
+                    this._redressBody(trainBody, transform);
 
                     if (progress > 0.5) {
                         this.trainBodies.delete(preimage);
@@ -333,12 +333,12 @@ export class TrainContainer extends AbsGriddedContainer {
         }
     }
 
-    #passBody(body: TileGraphics.TwoAnchorSprite | undefined, preImagePos: CellPos, t: Train) {
+    private _passBody(body: TileGraphics.TwoAnchorSprite | undefined, preImagePos: CellPos, t: Train) {
         if (body) {
             this.trainBodies.set(t, [body, Dir.flip(t.dir)]);
 
             const pixPos = Grids.cellToPosition(this, preImagePos, Dir.edge(t.dir, this.cellSize));
-            this.#redressBody(body, {pos: pixPos, train: t});
+            this._redressBody(body, {pos: pixPos, train: t});
         }
     }
 
@@ -348,7 +348,7 @@ export class TrainContainer extends AbsGriddedContainer {
      * @param pos pixel position
      * @param param2 train data
      */
-    #redressBody(body: TileGraphics.TwoAnchorSprite, options?: Partial<{pos: PIXI.IPointData, rotation: number, train: Train}>) {
+    private _redressBody(body: TileGraphics.TwoAnchorSprite, options?: Partial<{pos: PIXI.IPointData, rotation: number, train: Train}>) {
         if (!options) return;
 
         const {pos, rotation, train} = options;
@@ -374,7 +374,7 @@ export class TrainContainer extends AbsGriddedContainer {
         body.posAnchor.set(0.5, 0.5);
         
         const pixPos = Grids.cellToPosition(this, pos, Dir.edge(edge, this.cellSize));
-        this.#redressBody(body, {pos: pixPos, train: t});
+        this._redressBody(body, {pos: pixPos, train: t});
         this.addChild(body);
         this.trainBodies.set(t, [body, edge]);
 
