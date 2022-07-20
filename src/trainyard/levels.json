@@ -1,18 +1,366 @@
 {
     "Abbotsford": {
-        "Red Line": null,
-        "Grorange lines": null,
-        "Yorple lines": null,
-        "Magical Trains": null,
-        "The Red Corner": null,
-        "Purpablu": null
+        "Red Line": {
+            "board": [
+                "       ",
+                "       ",
+                "       ",
+                " +   o ",
+                "       ",
+                "       ",
+                "       "
+            ],
+            "tiles": {
+                "22": {
+                    "out": 0,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "26": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
+        "Grorange lines": {
+            "board": [
+                "       ",
+                " +     ",
+                "       ",
+                "       ",
+                "       ",
+                " o+  o ",
+                "       "
+            ],
+            "tiles": {
+                "8": {
+                    "out": 3,
+                    "colors": [
+                        "Green"
+                    ]
+                },
+                "36": {
+                    "targets": [
+                        "Green"
+                    ],
+                    "actives": 2
+                },
+                "37": {
+                    "out": 0,
+                    "colors": [
+                        "Orange"
+                    ]
+                },
+                "40": {
+                    "targets": [
+                        "Orange"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
+        "Yorple lines": {
+            "board": [
+                "o     +",
+                "       ",
+                " +   o ",
+                "       ",
+                " o   + ",
+                "       ",
+                "+     o"
+            ],
+            "tiles": {
+                "0": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 1
+                },
+                "6": {
+                    "out": 2,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "15": {
+                    "out": 3,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "19": {
+                    "targets": [
+                        "Yellow"
+                    ],
+                    "actives": 8
+                },
+                "29": {
+                    "targets": [
+                        "Yellow"
+                    ],
+                    "actives": 2
+                },
+                "33": {
+                    "out": 1,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "42": {
+                    "out": 0,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "48": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
+        "Magical Trains": {
+            "board": [
+                "   o   ",
+                "       ",
+                "       ",
+                "+     o",
+                "       ",
+                "       ",
+                "   +   "
+            ],
+            "tiles": {
+                "3": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 8
+                },
+                "21": {
+                    "out": 0,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "27": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 4
+                },
+                "45": {
+                    "out": 1,
+                    "colors": [
+                        "Purple"
+                    ]
+                }
+            }
+        },
+        "The Red Corner": {
+            "board": [
+                "       ",
+                " +     ",
+                "       ",
+                "       ",
+                "       ",
+                "     o ",
+                "       "
+            ],
+            "tiles": {
+                "8": {
+                    "out": 3,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "40": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
+        "Purpablu": {
+            "board": [
+                "       ",
+                " +   o ",
+                "       ",
+                "       ",
+                "       ",
+                " +   o ",
+                "       "
+            ],
+            "tiles": {
+                "8": {
+                    "out": 0,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "12": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 1
+                },
+                "36": {
+                    "out": 3,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "40": {
+                    "targets": [
+                        "Blue"
+                    ],
+                    "actives": 2
+                }
+            }
+        }
     },
     "Brampton": {
-        "A Rock in the Way": null,
-        "Green Wally": null,
-        "Yellow Snake": null,
-        "U-Turn": null,
-        "Journey": null
+        "A Rock in the Way": {
+            "board": [
+                "   o   ",
+                "       ",
+                "       ",
+                "   r   ",
+                "       ",
+                "       ",
+                "   +   "
+            ],
+            "tiles": {
+                "3": {
+                    "targets": [
+                        "Green"
+                    ],
+                    "actives": 8
+                },
+                "45": {
+                    "out": 1,
+                    "colors": [
+                        "Green"
+                    ]
+                }
+            }
+        },
+        "Green Wally": {
+            "board": [
+                "       ",
+                " o r + ",
+                "   r   ",
+                "   r   ",
+                "   r   ",
+                "   r   ",
+                "   r   "
+            ],
+            "tiles": {
+                "8": {
+                    "targets": [
+                        "Green"
+                    ],
+                    "actives": 8
+                },
+                "12": {
+                    "out": 3,
+                    "colors": [
+                        "Green"
+                    ]
+                }
+            }
+        },
+        "Yellow Snake": {
+            "board": [
+                "      +",
+                " rrrrrr",
+                "       ",
+                "rrrrrr ",
+                "       ",
+                "       ",
+                "o      "
+            ],
+            "tiles": {
+                "6": {
+                    "out": 2,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "42": {
+                    "targets": [
+                        "Yellow"
+                    ],
+                    "actives": 1
+                }
+            }
+        },
+        "U-Turn": {
+            "board": [
+                "+ro or+",
+                " r   r ",
+                " r   r ",
+                " r   r ",
+                " r   r ",
+                " r   r ",
+                "       "
+            ],
+            "tiles": {
+                "0": {
+                    "out": 3,
+                    "colors": [
+                        "Purple"
+                    ]
+                },
+                "2": {
+                    "targets": [
+                        "Purple"
+                    ],
+                    "actives": 8
+                },
+                "4": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 8
+                },
+                "6": {
+                    "out": 3,
+                    "colors": [
+                        "Red"
+                    ]
+                }
+            }
+        },
+        "Journey": {
+            "board": [
+                "r     o",
+                "   r   ",
+                " r     ",
+                "    r  ",
+                "      r",
+                "  r    ",
+                "+    r "
+            ],
+            "tiles": {
+                "6": {
+                    "targets": [
+                        "Orange"
+                    ],
+                    "actives": 8
+                },
+                "42": {
+                    "out": 1,
+                    "colors": [
+                        "Orange"
+                    ]
+                }
+            }
+        }
     },
     "Calgary": {
         "Rainbow": {
@@ -112,8 +460,92 @@
                 }
             }
         },
-        "Innie Outie": null,
-        "Around the Back": null,
+        "Innie Outie": {
+            "board": [
+                "       ",
+                "     + ",
+                "    +  ",
+                "       ",
+                "  o    ",
+                " o     ",
+                "       "
+            ],
+            "tiles": {
+                "12": {
+                    "out": 0,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "18": {
+                    "out": 0,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "30": {
+                    "targets": [
+                        "Blue"
+                    ],
+                    "actives": 4
+                },
+                "36": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
+        "Around the Back": {
+            "board": [
+                "       ",
+                " +   o ",
+                "       ",
+                " +   o ",
+                "       ",
+                " +   o ",
+                "       "
+            ],
+            "tiles": {
+                "8": {
+                    "out": 0,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "12": {
+                    "targets": [
+                        "Blue"
+                    ],
+                    "actives": 4
+                },
+                "22": {
+                    "out": 0,
+                    "colors": [
+                        "Yellow"
+                    ]
+                },
+                "26": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 4
+                },
+                "36": {
+                    "out": 0,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "40": {
+                    "targets": [
+                        "Yellow"
+                    ],
+                    "actives": 4
+                }
+            }
+        },
         "Multicolor": {
             "board": [
                 "   +   ",
@@ -160,9 +592,102 @@
                 }
             }
         },
-        "Squiggle": null,
-        "Two Two": null,
-        "Crossover": null
+        "Squiggle": {
+            "board": [
+                "       ",
+                "       ",
+                "   +   ",
+                "   o   ",
+                "   +   ",
+                "       ",
+                "       "
+            ],
+            "tiles": {
+                "17": {
+                    "out": 1,
+                    "colors": [
+                        "Orange"
+                    ]
+                },
+                "24": {
+                    "targets": [
+                        "Green",
+                        "Orange"
+                    ],
+                    "actives": 5
+                },
+                "31": {
+                    "out": 0,
+                    "colors": [
+                        "Green"
+                    ]
+                }
+            }
+        },
+        "Two Two": {
+            "board": [
+                "   o   ",
+                "       ",
+                "       ",
+                "       ",
+                "       ",
+                "       ",
+                "   +   "
+            ],
+            "tiles": {
+                "3": {
+                    "targets": [
+                        "Red",
+                        "Red"
+                    ],
+                    "actives": 8
+                },
+                "45": {
+                    "out": 1,
+                    "colors": [
+                        "Red",
+                        "Red"
+                    ]
+                }
+            }
+        },
+        "Crossover": {
+            "board": [
+                "   +   ",
+                "       ",
+                "       ",
+                "+     o",
+                "       ",
+                "       ",
+                "   o   "
+            ],
+            "tiles": {
+                "3": {
+                    "out": 3,
+                    "colors": [
+                        "Blue"
+                    ]
+                },
+                "21": {
+                    "out": 0,
+                    "colors": [
+                        "Red"
+                    ]
+                },
+                "27": {
+                    "targets": [
+                        "Red"
+                    ],
+                    "actives": 4
+                },
+                "45": {
+                    "targets": [
+                        "Blue"
+                    ],
+                    "actives": 2
+                }
+            }
+        }
     },
     "Delson": {
         "Mellow Yellow": null,
