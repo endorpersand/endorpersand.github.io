@@ -34,25 +34,47 @@ export namespace Elements {
 
 const {slider, input} = Elements;
 
-let _speed: number = 1;
-input.value = _speed.toFixed(2);
+const speedValues = {
+    _speed: 1,
 
+    _updateDisplay() {
+        input.value = this.speed.toFixed(2);
+        slider.value = "" + this.sliderDistance;
+    },
+
+    get speed() {
+        return this._speed;
+    },
+    set speed(n: number) {
+        this._speed = n;
+        this._updateDisplay();
+    },
+
+    get sliderDistance() {
+        return Speed.calcSliderDistance(this._speed);
+    },
+    set sliderDistance(n: number) {
+        this._speed = Speed.calcSpeed(n / 50);
+        this._updateDisplay();
+    },
+};
+// let _speed: number = 1;
+input.value = speedValues._speed.toFixed(2);
 slider.addEventListener("input", () => {
-    _speed = Computing.speed(+slider.value / 50);
-    input.value = _speed.toFixed(2);
+    speedValues.sliderDistance = +slider.value;
 });
 
 input.addEventListener("input", () => {
-    _speed = +input.value;
-    slider.value = "" + Computing.sliderDistance(_speed);
+    speedValues.speed = +input.value;
 });
-namespace Computing {
+
+namespace Speed {
     /**
-     * Compute the speed from the slider distance
+     * Compute the speed from the slider distance normalized to [0, 2]
      * @param x slider distance
      * @returns speed
      */
-    export function speed(x: number) {
+    export function calcSpeed(x: number) {
         return (2/3 * x**3) - (x**2) + (4/3 * x);
     }
 
@@ -61,23 +83,25 @@ namespace Computing {
      * @param y speed
      * @returns slider distance
      */
-    export function sliderDistance(y: number) {
+    export function calcSliderDistance(y: number) {
         // https://en.wikipedia.org/wiki/Newton's_method
     
         let x0: number = -Infinity; 
         let x1: number = 0;
         while (x0.toFixed(3) !== x1.toFixed(3)) {
             x0 = x1;
-            x1 -= (speed(x1) - y) / (2 * x1 ** 2 - 2 * x1 + 4 / 3);
+            x1 -= (calcSpeed(x1) - y) / (2 * x1 ** 2 - 2 * x1 + 4 / 3);
         }
     
         return Math.min(Math.max(0, x1 * 50), 100);
     }
 }
 
-export function speed() { return _speed; }
+export function speed() { return speedValues.speed; }
 
 const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, EditModal} = Elements;
+
+EditModal.Modal.on("hide", e => console.log("hidden!"));
 
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
@@ -137,7 +161,12 @@ export function applyButtons(grid: TileGrid) {
     addListener(start, "click", ANY, grid => {
         let em = grid.editMode;
 
-        if (em === "readonly") grid.editMode = "rail";
+        if (em === "readonly") {
+            grid.editMode = "rail";
+
+            // reset speed if in step mode
+            if (speedValues.speed === 0) speedValues.speed = 1;
+        }
         else grid.editMode = "readonly";
     });
 
@@ -150,8 +179,7 @@ export function applyButtons(grid: TileGrid) {
             grid.simulation?.step();
         }
 
-        slider.value = "0";
-        input.value = "0.00";
+        speedValues.speed = 0;
     });
 
     grid.on("switchEdit", () => {
@@ -281,11 +309,28 @@ export function applyButtons(grid: TileGrid) {
         KeyS: Dir.Down,
     } as const;
 
+    // probably should be more like ignoreCode, but whatever
+    const ignoreKey = new Set<string>();
+
+    /**
+     * Count a press and a hold as the same.
+     * @param code `e.code`
+     * @param match code to match
+     */
+    function onHold<S extends string>(code: string, match: S): code is S {
+        const trigger = !ignoreKey.has(match) 
+            && code === match;
+        if (trigger) ignoreKey.add(match);
+
+        return trigger;
+    }
+
     addListener(document, "keydown", ["level"], (grid, e) => {
         const pointerEvents = grid.pointerEvents;
 
         const d = DirKeys[e.code];
-        if (EditModal.Div.ariaHidden) {
+
+        if (EditModal.Div.ariaHidden) { // if modal is off
             if (typeof d !== "undefined") {
                 pointerEvents.moveSquarePos(d);
             }
@@ -295,10 +340,10 @@ export function applyButtons(grid: TileGrid) {
                 if (1 <= d && d <= 6) ttButtons[d - 1].click();
             }
 
-            if (e.code === "Enter") {
+            if (onHold(e.code, "Enter")) {
                 editTileBtn.click();
             }
-        } else {
+        } else { // if modal is on
             const ag = EditModal.Inner.querySelector(".actives-grid");
             if (ag) {
                 const btns = ag.querySelectorAll<HTMLElement>(":scope > *");
@@ -334,20 +379,18 @@ export function applyButtons(grid: TileGrid) {
                 }
             }
 
-            if (e.code === "Enter") {
+            if (onHold(e.code, "Enter")) {
                 EditModal.Footer.querySelector<HTMLButtonElement>("button#edit-modal-ok")!.click();
-                // TODO: figure out why modal doesn't hide?
-                // EditModal.Modal.hide();
             }
         }
     });
 
     addListener(document, "keydown", ["rail"], (grid, e) => {
-        if (e.code === "KeyE") grid.editMode = "railErase" as any;
+        if (e.code === "KeyZ") grid.editMode = "railErase" as any;
     });
 
     addListener(document, "keydown", ["rail", "railErase", "readonly"], (grid, e) => {
-        if (e.code === "Enter") {
+        if (onHold(e.code, "Enter")) {
             if (e.getModifierState("Shift")) {
                 step.click();
             } else {
@@ -360,8 +403,7 @@ export function applyButtons(grid: TileGrid) {
                 undo.click();
             }
 
-            // TODO: hold down without flicker
-            if (e.code === "KeyR") {
+            if (onHold(e.code, "KeyE")) {
                 erase.click();
             }
         }
@@ -375,11 +417,12 @@ export function applyButtons(grid: TileGrid) {
     addListener(document, "keyup", ANY, (grid, e) => {
         const hg = EditModal.Inner.querySelector(".hex-grid");
         const btns = hg?.querySelectorAll<HTMLButtonElement>(".hex-row > button");
+        
         btns?.forEach(b => b.classList.remove("active"));
-
         document.body.classList.remove("show-keys");
+        ignoreKey.delete(e.code);
 
-        if (e.code === "KeyE" && grid.editMode === "railErase") {
+        if (e.code === "KeyZ" && grid.editMode === "railErase") {
             grid.editMode = "rail";
         }
     })
