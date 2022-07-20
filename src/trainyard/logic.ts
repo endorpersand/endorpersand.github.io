@@ -1069,6 +1069,7 @@ class PointerEvents {
                     this.editSquare = cellPos;
                 } else {
                     grid.setTile(...cellPos, grid.tile(...this.pointer.drag)!.clone());
+                    this.#updateTT();
                 }
             }
 
