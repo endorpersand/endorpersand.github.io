@@ -1,0 +1,703 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap');
+
+* {
+    touch-action: manipulation;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+:root {
+    --pal-bg: #222;
+    --pal-text: #FFF;
+    --pal-bg-ui: #555;
+
+    /* Toggle switch */
+    --pal-switch-ball: #FFF;
+    --pal-switch-off: #CCC;
+    --pal-switch-on: #269926;
+
+    /* Modal settings */
+    --pal-modal-overlay: #2B2E38E5;
+    --pal-modal-content: #474747;
+    /*
+        Darker than var(--pal-modal-content).
+        Used for 
+            - (TEMP) the center tile in the dir selector
+            - train slots
+    */
+    --pal-modal-darker: #333;
+
+    /* DEBUG: 
+        in case color isn't assigned normally, 
+        certain elements (the hexagon, filled train slot) fallback to this
+    */
+    --pal-modal-debug-placeholder: #FFF;
+
+    --pal-modal-tl-divider: #000; /* The divider every 9 trains */
+
+    /* Buttons & modes */
+    --pal-button: #333;
+    --pal-button-shadow: #111;
+    --pal-button-tint: #777;
+
+    --pal-button-active: #333; /* #2a4c3b; */
+    --pal-button-active-shadow: #111; /* #082a19; */
+    --pal-button-active-tint: #777; /* #6e907f; */
+
+    --pal-button-held: #1a3c2b;
+    --pal-button-held-shadow: #001a09;
+    --pal-button-held-tint: #5e806f;
+
+    --pal-button-disabled: #222;
+    --pal-button-disabled-shadow: #000;
+    --pal-button-disabled-tint: #666;
+    --pal-button-disabled-text: #888;
+
+
+    --pal-bg-erase: #442;
+
+    --pal-button-erase: #771;
+    --pal-button-erase-shadow: #552;
+    --pal-button-erase-tint: #aa5;
+
+    --pal-button-erase-active: #771;
+    --pal-button-erase-active-shadow: #552;
+    --pal-button-erase-active-tint: #aa5;
+
+
+    --pal-bg-readonly: #244;
+
+    --pal-button-return: #244;
+    --pal-button-return-shadow: #022;
+    --pal-button-return-tint: #688;
+
+    --pal-button-return-active: #244;
+    --pal-button-return-active-shadow: #022;
+    --pal-button-return-active-tint: #688;
+
+
+    --pal-button-pass: #252;
+    --pal-button-pass-shadow: #020;
+    --pal-button-pass-tint: #474;
+
+    --pal-button-fail: #411;
+    --pal-button-fail-shadow: #200;
+    --pal-button-fail-tint: #744;
+}
+
+body {
+    background-color: var(--pal-bg);
+    color: var(--pal-text);
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    margin: 0px 0px;
+    font-family: 'Fira Sans', sans-serif;
+}
+
+body * {
+    font-family: inherit;
+}
+
+body.railErase-mode {
+    background: linear-gradient(var(--pal-bg) 25%, var(--pal-bg-erase))
+}
+body.readonly-mode {
+    background: linear-gradient(var(--pal-bg) 25%, var(--pal-bg-readonly))
+}
+
+#wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 10px;
+}
+
+#game {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#navbar {
+    height: 7vh;
+    background-color: var(--pal-bg-ui);
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 6px;
+}
+
+/* navbar drop-down */
+#nv-dd {
+    display: flex;
+    gap: 0 5px;
+}
+
+#nv-dd select {
+    font-size: 18px;
+}
+
+/* navbar mode controls */
+#nv-mode-controls {
+    align-self: center;
+
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* The switch - the box around the slider */
+.switch {
+    --switch-width: 40px;
+    --switch-height: 20px;
+    --switch-padding: 2px;
+    
+    position: relative;
+    display: inline-block;
+    width:  var(--switch-width);
+    height: var(--switch-height);
+}
+  
+/* Hide default HTML checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+  
+/* The slider */
+.switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--pal-switch-off);
+    -webkit-transition: .2s;
+    transition: .2s;
+
+    border-radius: var(--switch-height);
+}
+  
+.switch .slider:before {
+    position: absolute;
+    content: "";
+    height: calc(var(--switch-height) - 2 * var(--switch-padding));
+    width:  calc(var(--switch-height) - 2 * var(--switch-padding));
+    left:   var(--switch-padding);
+    bottom: var(--switch-padding);
+    background-color: var(--pal-switch-ball);
+    -webkit-transition: .2s;
+    transition: .2s;
+
+    border-radius: 50%;
+}
+  
+.switch input:checked + .slider {
+    background-color: var(--pal-switch-on);
+}
+  
+.switch input:focus + .slider {
+    box-shadow: 0 0 1px var(--pal-switch-on);
+}
+  
+.switch input:checked + .slider:before {
+    --trans: calc(var(--switch-width) - var(--switch-height));
+    -webkit-transform: translateX(var(--trans));
+    -ms-transform: translateX(var(--trans));
+    transform: translateX(var(--trans));
+}
+
+.control-hud {
+    display: flex;
+    gap: 7px;
+    padding: 6px;
+    background-color: var(--pal-bg-ui);
+    height: 130px;
+}
+
+/* split-column, split-row: make a column or row that evenly divides space */
+.split-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.split-column > * {
+    flex: 1 1 0;
+}
+.split-row {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+}
+.split-row > * {
+    flex: 1 1 0;
+}
+
+/* modals */
+
+/**
+ * 1. Make the dialog container, and its child overlay spread across
+ *    the entire window.
+ */
+.modal-container,
+.modal-overlay {
+    position: fixed; /* 1 */
+    top: 0; /* 1 */
+    right: 0; /* 1 */
+    bottom: 0; /* 1 */
+    left: 0; /* 1 */
+}
+ 
+ /**
+  * 1. Make sure the dialog container and all its descendants sits on
+  *    top of the rest of the page.
+  * 2. Make the dialog container a flex container to easily center the
+  *    dialog.
+  */
+.modal-container {
+    z-index: 2; /* 1 */
+    display: flex; /* 2 */
+}
+ 
+ /**
+  * 1. Make sure the dialog container and all its descendants are not
+  *    visible and not focusable when it is hidden.
+  */
+.modal-container[aria-hidden='true'] {
+    display: none; /* 1 */
+}
+ 
+ /**
+  * 1. Make the overlay look like an overlay.
+  */
+.modal-overlay {
+    background-color: var(--pal-modal-overlay); /* 1 */
+}
+ 
+ /**
+  * 1. Vertically and horizontally center the dialog in the page.
+  * 2. Make sure the dialog sits on top of the overlay.
+  * 3. Make sure the dialog has an opaque background.
+  */
+.modal-content {
+    margin: auto; /* 1 */
+    z-index: 2; /* 2 */
+    position: relative; /* 2 */
+    background-color: var(--pal-modal-content); /* 3 */
+
+    width: 75%;
+    height: 75%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+ }
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+button.modal-close-btn {
+    font-size: 1.5em;
+    padding: 0.65em;
+    /* align-self: center; */
+}
+
+.modal-inner {
+    flex: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.actives-grid {
+    display: grid;
+    grid-template: 
+        ". b ." 1fr
+        "c e a" 3fr
+        ". d ." 1fr / 1fr 3fr 1fr;
+
+    min-width: 150px;
+    aspect-ratio: 1 / 1;
+}
+.actives-grid .btn {
+    padding: 0;
+}
+.actives-grid .keyed .key {
+    bottom: 0;
+    right: 2;
+}
+
+.ag-tile {
+    background-color: var(--pal-modal-darker);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.actives-grid > :nth-child(1) {
+    grid-area: a;
+}
+.actives-grid > :nth-child(2) {
+    grid-area: b;
+}
+.actives-grid > :nth-child(3) {
+    grid-area: c;
+}
+.actives-grid > :nth-child(4) {
+    grid-area: d;
+}
+.actives-grid > :nth-child(5) {
+    grid-area: e;
+}
+
+.hex-grid {
+    /* modifiable parameters */
+    --h-width: 100px;
+    --h-height: calc(var(--h-width) * 0.8660254038);
+    --h-gap: 4px;
+
+    /* do not touch */
+    --h-top-side: calc(.50 * var(--h-width));
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-gap);
+
+    margin-bottom: calc(var(--h-height) / 2);
+}
+
+.hex-grid.odd > .hex-row:nth-of-type(odd),
+.hex-grid.even > .hex-row:nth-of-type(even) {
+    margin-left: calc(.75 * var(--h-width) + 2 * var(--h-gap));
+}
+
+.hex-row {
+    display: flex;
+    gap: calc(var(--h-top-side) + 4 * var(--h-gap));
+    margin-bottom: calc(var(--h-height) / -2);
+}
+
+/*  */
+.hex-row button {
+    outline: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+.hex-row .hexagon {
+    clip-path: polygon(
+        /* x, y */
+        25% 0%, 
+        calc(100% - 25%) 0%, 
+        100% 50%, 
+        calc(100% - 25%) 100%, 
+        25% 100%, 
+        0% 50%
+    );
+
+    width: var(--h-width);
+    height: var(--h-height);
+
+    border: none;
+    background-color: var(--pal-modal-debug-placeholder);
+    filter: brightness(25%);
+}
+
+.hex-row label.radio-label input:checked + div.hexagon,
+.hex-row label.radio-label.active input + div.hexagon,
+.hex-row button:active .hexagon,
+.hex-row button.active .hexagon {
+    filter: none;
+}
+
+.modal-box {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.modal-trio {
+    flex: 1;
+    align-self: stretch;
+    
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-around;
+    align-content: space-around;
+}
+
+.modal-trio > :first-child {
+    flex: 1 1 100%;
+}
+
+.train-list {
+    display: flex;
+    flex-flow: row wrap;
+    --slot-gap: 3px;
+    --divider-size: 3px;
+
+    gap: var(--slot-gap);
+}
+
+.train-list > :first-child {
+    padding-left: var(--slot-gap);
+    border-left: var(--divider-size) solid var(--pal-modal-tl-divider);
+}
+.train-list > :nth-child(9),
+.train-list > :last-child {
+    padding-right: var(--slot-gap);
+    border-right: var(--divider-size) solid var(--pal-modal-tl-divider);
+}
+
+.tl-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+
+    width: 30px;
+}
+
+.tl-slot-inner {
+    aspect-ratio: 1 / 2;
+    background-color: var(--pal-modal-debug-placeholder);
+    border: 5px solid var(--pal-modal-darker);
+}
+.tl-slot-inner.empty {
+    background-color: var(--pal-modal-darker);
+}
+
+.tl-slot .btn {
+    padding: 0;
+}
+
+#save-modal textarea {
+    align-self: stretch;
+    flex: 1;
+    font-family: "Fira Mono", monospace;
+}
+
+@media (width < 700px) {
+    .modal-content {
+        width: calc(100% - 15vw);
+        height: calc(100% - 15vw);
+    }
+
+    .modal-inner {
+        flex-direction: column;
+    }
+
+    .hex-grid {
+        --h-width: 75px;
+        --h-gap: 2px;
+    }
+
+    .modal-trio {
+        flex-flow: column nowrap;
+        justify-content: space-evenly;
+    }
+
+    .modal-trio > :first-child {
+        flex: none;
+        order: 2;
+    }
+    .modal-trio > :nth-child(2) {
+        order: 1;
+    }
+    .modal-trio > :nth-child(3) {
+        order: 3;
+    }
+}
+
+/* rail-mode controls */
+#mistake-controls, #fail-display {
+    flex: 1 1 0;
+    align-items: stretch;
+}
+#play-controls {
+    flex: 2 1 0;
+    display: flex;
+    flex-direction: column;
+}
+#play-controls > :first-child {
+    flex: 2 1 0;
+}
+#play-controls > :nth-child(2) {
+    flex: 1 1 0;
+}
+
+#speed-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#speed-controls > :first-child {
+    flex: 7 1 0;
+}
+#speed-controls > :nth-child(2) {
+    flex: 1 1 0;
+}
+
+#fail-display .btn {
+    border-color: var(--button-inset);
+}
+
+.btn#fd-pass {
+    background-color: var(--pal-button-pass);
+    --button-shadow: var(--pal-button-pass-shadow);
+    --button-tint: var(--pal-button-pass-tint);
+}
+.btn#fd-fail {
+    background-color: var(--pal-button-fail);
+    --button-shadow: var(--pal-button-fail-shadow);
+    --button-tint: var(--pal-button-fail-tint);
+}
+
+/* level-mode controls */
+#edit-grid {
+    flex: 1 1 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+#edit-tile-btn {
+    padding: 15px 15px;
+}
+
+label.radio-label {
+    display: flex;
+    align-items: stretch;
+}
+label.radio-label input {
+    display: none;
+}
+label.radio-label input + div {
+    flex: 1;
+}
+
+/* button display */
+.btn {
+    background-color: var(--pal-button);
+    --button-shadow: var(--pal-button-shadow);
+    --button-tint: var(--pal-button-tint);
+
+    /* hardcoding inset/outset because it's Different in Different Browsers (((((safari))))) */
+    /* DO NOT SET THESE. */
+    /* Set border-color to the respective variable. */
+    --button-outset: var(--button-tint) var(--button-shadow) var(--button-shadow) var(--button-tint);;
+    --button-inset: var(--button-shadow) var(--button-tint) var(--button-tint) var(--button-shadow);;
+    
+    border-style: solid;
+    border-width: 3px;
+    border-color: var(--button-outset);
+
+    color: var(--pal-text);
+    font-size: 18px;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0 0;
+}
+
+.show-keys .keyed {
+    position: relative;
+}
+
+.key {
+    --key-text: var(--pal-text);
+}
+.btn .key {
+    --key-text: var(--button-tint);
+}
+
+.keyed .key {
+    font-size: 14px;
+    position: absolute;
+    bottom: 5;
+    right: 5;
+    margin: 0;
+    color: var(--key-text);
+}
+.keyed .hexagon ~ .key {
+    bottom: calc(var(--h-height) / 5);
+    right: calc(var(--h-width) / 5);
+    margin: 0;
+}
+
+body:not(.show-keys) .keyed .key {
+    display: none;
+}
+
+button.btn:disabled {
+    background-color: var(--pal-button-disabled);
+    --button-shadow: var(--pal-button-disabled-shadow);
+    --button-tint: var(--pal-button-disabled-tint);
+    color: var(--pal-button-disabled-text);
+}
+
+button.btn:enabled:active,
+label.radio-label.active input + div.btn {
+    background-color: var(--pal-button-active);
+    --button-shadow: var(--pal-button-active-shadow);
+    --button-tint: var(--pal-button-active-tint);
+}
+label.radio-label input:checked + div.btn {
+    background-color: var(--pal-button-held);
+    --button-shadow: var(--pal-button-held-shadow);
+    --button-tint: var(--pal-button-held-tint);
+}
+
+button.btn:disabled,
+button.btn:enabled:active,
+label.radio-label.active input + div.btn,
+label.radio-label input:checked + div.btn {
+    border-color: var(--button-inset);
+}
+
+body.railErase-mode button#b-erase {
+    background-color: var(--pal-button-erase);
+    --button-shadow: var(--pal-button-erase-shadow);
+    --button-tint: var(--pal-button-erase-tint);
+}
+body.railErase-mode button#b-erase:enabled:active {
+    background-color: var(--pal-button-erase-active);
+    --button-shadow: var(--pal-button-erase-active-shadow);
+    --button-tint: var(--pal-button-erase-active-tint);
+}
+body.readonly-mode button#b-start {
+    background-color: var(--pal-button-return);
+    --button-shadow: var(--pal-button-return-shadow);
+    --button-tint: var(--pal-button-return-tint);
+}
+body.readonly-mode button#b-start:enabled:active {
+    background-color: var(--pal-button-return-active);
+    --button-shadow: var(--pal-button-return-active-shadow);
+    --button-tint: var(--pal-button-return-active-tint);
+}
+
+/* input settings */
+input[type=number] {
+    width: 0px;
+}
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0; 
+}
