@@ -70,7 +70,7 @@ export class TwoAnchorSprite extends PIXI.Sprite {
         this._posAnchor = this._makePoint(0, 0);
         this.__position = this._makePoint(this.transform.position.x, this.transform.position.y);
 
-        const anchorCB = this._anchor.cb;
+        const anchorCB = this._anchor.cb.bind(this);
         this._anchor.cb = function() {
             anchorCB();
             this._updatePosition();

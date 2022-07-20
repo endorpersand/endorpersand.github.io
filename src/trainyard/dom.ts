@@ -111,8 +111,6 @@ export function speed() { return speedValues.speed; }
 
 const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, EditModal, SaveModal} = Elements;
 
-EditModal.Modal.on("hide", e => console.log("hidden!"));
-
 function documentEditMode(e: EditMode) {
     const classList = document.body.classList;
 
