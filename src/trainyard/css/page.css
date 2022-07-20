@@ -484,6 +484,12 @@ button.modal-close-btn {
     padding: 0;
 }
 
+#save-modal textarea {
+    align-self: stretch;
+    flex: 1;
+    font-family: "Fira Mono", monospace;
+}
+
 @media (width < 700px) {
     .modal-content {
         width: calc(100% - 15vw);

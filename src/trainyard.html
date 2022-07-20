@@ -118,8 +118,8 @@
     </div>
     <!-- Modal container -->
     <div
-        id="tile-edit-modal"
-        aria-labelledby="tile-edit-modal-title"
+        id="edit-modal"
+        aria-labelledby="edit-modal-title"
         aria-hidden="true"
         class="modal-container"
     >
@@ -131,7 +131,7 @@
             </div>
             <!-- Modal footer -->
             <div class="modal-footer">
-                <!-- <h1 id="tile-edit-modal-title">Your dialog title</h1> -->
+                <!-- <h1 id="edit-modal-title">Your dialog title</h1> -->
                 <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn keyed btn">
                     <span>Cancel</span>
                     <div class="key">Escape</div>
@@ -139,6 +139,29 @@
                 <button type="button" aria-label="Ok" class="modal-close-btn keyed btn" id="edit-modal-ok">
                     <span>Ok</span>
                     <div class="key">Enter</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        id="save-modal"
+        aria-labelledby="save-modal-title"
+        aria-hidden="true"
+        class="modal-container"
+    >
+        <!-- Modal overlay -->
+        <div data-a11y-dialog-hide class="modal-overlay"></div>
+        <div role="document" class="modal-content">
+            <div class="modal-inner">
+                <textarea></textarea>
+            </div>
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <!-- <h1 id="edit-modal-title">Your dialog title</h1> -->
+                <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn keyed btn">
+                    <span>Cancel</span>
+                    <div class="key">Escape</div>
                 </button>
             </div>
         </div>

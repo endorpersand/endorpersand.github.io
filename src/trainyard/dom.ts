@@ -19,7 +19,7 @@ export namespace Elements {
     export const ttButtons = document.querySelectorAll<HTMLInputElement>("input[name=tile-type]");
     export const editTileBtn = document.querySelector<HTMLButtonElement>("button#edit-tile-btn")!;
     
-    const emDiv = document.querySelector<HTMLDivElement>("div#tile-edit-modal")!;
+    const emDiv = document.querySelector<HTMLDivElement>("div#edit-modal")!;
     const emInner = emDiv.querySelector<HTMLDivElement>("div.modal-inner")!;
     const emFooter = emDiv.querySelector<HTMLDivElement>("div.modal-footer")!;
     const emModal = new A11yDialog(emDiv);
@@ -30,6 +30,16 @@ export namespace Elements {
         Footer: emFooter
     } as const;
 
+    const saveDiv = document.querySelector<HTMLDivElement>("div#save-modal")!;
+    const saveInner = saveDiv.querySelector<HTMLDivElement>("div.modal-inner")!;
+    const saveFooter = saveDiv.querySelector<HTMLDivElement>("div.modal-footer")!;
+    const saveModal = new A11yDialog(saveDiv);
+    export const SaveModal = {
+        Div: saveDiv,
+        Inner: saveInner,
+        Modal: saveModal,
+        Footer: saveFooter
+    } as const;
 }
 
 const {slider, input} = Elements;
@@ -99,7 +109,7 @@ namespace Speed {
 
 export function speed() { return speedValues.speed; }
 
-const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, EditModal} = Elements;
+const {erase, undo, start, step, modeToggle, ttButtons, editTileBtn, EditModal, SaveModal} = Elements;
 
 EditModal.Modal.on("hide", e => console.log("hidden!"));
 
@@ -342,6 +352,12 @@ export function applyButtons(grid: TileGrid) {
 
             if (onHold(e.code, "Enter")) {
                 editTileBtn.click();
+            }
+
+            // TODO, make save an actual part of the UI
+            if (SaveModal.Div.ariaHidden && onHold(e.code, "KeyV")) {
+                SaveModal.Inner.querySelector("textarea")!.textContent = JSON.stringify(grid, undefined, 4);
+                SaveModal.Modal.show();
             }
         } else { // if modal is on
             const ag = EditModal.Inner.querySelector(".actives-grid");
