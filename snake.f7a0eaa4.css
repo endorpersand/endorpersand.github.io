@@ -1,13 +1,11 @@
 body {
-  flex-direction: column;
   gap: 10px;
-  display: flex;
+  display: grid;
 }
 
 canvas {
   border: 3px solid #fff;
-  margin: 0;
-  padding: 0;
+  margin: 0 auto;
 }
 
 /*# sourceMappingURL=snake.f7a0eaa4.css.map */

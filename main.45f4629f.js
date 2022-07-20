@@ -536,96 +536,64 @@ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 const CHUNK_SIZE = 50;
 const N_WORKERS = 4;
-let free = [];
-/**
- * Map that links a worker to the task they've been assigned
- */ let labor = new Map();
-/**
- * The queue to pull work from
- */ let workQueue;
-/**
- * The current task to be working on
- */ let currentTask;
-onmessage = async function(e) {
-    let data = e.data;
-    if (data.action === "init") {
-        await initLoaders();
-        self.postMessage({
-            action: "ready"
-        });
-    } else if (data.action === "mainRequest") {
-        let start = this.performance.now();
-        let { pev , cd  } = data;
-        // on a request, start up the queue and assign work to all currently free workers
-        workQueue = queue(start, pev, cd);
-        let fit = free[Symbol.iterator]();
-        for (let w of fit){
-            let t = workQueue.next();
-            if (!t.done) assignWorkToWorker(w, t.value);
-            else break;
+let free = Array.from({
+    length: N_WORKERS
+}, ()=>{
+    let w = new Worker(require("e115c55408bf8175"));
+    w.onmessage = function(e) {
+        let out = e.data;
+        let ticket = labor.get(w);
+        if (typeof ticket === "undefined") return;
+        let [sym, start] = ticket;
+        // load chunk
+        if (currentTask == sym) {
+            let msg = {
+                action: "loadChunk",
+                ...out
+            };
+            self.postMessage(msg, [
+                out.buf
+            ]);
         }
-        free = [
-            ...fit
-        ];
-    } else {
-        let _ = data;
-        throw new Error("Unexpected request into main worker");
+        let t = workQueue.next();
+        if (!t.done) // reassign
+        assignWorkToWorker(w, t.value);
+        else {
+            // no more work to do, free the worker
+            freeWorker(w);
+            // if all chunks finished, send done
+            if (typeof start !== "undefined" && labor.size == 0) {
+                let done = {
+                    action: "done",
+                    time: Math.trunc(performance.now() - start)
+                };
+                self.postMessage(done);
+            }
+        }
+    };
+    w.onerror = function(e) {
+        freeWorker(w);
+    };
+    return w;
+});
+let labor = new Map();
+let workQueue;
+let currentTask;
+onmessage = function(e) {
+    let start = this.performance.now();
+    let { pev , cd  } = e.data;
+    workQueue = queue(start, pev, cd);
+    let fit = free[Symbol.iterator]();
+    for (let w of fit){
+        let t = workQueue.next();
+        if (!t.done) assignWorkToWorker(w, t.value);
+        else break;
     }
+    free = [
+        ...fit
+    ];
 };
-/**
- * @returns a promise which resolves once all the chunkLoaders have been created and initialized
- */ async function initLoaders() {
-    if (free.length > 0) return;
-    free = Array.from({
-        length: N_WORKERS
-    }, ()=>new Worker(require("3a5718b9a991627b")));
-    let promises = Array.from(free, (w1)=>new Promise((resolve)=>{
-            w1.onmessage = function(e) {
-                resolve(w1);
-            };
-            w1.postMessage({
-                action: "init"
-            });
-        }).then((w)=>{
-            w.onmessage = function(e) {
-                let out = e.data;
-                let ticket = labor.get(w);
-                if (typeof ticket === "undefined") return; // worker wasn't working on a ticket
-                // If the current task is the currentTask, post up "loadChunk"
-                let [sym, start] = ticket;
-                if (currentTask == sym) self.postMessage(out, [
-                    out.buf
-                ]);
-                // If there's any more work left to do, take it.
-                // Otherwise, free the worker and post up "done"
-                let t = workQueue.next();
-                if (!t.done) // reassign
-                assignWorkToWorker(w, t.value);
-                else {
-                    // no more work to do, free the worker
-                    freeWorker(w);
-                    // if all chunks finished, send done
-                    if (typeof start !== "undefined" && labor.size == 0) {
-                        let done = {
-                            action: "done",
-                            time: Math.trunc(performance.now() - start)
-                        };
-                        self.postMessage(done);
-                    }
-                }
-            };
-            w.onerror = function(e) {
-                freeWorker(w);
-            };
-        }));
-    return await Promise.all(promises);
-}
-/**
- * Generator that breaks up the canvas into computable chunks, which can be sent to chunkLoaders to compute them
- * @param start Time queue started
- * @param pev Partial evaluator that needs to be evaluated
- * @param cd The dimension data of the canvas to chunk
- */ function* queue(start, pev, cd) {
+function* queue(start, pev, cd) {
     let { width , height  } = cd;
     currentTask = Symbol("task");
     for(let i = 0; i < width; i += CHUNK_SIZE)for(let j = 0; j < height; j += CHUNK_SIZE){
@@ -633,7 +601,6 @@ onmessage = async function(e) {
         let ch = clamp(0, CHUNK_SIZE, height - j);
         yield [
             {
-                action: "chunkRequest",
                 pev,
                 cd,
                 chunk: {
@@ -648,18 +615,11 @@ onmessage = async function(e) {
         ];
     }
 }
-/**
- * Designate a worker as free to work.
- * @param w Worker to mark as free.
- */ function freeWorker(w) {
+function freeWorker(w) {
     labor.delete(w);
     free.push(w);
 }
-/**
- * Assign a worker a chunk to compute.
- * @param w Worker to designate.
- * @param param1 Ticket to work on.
- */ function assignWorkToWorker(w, [job, sym, start]) {
+function assignWorkToWorker(w, [job, sym, start]) {
     w.postMessage(job);
     labor.set(w, [
         sym,
@@ -670,7 +630,7 @@ function clamp(v, min, max) {
     return Math.max(min, Math.min(v, max));
 }
 
-},{"3a5718b9a991627b":"2afTN","@parcel/transformer-js/src/esmodule-helpers.js":"9HMD5"}],"2afTN":[function(require,module,exports) {
+},{"e115c55408bf8175":"2afTN","@parcel/transformer-js/src/esmodule-helpers.js":"9HMD5"}],"2afTN":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
 let url = bundleURL.getBundleURL("gIi11") + "chunkloader.966fd52a.js" + "?" + Date.now();

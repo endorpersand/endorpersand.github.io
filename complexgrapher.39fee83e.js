@@ -534,122 +534,70 @@ function hmrAcceptRun(bundle, id) {
 },{}],"iXZ3z":[function(require,module,exports) {
 var _mathjs = require("mathjs");
 const math = (0, _mathjs.create)((0, _mathjs.all));
-const wrapper = document.querySelector("#wrapper"), funcForm = document.querySelector("#funcForm"), input = funcForm.querySelector("input"), graphButton = document.querySelector("#graphButton"), zcoord = document.querySelector("#zcoord"), zoomButtons = document.querySelectorAll("button.zoom"), zoomForm = document.querySelector("#zoomForm"), zoomInput = zoomForm.querySelector("input"), scaleForm = document.querySelector("#scaleForm"), scaleInput = scaleForm.querySelector("input"), warning = document.querySelector("#warning"), domain = document.querySelectorAll(".domain");
-const canvas = document.createElement("canvas");
+const canvas = document.querySelector("canvas"), funcForm = document.querySelector("#funcForm"), input = funcForm.querySelector("input"), graphButton = document.querySelector("#graphButton"), zcoord = document.querySelector("#zcoord"), zoomButtons = document.querySelectorAll("button.zoom"), zoomForm = document.querySelector("#zoomForm"), zoomInput = zoomForm.querySelector("input"), scaleForm = document.querySelector("#scaleForm"), scaleInput = scaleForm.querySelector("input"), warning = document.querySelector("#warning"), domain = document.querySelectorAll(".domain");
 const ctx = canvas.getContext("2d", {
     alpha: false
 });
-wrapper.appendChild(canvas);
-/**
- * The default domain of the image at zoom 1
- */ const defaultDomain = [
-    math.complex("-2-2i"),
-    math.complex("2+2i"), 
-];
-/**
- * The default radius.
- */ const radiusThreshold = 250;
-/**
- * The radius the calculator will default to for the image. 
- * 
- * Typically 250 (so 501 x 501), but if window is small enough, this falls back to the window's width.
- */ let defaultRadius = computeDefRadius();
-function computeDefRadius() {
-    let padding = parseInt(getComputedStyle(wrapper).padding);
-    return Math.min(radiusThreshold, (document.documentElement.clientWidth - 1) / 2 - padding // size of the window / 2, minus padding
-    );
-}
-scaleInput.value = "" + defaultRadius;
-/**
- * The zoom of the image (which affects the domain, but not the dimensions of the image)
- * 
- * Increase: zoom in
- * 
- * Decrease: zoom out
- */ let zoom = 1;
-/**
- * Function that takes the input complex value to the output one
- * This is only used for console.log
- * @param z input
- * @returns output
- */ let d = (z)=>z;
-let worker;
-let canNest;
-let time; // only used in fallback
-// On WebKit (iOS), nested Workers are not supported. So test if they are supported,
-// and if not, use the fallback that doesn't use nested Workers.
-/**
- * On WebKit (iOS), nested Workers are not supported. So this worker tests if they are supported.
- * The result is then used to determine whether or not to use the full main worker or a fallback.
- */ let webkitTest = new Worker(require("45db8707b388c948"));
-webkitTest.postMessage(undefined);
-webkitTest.onmessage = async function(e1) {
-    zcoord.textContent = "Initializing workers...";
-    await waitPageUpdate();
-    canNest = e1.data;
-    worker = canNest ? new Worker(require("4e4d4c47c4f40590")) : new Worker(require("86d16f4b6fb500f0"));
-    await initWorker(worker);
-    if (canNest) worker.onmessage = function(e) {
-        let msg = e.data;
-        if (msg.action === "chunkDone") displayChunk(msg);
-        else if (msg.action === "done") markDone(msg.time);
-        else {
-            let _ = msg;
-        }
-    };
-    else worker.onmessage = function(e) {
-        displayChunk(e.data);
-        markDone(Math.trunc(performance.now() - time));
-    };
-    worker.onerror = onComputeError;
-    graphButton.disabled = false;
-    graphButton.click();
-    webkitTest.terminate();
+let scale = 1; // increase = zoom in, decrease = zoom out
+let d = (z)=>z; // actual values of the function
+let worker = new Worker(require("4e4d4c47c4f40590"));
+worker.onmessage = function(e) {
+    let msg = e.data;
+    if (msg.action === "loadChunk") {
+        let dat = new ImageData(new Uint8ClampedArray(msg.buf), msg.chunk.width, msg.chunk.height);
+        ctx.putImageData(dat, msg.chunk.offx, msg.chunk.offy);
+    } else if (msg.action === "done") markDone(msg.time);
 };
-/**
- * Event listener that displays the complex coordinate of the mouse's current position.
- */ function coordinateDisplay(e) {
-    let cx = e.pageX - canvas.offsetLeft;
-    let cy = e.pageY - canvas.offsetTop;
+worker.onerror = onComputeError;
+var domaind = [
+    math.complex("-2-2i"),
+    math.complex("2+2i")
+];
+function canvasHover(e) {
     zcoord.classList.remove("error");
-    zcoord.textContent = "z = ";
-    const code = document.createElement("code");
-    code.append("" + convPlanes(cx, cy));
-    zcoord.append(code);
+    zcoord.textContent = `z = ${convPlanes(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)}`;
 }
-canvas.addEventListener("mousemove", coordinateDisplay);
+canvas.addEventListener("mousemove", canvasHover);
 canvas.addEventListener("click", (e)=>{
     let cx = e.pageX - canvas.offsetLeft;
     let cy = e.pageY - canvas.offsetTop;
     let z = convPlanes(cx, cy);
     console.log(`z = ${z},\nf(z) = ${d(z)}`);
 });
-// Function input handlers:
 input.addEventListener("input", ()=>{
-    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, "");
+    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, ""); //removes invalid characters
 });
-funcForm.addEventListener("submit", (e)=>{
-    e.preventDefault();
-    graphButton.click();
+graphButton.addEventListener("click", ()=>{
+    zcoord.classList.remove("error");
+    zoomInput.value = scale.toString();
+    let size = +scaleInput.value * 2 + 1;
+    if (canvas.width !== size) canvas.width = canvas.height = size;
+    [domain[0].textContent, domain[1].textContent] = domaind.map((x)=>x.div(scale).toString());
+    zcoord.textContent = "Graphing...";
+    canvas.removeEventListener("mousemove", canvasHover);
+    let fstr = input.value;
+    try {
+        d = math.evaluate(`f(z) = ${fstr}`);
+        startWorker(worker, fstr);
+    } catch (e) {
+        onComputeError(e);
+        throw e;
+    }
 });
-// zoom in
 zoomButtons[0].addEventListener("click", ()=>{
-    zoom *= 2;
+    scale *= 2;
     graphButton.click();
 });
-// reset zoom
 zoomButtons[1].addEventListener("click", ()=>{
-    if (zoom !== 1) {
-        zoom = 1;
+    if (scale !== 1) {
+        scale = 1;
         graphButton.click();
     }
 });
-// zoom out
 zoomButtons[2].addEventListener("click", ()=>{
-    zoom /= 2;
+    scale /= 2;
     graphButton.click();
 });
-// arbitrary zoom
 zoomInput.addEventListener("input", ()=>{
     zoomInput.value = zoomInput.value.replace(/[^0-9.]/g, "");
     if (isNaN(+scaleInput.value)) zoomInput.value = "1";
@@ -662,15 +610,14 @@ zoomInput.addEventListener("input", ()=>{
 });
 zoomForm.addEventListener("submit", (e)=>{
     e.preventDefault();
-    if (zoom !== +zoomInput.value) {
-        zoom = +zoomInput.value || 0;
+    if (scale !== +zoomInput.value) {
+        scale = +zoomInput.value || 0;
         graphButton.click();
     }
 });
-// scale handler:
 scaleInput.addEventListener("input", ()=>{
-    if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? "inline" : "none";
+    if (isNaN(+scaleInput.value)) scaleInput.value = "250";
+    warning.style.display = +scaleInput.value > 250 ? "inline" : "none";
 });
 scaleForm.addEventListener("submit", (e)=>{
     e.preventDefault();
@@ -680,49 +627,11 @@ scaleForm.addEventListener("submit", (e)=>{
         graphButton.click();
     }
 });
-let resizeCheck;
-window.addEventListener("resize", (e)=>{
-    if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
-    defaultRadius = computeDefRadius();
-    scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? "inline" : "none";
-    // if resize is done then perform recompute
-    resizeCheck = setTimeout(()=>graphButton.click(), 50);
+funcForm.addEventListener("submit", (e)=>{
+    e.preventDefault();
+    graphButton.click();
 });
-graphButton.addEventListener("click", async ()=>{
-    if (!canNest) graphButton.disabled = true;
-    zcoord.classList.remove("error");
-    zoomInput.value = zoom.toString();
-    let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) canvas.width = canvas.height = size;
-    [domain[0].textContent, domain[1].textContent] = defaultDomain.map((x)=>x.div(zoom).toString());
-    zcoord.textContent = "Graphing...";
-    await waitPageUpdate();
-    canvas.removeEventListener("mousemove", coordinateDisplay);
-    let fstr = input.value;
-    try {
-        d = math.evaluate(`f(z) = ${fstr}`);
-        startWorker(worker, fstr);
-    } catch (e) {
-        onComputeError(e);
-        throw e;
-    }
-});
-/**
- * @returns a promise that resolves when the DOM updates displaying
- */ async function waitPageUpdate() {
-    return new Promise((resolve)=>{
-        requestAnimationFrame(()=>{
-            requestAnimationFrame(()=>resolve()); // this is called after update
-        });
-    });
-}
-/**
- * Converts xy canvas pixels to values in the complex plane
- * @param x x coord
- * @param y y coord
- * @returns Complex value
- */ function convPlanes(x, y) {
+function convPlanes(x, y) {
     //converts xy pixel plane to complex plane
     // let cmx =  (row - rx) / (rx / 2) / scale,
     //     cmy = -(col - ry) / (ry / 2) / scale;
@@ -733,47 +642,21 @@ graphButton.addEventListener("click", async ()=>{
         (canvas.width - 1) / 2,
         (canvas.height - 1) / 2
     ];
-    let cmx = (x - rx) / (rx / 2) / zoom, cmy = -(y - ry) / (ry / 2) / zoom;
+    let cmx = (x - rx) / (rx / 2) / scale, cmy = -(y - ry) / (ry / 2) / scale;
     return math.complex(cmx, cmy);
 }
-/**
- * Call an "init" action on a worker to prepare it for work.
- * @param w Worker to initialize.
- * @returns promise that resolves once it finishes initialization.
- */ async function initWorker(w) {
-    let init = {
-        action: "init"
-    };
-    w.postMessage(init);
-    return new Promise((resolve)=>{
-        w.onmessage = function(e) {
-            resolve();
-        };
-    });
-}
-/**
- * Instruct the worker to begin processing a function.
- * @param w the worker to instruct.
- * @param fstr the function input
- */ function startWorker(w, fstr) {
-    if (!canNest) time = performance.now();
+function startWorker(w, fstr) {
     let msg = {
-        action: "mainRequest",
         pev: partialEvaluate(fstr),
         cd: {
             width: canvas.width,
             height: canvas.height,
-            zoom
+            scale
         }
     };
     w.postMessage(msg);
 }
-/**
- * Take a string and evaluate it for speed. Simplify the string and also apply the reciprocal optimization.
- * This partial evaluation can then be fully evaluated in the workers.
- * @param fstr string to partially evaluate
- * @returns partially evaluated string
- */ function partialEvaluate(fstr) {
+function partialEvaluate(fstr) {
     let node = math.simplify(fstr);
     let fnode = math.parse("f(z) = 0");
     let inverse = false;
@@ -788,42 +671,23 @@ graphButton.addEventListener("click", async ()=>{
         inverse
     };
 }
-/**
- * Display a done message with how long it took to complete
- * @param t time (in ms) it took for the operation to complete
- */ function markDone(t) {
+function markDone(t) {
     zcoord.textContent = `Done in ${t}ms.`;
     reenableHover();
 }
-/**
- * Handle errors in computation
- * @param e the error
- */ function onComputeError(e) {
+function onComputeError(e) {
     let err = e instanceof ErrorEvent ? e.message : e;
-    canvas.removeEventListener("mousemove", coordinateDisplay);
+    canvas.removeEventListener("mousemove", canvasHover);
     zcoord.classList.add("error");
     zcoord.textContent = String(err);
     reenableHover();
 }
-/**
- * Reenable interactability after an error
- * @param after how many ms before hover and interactibility should reenable
- */ function reenableHover(after = 500) {
-    setTimeout(()=>{
-        canvas.addEventListener("mousemove", coordinateDisplay);
-        if (!canNest) graphButton.disabled = false;
-    }, after);
+function reenableHover() {
+    setTimeout(()=>canvas.addEventListener("mousemove", canvasHover), 500);
 }
-/**
- * Update the canvas with the loaded chunk
- * @param data the data from the worker
- */ function displayChunk(data) {
-    let { chunk , buf  } = data;
-    let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
-    ctx.putImageData(dat, chunk.offx, chunk.offy);
-}
+graphButton.click();
 
-},{"mathjs":"dfqcH","45db8707b388c948":"5jXDr","4e4d4c47c4f40590":"4FxmW","86d16f4b6fb500f0":"aZIDP"}],"dfqcH":[function(require,module,exports) {
+},{"mathjs":"dfqcH","4e4d4c47c4f40590":"4FxmW"}],"dfqcH":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _mainAnyJs = require("./entry/mainAny.js");
@@ -71573,10 +71437,10 @@ function importFactory(typed, load, math, importedFactories) {
     return mathImport;
 }
 
-},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"5jXDr":[function(require,module,exports) {
+},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"4FxmW":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "webkitTest.7cba1080.js" + "?" + Date.now();
+let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js" + "?" + Date.now();
 module.exports = workerURL(url, bundleURL.getOrigin(url), false);
 
 },{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"cGRWL":[function(require,module,exports) {
@@ -71630,18 +71494,6 @@ exports.getBundleURL = getBundleURLCached;
 exports.getBaseURL = getBaseURL;
 exports.getOrigin = getOrigin;
 
-},{}],"4FxmW":[function(require,module,exports) {
-let workerURL = require("./helpers/get-worker-url");
-let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js" + "?" + Date.now();
-module.exports = workerURL(url, bundleURL.getOrigin(url), false);
-
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"aZIDP":[function(require,module,exports) {
-let workerURL = require("./helpers/get-worker-url");
-let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "chunkloader.966fd52a.js" + "?" + Date.now();
-module.exports = workerURL(url, bundleURL.getOrigin(url), false);
-
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}]},["h4oLY","iXZ3z"], "iXZ3z", "parcelRequire94c2")
+},{}]},["h4oLY","iXZ3z"], "iXZ3z", "parcelRequire94c2")
 
 //# sourceMappingURL=complexgrapher.39fee83e.js.map

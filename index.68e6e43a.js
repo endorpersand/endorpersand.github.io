@@ -537,7 +537,7 @@ parcelHelpers.defineInteropFlag(exports);
 let wrapper = document.querySelector(".wrapper");
 class SquareTracker {
     static #MIN_ROWS = 3;
-    #cols;
+    #columns;
     corners = [
         [
             0x77,
@@ -561,7 +561,7 @@ class SquareTracker {
         ]
     ];
     constructor(){
-        this.#cols = +getComputedStyle(document.documentElement).getPropertyValue("--cols");
+        this.#columns = +getComputedStyle(wrapper).getPropertyValue("--cols");
         this.projectSquares = [
             ...wrapper.querySelectorAll("a")
         ];
@@ -569,7 +569,6 @@ class SquareTracker {
             let span = document.createElement("span");
             span.classList.add("colhex");
             s.appendChild(span);
-            s.classList.add("box");
         }
         this.placeholderSquares = [];
         for(let i = this.squares; i < this.cols * SquareTracker.#MIN_ROWS; i++)this.#addSquare();
@@ -578,11 +577,11 @@ class SquareTracker {
         return this.projectSquares.length + this.placeholderSquares.length;
     }
     get cols() {
-        return this.#cols;
+        return this.#columns;
     }
     set cols(value) {
-        if (value != this.#cols) {
-            this.#cols = value;
+        if (value != this.#columns) {
+            this.#columns = value;
             this.#rebalance();
         }
     }
@@ -590,18 +589,19 @@ class SquareTracker {
         return this.squares / this.cols;
     }
      #addSquare() {
-        let box = document.createElement("div");
+        let a = document.createElement("a");
         let title = document.createElement("div");
         let desc = document.createElement("div");
         let colhex = document.createElement("span");
         title.classList.add("title");
         desc.classList.add("desc");
         colhex.classList.add("colhex");
-        box.classList.add("box");
-        box.append(title, desc, colhex);
-        box.addEventListener("click", this.regenColors.bind(this, false));
-        wrapper.appendChild(box);
-        this.placeholderSquares.push(box);
+        a.appendChild(title);
+        a.appendChild(desc);
+        a.appendChild(colhex);
+        a.addEventListener("click", this.regenColors.bind(this, false));
+        wrapper.appendChild(a);
+        this.placeholderSquares.push(a);
     }
      #removeSquare() {
         this.placeholderSquares.pop()?.remove();
@@ -609,8 +609,8 @@ class SquareTracker {
      #rebalance() {
         let squares = this.squares;
         // n = number of squares that should be on board
-        let n = Math.max(this.#cols * SquareTracker.#MIN_ROWS, this.projectSquares.length);
-        n = Math.ceil(n / this.#cols) * this.#cols;
+        let n = Math.max(this.#columns * SquareTracker.#MIN_ROWS, this.projectSquares.length);
+        n = Math.ceil(n / this.#columns) * this.#columns;
         if (squares == n) return;
         if (squares > n) for(let i = squares; i > n; i--)this.#removeSquare();
         else if (squares < n) for(let i1 = squares; i1 < n; i1++)this.#addSquare();
@@ -626,7 +626,7 @@ class SquareTracker {
             length: 4
         }, ()=>randRGB(0x50));
         let corners = this.corners;
-        if (this.#cols < 3) {
+        if (this.#columns < 3) {
             // use TL + BR boxes rather than the corners to make a consistent grid (rather than 2 columns of color)
             let corners2 = [
                 corners[2],

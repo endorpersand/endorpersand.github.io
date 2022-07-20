@@ -532,202 +532,112 @@ function hmrAcceptRun(bundle, id) {
 }
 
 },{}],"k5Www":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-const linCanvas = document.querySelector("#lin-result canvas");
-const lctx = linCanvas.getContext("2d", {
-    alpha: false
-});
-const rmsCanvas = document.querySelector("#rms-result canvas");
-const rctx = rmsCanvas.getContext("2d", {
-    alpha: false
-});
-const cssCanvas = document.querySelector("#css-result div#css-gradient");
-const coloradd = document.querySelector("button#coloradd");
-const colorsWrapper = document.querySelector("div#colors");
-updateAll();
-document.querySelectorAll("input[type=color]").forEach((x)=>x.addEventListener("change", updateAll));
-function addColorInput(update = true) {
-    let div = makeColorDiv();
+const canvas = document.querySelector("canvas");
+const ctx = canvas.getContext("2d");
+let ipol = document.querySelector("input[name='ipol'][checked]").value;
+let ipolRadios = document.querySelectorAll("input[type=radio]"), coloradd = document.querySelector("#coloradd"), colorsWrapper = document.querySelector("#colors");
+document.querySelectorAll("input[type=color]").forEach((x)=>x.addEventListener("change", update));
+ipolRadios.forEach((x)=>x.addEventListener("change", (e)=>{
+        ipol = x.value;
+        update();
+    }));
+coloradd.addEventListener("click", ()=>{
+    let div = colorDiv();
     colorsWrapper.insertBefore(div, coloradd);
     let buts = colorRMButtons();
     if (buts.length > 2) for (let b of buts)b.disabled = false;
-    if (update) updateAll();
-    return div;
-}
-coloradd.addEventListener("click", ()=>{
-    addColorInput(true);
+    update();
 });
 document.querySelectorAll(".colorrm").forEach((e)=>e.addEventListener("click", ()=>{
         colorsWrapper.removeChild(e.parentElement);
         let buts = colorRMButtons();
         if (buts.length < 3) for (let b of buts)b.disabled = true;
-        updateAll();
+        update();
     }));
-/**
- * @returns the input colors as hex strings
- */ function getColors() {
+update();
+function getColors() {
     let cinputs = document.querySelectorAll("input[type=color]");
-    return Array.from(cinputs, (e)=>e.value);
+    return [
+        ...cinputs
+    ].map((x)=>x.value);
 }
-/**
- * Takes a hex string and converts it into an RGB array
- * @param hex hex string
- * @returns RGB array
- */ function rgb(hex) {
+function rgb(hex) {
     return [
         hex.slice(1, 3),
         hex.slice(3, 5),
         hex.slice(5, 7)
     ].map((x)=>parseInt(x, 16));
 }
-/**
- * @returns every color input <div>
- */ function colorInput() {
-    return colorsWrapper.querySelectorAll("div");
+function colorRMButtons() {
+    return document.querySelectorAll(".colorrm");
 }
-/**
- * @returns every color "remove" button
- */ function colorRMButtons() {
-    return document.querySelectorAll("button.colorrm");
+function interpolate(a, b, prog) {
+    return Math.hypot(a * Math.sqrt(1 - prog), b * Math.sqrt(prog));
 }
-/**
- * Creates a color input div
- * @param hex Initial color of the div
- * @returns the div
- */ function makeColorDiv(hex = "#000000") {
+function colorDiv(hex = "#000000") {
     let div = document.createElement("div");
     let clr = document.createElement("input");
     clr.type = "color";
     clr.value = hex;
-    clr.addEventListener("change", updateAll);
+    clr.addEventListener("change", update);
     let button = document.createElement("button");
     button.classList.add("colorrm");
     button.textContent = "x";
     button.addEventListener("click", ()=>{
-        colorsWrapper.removeChild(div);
+        colorsWrapper.removeChild(button.parentElement);
         let buts = colorRMButtons();
         if (buts.length < 3) for (let b of buts)b.disabled = true;
-        updateAll();
+        update();
     });
-    div.append(clr, button);
+    div.appendChild(clr);
+    div.appendChild(button);
     return div;
 }
-/**
- * Interpolates from one number to another using root-mean-square (the end points are squared, averaged, then the mean is rooted).
- * @param a endpoint
- * @param b endpoint
- * @param prog [0, 1)
- * @returns interpolated value
- */ function rmsInterpolate(a, b, prog) {
-    return Math.hypot(a * Math.sqrt(1 - prog), b * Math.sqrt(prog));
-}
-/**
- * Update all result canvases
- */ function updateAll() {
-    const clrs = getColors();
-    cssCanvas.style.background = `linear-gradient(0.25turn, ${clrs.join(", ")})`;
-    updateCanvas(lctx, "lin", clrs);
-    updateCanvas(rctx, "rms", clrs);
-}
-/**
- * Update a canvas using a specified interpolation type and array of colors
- * @param ctx the canvas's rendering context
- * @param ipol interpolation type
- * @param clrs array of colors to update the canvas with
- */ function updateCanvas(ctx, ipol, clrs) {
-    const lastIndex = clrs.length - 1;
-    const canvas = ctx.canvas;
-    if (ipol === "lin") {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        for (var [i1, c] of clrs.entries())grad.addColorStop(i1 / lastIndex, c);
-        ctx.fillStyle = grad;
-    } else if (ipol === "rms") {
-        let ocanvas;
-        if ("OffscreenCanvas" in globalThis) ocanvas = new OffscreenCanvas(canvas.width, 1);
-        else {
-            ocanvas = document.createElement("canvas");
-            [ocanvas.width, ocanvas.height] = [
-                canvas.width,
-                1
-            ];
-        }
-        const octx = ocanvas.getContext("2d");
-        const dat = octx.createImageData(ocanvas.width, 1);
-        const arr32 = new Uint32Array(dat.data.buffer);
-        const arr32LastIndex = arr32.length - 1;
-        for(var i1 = 0; i1 < arr32.length; i1++){
-            const pos = i1 / arr32LastIndex * lastIndex;
-            const [j, prog] = [
-                Math.floor(pos),
-                pos % 1
-            ];
-            const [a, b] = [
-                clrs[j],
-                clrs[j + 1] ?? "#000000"
-            ].map((x)=>rgb(x));
-            const c = Array.from({
-                length: 3
-            }, (_, i)=>rmsInterpolate(a[i], b[i], prog));
-            arr32[i1] = -16777216 | c[2] << 16 | c[1] << 8 | c[0] << 0;
-        }
-        octx.putImageData(dat, 0, 0);
-        const pat = ctx.createPattern(ocanvas, "repeat-y");
-        ctx.fillStyle = pat;
-    } else {
-        let _ = ipol;
+function update() {
+    let clrs = getColors();
+    let lind = clrs.length - 1;
+    switch(ipol){
+        case "lin":
+            let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            for (var [i1, c] of clrs.entries())grad.addColorStop(i1 / lind, c);
+            ctx.fillStyle = grad;
+            break;
+        case "rms":
+            let ocanvas;
+            if ("OffscreenCanvas" in globalThis) ocanvas = new OffscreenCanvas(canvas.width, 1);
+            else {
+                ocanvas = document.createElement("canvas");
+                [ocanvas.width, ocanvas.height] = [
+                    canvas.width,
+                    1
+                ];
+            }
+            let octx = ocanvas.getContext("2d");
+            let dat = octx.createImageData(ocanvas.width, 1);
+            let arr32 = new Uint32Array(dat.data.buffer);
+            let arrlind = arr32.length - 1;
+            for(var i1 = 0; i1 < arr32.length; i1++){
+                let pos = i1 / arrlind * lind;
+                let [j, prog] = [
+                    Math.floor(pos),
+                    pos % 1
+                ];
+                let [a, b] = [
+                    clrs[j],
+                    clrs[j + 1] ?? "#000000"
+                ].map((x)=>rgb(x));
+                let c = Array.from({
+                    length: 3
+                }, (_, i)=>interpolate(a[i], b[i], prog));
+                arr32[i1] = -16777216 | c[2] << 16 | c[1] << 8 | c[0] << 0;
+            }
+            octx.putImageData(dat, 0, 0);
+            let pat = ctx.createPattern(ocanvas, "repeat-y");
+            ctx.fillStyle = pat;
+            break;
     }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
-function setColors(...clrs) {
-    let inputs = [
-        ...colorInput()
-    ];
-    if (clrs.length < 2) throw new Error("Two colors are required for a gradient");
-    while(clrs.length < inputs.length)inputs.pop()?.remove();
-    while(inputs.length < clrs.length)inputs.push(addColorInput(false));
-    inputs.forEach((div, i)=>{
-        const input = div.querySelector("input[type=color]");
-        const clr = clrs[i];
-        input.value = clr;
-    });
-    updateAll();
-}
-window.setColors = setColors;
-function gay() {
-    setColors("#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF", "#FF0000");
-}
-window.gay = gay;
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"7TKJq":[function(require,module,exports) {
-exports.interopDefault = function(a) {
-    return a && a.__esModule ? a : {
-        default: a
-    };
-};
-exports.defineInteropFlag = function(a) {
-    Object.defineProperty(a, "__esModule", {
-        value: true
-    });
-};
-exports.exportAll = function(source, dest) {
-    Object.keys(source).forEach(function(key) {
-        if (key === "default" || key === "__esModule" || dest.hasOwnProperty(key)) return;
-        Object.defineProperty(dest, key, {
-            enumerable: true,
-            get: function() {
-                return source[key];
-            }
-        });
-    });
-    return dest;
-};
-exports.export = function(dest, destName, get) {
-    Object.defineProperty(dest, destName, {
-        enumerable: true,
-        get: get
-    });
-};
 
 },{}]},["i9DQU","k5Www"], "k5Www", "parcelRequire94c2")
 
