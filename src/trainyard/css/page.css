@@ -29,10 +29,13 @@
             - train slots
     */
     --pal-modal-darker: #333;
+
     /* DEBUG: 
         in case color isn't assigned normally, 
-        the hexagon falls back to this */
-    --pal-modal-hex-placeholder: #FFF;
+        certain elements (the hexagon, filled train slot) fallback to this
+    */
+    --pal-modal-debug-placeholder: #FFF;
+
     --pal-modal-tl-divider: #000; /* The divider every 9 trains */
 
     /* Buttons & modes */
@@ -393,7 +396,7 @@ button.modal-close-btn {
     height: var(--h-height);
 
     border: none;
-    background-color: var(--pal-modal-hex-placeholder);
+    background-color: var(--pal-modal-debug-placeholder);
     filter: brightness(25%);
 }
 
@@ -440,7 +443,7 @@ button.modal-close-btn {
     padding-left: var(--slot-gap);
     border-left: var(--divider-size) solid var(--pal-modal-tl-divider);
 }
-.train-list > :nth-of-type(9n),
+.train-list > :nth-child(9),
 .train-list > :last-child {
     padding-right: var(--slot-gap);
     border-right: var(--divider-size) solid var(--pal-modal-tl-divider);
@@ -455,9 +458,14 @@ button.modal-close-btn {
 }
 
 .tl-slot-inner {
-    background-color: var(--pal-modal-darker);
     aspect-ratio: 1 / 2;
+    background-color: var(--pal-modal-debug-placeholder);
+    border: 5px solid var(--pal-modal-darker);
 }
+.tl-slot-inner.empty {
+    background-color: var(--pal-modal-darker);
+}
+
 .tl-slot .btn {
     padding: 0;
 }

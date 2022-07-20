@@ -1,7 +1,7 @@
 import A11yDialog from "a11y-dialog";
 import * as LevelData from "./levels";
 import { EditMode, EDIT_MODES, LoadableBoard, StageTile, TileGrid } from "./logic";
-import { Dir } from "./values";
+import { Dir, Modal } from "./values";
 
 export namespace Elements {
     export const slider = document.querySelector<HTMLInputElement>("#speed-controls > input[type=range]")!;
@@ -21,11 +21,13 @@ export namespace Elements {
     
     const emDiv = document.querySelector<HTMLDivElement>("div#tile-edit-modal")!;
     const emInner = emDiv.querySelector<HTMLDivElement>("div.modal-inner")!;
+    const emFooter = emDiv.querySelector<HTMLDivElement>("div.modal-footer")!;
     const emModal = new A11yDialog(emDiv);
     export const EditModal = {
         Div: emDiv,
         Inner: emInner,
         Modal: emModal,
+        Footer: emFooter
     } as const;
 
 }
@@ -211,31 +213,56 @@ export function applyButtons(grid: TileGrid) {
     });
     grid.pointerEvents.tt = { ttButtons, editTileBtn };
 
-    // TODO: proper modal reloading
-    let reloadModal = true;
     for (let [i, b] of ttButtons.entries()) {
         addListener(b, "input", ["level"], grid => {
             const j: StageTile.Order = i;
             const pointerEvents = grid.pointerEvents;
 
-            pointerEvents.setSquare(j);
-            reloadModal = true;
+            pointerEvents.setSquarePos(j);
             editTileBtn.disabled = !pointerEvents.stagePropertiesAt().modal;
         })
     }
     editTileBtn.disabled = !grid.pointerEvents.stagePropertiesAt().modal;
 
     addListener(editTileBtn, "click", ["level"], grid => {
-        if (reloadModal) {
-            const modal = grid.pointerEvents.stagePropertiesAt().modal?.();
+        let okBut = EditModal.Footer.querySelector<HTMLButtonElement>("button#edit-modal-ok")!;
+        
+        let _okButClone = okBut.cloneNode(true);
+        okBut.replaceWith(_okButClone);
+        okBut = _okButClone as any;
 
-            if (modal) {
-                EditModal.Inner.replaceChildren(...modal);
-                reloadModal = false;
-            } else {
-                return;
-            }
+        const modal = grid.pointerEvents.stagePropertiesAt().modal?.();
+        if (modal) {
+            const {inner, parse} = modal;
+            EditModal.Inner.replaceChildren(...inner);
+
+            // on ok, parse the square and set
+            okBut.addEventListener("click", () => {
+                const ag = document.querySelector<HTMLDivElement>(".actives-grid"); 
+                const agInputs = ag?.querySelectorAll<HTMLInputElement>("label > input");
+
+                const hg = document.querySelector<HTMLDivElement>(".hex-grid");
+                // note that the other option here is <button> which can't be enabled
+                const hgInputs = hg?.querySelectorAll<HTMLInputElement>("label > input");
+                
+                const dirs = agInputs ? Array.from( agInputs, (e, i) => [e, i] as const )
+                    .filter(([e]) => e.checked)
+                    .map(([_, i]): Dir => i)
+                : undefined;
+
+                const gridClrs = hgInputs ? Array.from( hgInputs, (e, i) => [e, i] as const )
+                    .filter(([e]) => e.checked)
+                    .map(([_, i]) => Modal.HexOrder[i])
+                : undefined;
+                    
+                grid.pointerEvents.setSquare( parse({ dirs, gridClrs }) );
+                EditModal.Modal.hide();
+            });
+            //
+        } else {
+            return;
         }
+
         EditModal.Modal.show();
     })
 
@@ -257,7 +284,7 @@ export function applyButtons(grid: TileGrid) {
         const d = DirKeys[e.code];
         if (EditModal.Div.ariaHidden) {
             if (typeof d !== "undefined") {
-                pointerEvents.moveSquare(d);
+                pointerEvents.moveSquarePos(d);
             }
 
             if (e.code.startsWith("Digit")) {

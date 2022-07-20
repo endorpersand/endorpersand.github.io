@@ -760,6 +760,7 @@ class PointerEvents {
         return layer;
     }
 
+    // LEVEL EDIT MODE SETTINGS
     set tt(v: { ttButtons: NodeListOf<HTMLInputElement>, editTileBtn: HTMLButtonElement }) {
         this.#tt = v;
         this.#updateTT();
@@ -780,6 +781,11 @@ class PointerEvents {
         throw new Error(`There is no stage tile at (${cellPos})`);
     }
 
+    #stOrder(t: StageTile): StageTile.Order {
+        // enums can take string->number, so do that.
+        return StageTile.Order[t.constructor.name as keyof typeof StageTile.Order];
+    }
+
     /**
      * Provide the button order (in the edit UI) of the tile at the position
      * @param cellPos position of the tile to find the order of (or the current edit position if unspecified)
@@ -787,10 +793,7 @@ class PointerEvents {
      */
     buttonOrderAt(cellPos: CellPos = this.#editSquare): StageTile.Order {
         const tile = this.#stageTileAt(cellPos)!;
-
-        // enums can take string->number, so do that.
-        const tileName = tile.constructor.name as keyof typeof StageTile.Order;
-        return StageTile.Order[tileName];
+        return this.#stOrder(tile);
     }
 
     stagePropertiesAt(cellPos: CellPos = this.#editSquare): Staged {
@@ -809,8 +812,12 @@ class PointerEvents {
         }
     }
 
-    // TODO, use history rather than preset defaults
+    #history: Partial<{[T in StageTile.Order]: StageTile}> = {};
+
     #getDefaultTile(value: StageTile.Order) {
+        const last = this.#history[value];
+        if (last) return last.clone();
+
         if (value === StageTile.Order.Blank) {
             return new Tile.Blank();
         } else if (value === StageTile.Order.Goal) {
@@ -828,7 +835,6 @@ class PointerEvents {
         }
     }
 
-    // LEVEL EDIT MODE SETTINGS
     get editSquare() {
         return this.#editSquare;
     }
@@ -841,16 +847,23 @@ class PointerEvents {
         this.#updateTT();
     }
 
-    setSquare(value: StageTile.Order) {
+    setSquarePos(value: StageTile.Order) {
         assertEditMode(this.#grid.editMode, "level");
         this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value));
     }
 
-    moveSquare(d: Dir) {
+    moveSquarePos(d: Dir) {
         assertEditMode(this.#grid.editMode, "level");
         const shifted = Dir.shift(this.editSquare, d);
 
         if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
+    }
+
+    setSquare(t: StageTile) {
+        assertEditMode(this.#grid.editMode, "level");
+
+        this.#history[this.#stOrder(t)] = t.clone() as any;
+        this.#grid.setTile(...this.editSquare, t);
     }
     //
 
@@ -1875,10 +1888,15 @@ interface Staged {
     /**
      * How the edit modal for this type should be created
      */
-    modal?: (this: Staged) => (string | Node)[]
+    modal?: (this: Staged) => {
+        inner: readonly (string | Node)[],
+        parse: (o: CTParameters) => StageTile
+    }
 }
 
 type StageTile = Staged & Tile;
+type CTParameters = {dirs?: Dir[], gridClrs?: Color[]};
+
 export namespace StageTile {
     /**
      * Designates the order of stage tiles in the edit UI
@@ -1962,13 +1980,18 @@ export namespace Tile {
         }
 
         modal() {
+            const [hexGrid, trainList, clrs] = Modal.pairedTrainList({ trains: this.colors });
+
             const trio = Modal.trioBox(
-                Modal.box(Modal.trainList({trains: this.colors})),
-                Modal.box(Modal.dirEditor(1, this)),
-                Modal.box(Modal.hexGrid("button", this))
+                Modal.box(trainList),
+                Modal.box(Modal.dirEditor(1, {actives: [this.out]})),
+                Modal.box(hexGrid)
             )
             
-            return [trio];
+            return {
+                inner: [trio], 
+                parse: ({dirs}: CTParameters) => new Outlet(dirs?.[0] ?? Dir.Right, clrs)
+            };
         }
 
         clone() {
@@ -2051,13 +2074,18 @@ export namespace Tile {
         }
 
         modal() {
+            const [hexGrid, trainList, clrs] = Modal.pairedTrainList({ trains: this.targets });
+
             const trio = Modal.trioBox(
-                Modal.box(Modal.trainList({trains: this.targets})),
-                Modal.box(Modal.dirEditor(4, this)),
-                Modal.box(Modal.hexGrid("button", {colors: this.targets}))
+                Modal.box(trainList),
+                Modal.box(Modal.dirEditor({min: 1, max: 4}, this)),
+                Modal.box(hexGrid),
             )
             
-            return [trio];
+            return {
+                inner: [trio], 
+                parse: ({dirs}: CTParameters) => new Goal(dirs ?? [Dir.Right], clrs)
+            };
         }
 
         clone() {
@@ -2129,7 +2157,18 @@ export namespace Tile {
                 Modal.hexGrid("radio", {colors: [this.color]})
             );
 
-            return [ls, rs];
+            return {
+                inner: [ls, rs], 
+                parse: ({dirs, gridClrs}: CTParameters) => {
+                    let d1: Dir, d2: Dir;
+                    if (dirs && dirs.length >= 2) [d1, d2] = dirs;
+                    else [d1, d2] = [Dir.Left, Dir.Right];
+
+                    const [clr] = gridClrs ?? [Color.Red];
+
+                    return new Painter([d1, d2], clr);
+                }
+            };
         }
 
         clone() {
@@ -2208,7 +2247,10 @@ export namespace Tile {
         }
 
         modal() {
-            return [Modal.dirEditor(1, this)];
+            return {
+                inner: [Modal.dirEditor(1, this)],
+                parse: ({dirs}: CTParameters) => new Splitter(dirs?.[0] ?? Dir.Left)
+            };
         }
 
         clone() {

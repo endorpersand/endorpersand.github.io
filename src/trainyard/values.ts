@@ -515,7 +515,7 @@ export namespace Modal {
         activesGrid: document.querySelector<HTMLTemplateElement>("template#modal-actives-grid")!,
         hexGrid: document.querySelector<HTMLTemplateElement>("template#modal-hex-color-grid")!,
         trainList: document.querySelector<HTMLTemplateElement>("template#modal-train-list")!,
-        trainListSlot: document.querySelector<HTMLTemplateElement>("template#modal-tl-slot")!,
+        tlSlot: document.querySelector<HTMLTemplateElement>("template#modal-tl-slot")!,
     } as const;
 
     /**
@@ -574,17 +574,34 @@ export namespace Modal {
         return label;
     };
 
+    type _1234 = 1 | 2 | 3 | 4;
+    type Range1234 = {
+        min: 0 | _1234,
+        max: _1234
+    };
+    type DirEditorAllow = _1234 | Range1234;
+
     /**
      * UI element that helps user configure the active/passive directions on the tile
-     * @param allow maximum number of directions that can be enabled at once
+     * @param allow number of directions that can be enabled at once.
      * @param data The directions that are enabled on the dir editor
      * @returns the dir editor
      */
-    export function dirEditor(allow: 1 | 2 | 3 | 4, data?: {actives: Iterable<Dir>}) {
+    export function dirEditor(allow: DirEditorAllow, data?: {actives: Iterable<Dir>}) {
+        if (typeof allow === "number") {
+            allow = { min: allow, max: allow };
+        }
+        const { min, max } = allow;
+
+        if (allow.min > allow.max) {
+            throw new Error(`Invalid argument for allow: {min: ${allow.min}, max: ${allow.max}}`);
+        }
+        const useRadio = allow.min === 1 && allow.max === 1;
+
         const actives = Array.from(data?.actives ?? []);
         const nodes = cloneTemplate("activesGrid", (name, i) => {
             return label({
-                inputType: allow === 1 ? "radio" : "checkbox",
+                inputType: useRadio ? "radio" : "checkbox",
                 name,
                 checked: actives.includes(i)
             }, () => {
@@ -596,19 +613,27 @@ export namespace Modal {
             });
         });
 
-        if (allow === 1) return nodes;
+        if (useRadio) return nodes;
+        if (allow.min === 0 && allow.max === 4) return nodes;
 
-        if (allow < 4) {
-            const checked: HTMLInputElement[] = [];
+        const btns = nodes.querySelectorAll<HTMLInputElement>("input");
+        const checked = Array.from(btns)
+            .filter(b => b.checked);
 
-            const btns = nodes.querySelectorAll<HTMLInputElement>("input");
-            btns.forEach(e => e.addEventListener("click", () => {
-                e.checked = true;
-                checked.push(e);
-
-                if (checked.length > allow) checked.shift()!.checked = false;
-            }));
-        }
+        btns.forEach(el => el.addEventListener("click", e => {
+            if (el.checked) {
+                if (!checked.includes(el)) checked.push(el);
+            } else {
+                if (checked.length === min) {
+                    e.preventDefault();
+                } else {
+                    const i = checked.indexOf(el);
+                    if (i !== -1) checked.splice(i, 1);
+                }
+            }
+            
+            if (checked.length > max) checked.shift()!.checked = false;
+        }));
 
         return nodes;
     }
@@ -645,7 +670,14 @@ export namespace Modal {
         return div(["modal-trio"], ...children);
     }
 
-    const HexOrder = [
+    function hexStr(n: number): `#${string}` {
+        return `#${n.toString(16).padStart(6, "0")}`;
+    }
+
+    /**
+     * Mapping of positions to Colors
+     */
+    export const HexOrder = [
         Color.Red, 
         Color.Purple, Color.Orange, 
         Color.Brown,
@@ -660,15 +692,14 @@ export namespace Modal {
      * @param data the colors that are toggled on on the hex grid. this will not work for "button"-type hex grids.
      * @returns hex grid
      */
-    export function hexGrid(type: "checkbox" | "radio" | "button", data?: {colors: Iterable<Color>}): DocumentFragment {
+    export function hexGrid(type: "checkbox" | "radio" | "button", data?: {colors: Iterable<Color>}) {
         const enabled = Array.from(data?.colors ?? [], c => HexOrder.indexOf(c));
         return cloneTemplate("hexGrid", (name, i) => {
-            const color = Palette.Train[HexOrder[i]];
-            const hexStr = `#${color.toString(16).padStart(6, "0")}`;
 
+            const hex = hexStr(Palette.Train[HexOrder[i]]);
             if (type === "button") {
                 const button = document.createElement("button");
-                button.style.backgroundColor = hexStr;
+                button.style.backgroundColor = hex;
                 return button;
             }
 
@@ -678,16 +709,137 @@ export namespace Modal {
                 checked: enabled.includes(i)
             }, () => {
                 const div = document.createElement("div");
-                div.style.backgroundColor = hexStr;
+                div.style.backgroundColor = hex;
                 return div;
             });
         });
     }
     
-    export function trainList(data?: {trains?: Iterable<Color>}) {
+    /**
+     * A train slot. Fits a train.
+     * @param train The train color (or empty if no train)
+     * @returns the slot.
+     */
+    function tlSlot(train: Color | undefined) {
+        const slot = cloneTemplate("tlSlot");
+
+        if (train) {
+            const inner = slot.querySelector<HTMLDivElement>("div.tl-slot-inner")!;
+            inner.style.backgroundColor = hexStr(Palette.Train[train]);
+            inner.classList.remove("empty");
+        } else {
+            slot.querySelector("button")!.disabled = true;
+        }
+
+        return slot;
+    }
+
+    /**
+     * Creates a list of train slots.
+     * @param data The color of the trains in the slots
+     * @returns the train slots
+     */
+    function trainList(data?: {trains?: Iterable<Color>}) {
+        const iterator = (data?.trains ?? [])[Symbol.iterator]();
+
         return cloneTemplate("trainList", name => {
-            if (name === "tl-slot") return cloneTemplate("trainListSlot");
+            if (name === "tl-slot") {
+                const c = iterator.next();
+
+                return tlSlot(!c.done ? c.value : undefined);
+            }
         });
+    }
+
+    /**
+     * Create a train list and a hex grid that are bound to a list 
+     * and add the listeners to allow the train list/hex grid to modify the list.
+     * @param data trains of the train list
+     * @returns the hex grid, train list, and array that are paired together
+     */
+    export function pairedTrainList(
+        data?: { trains: Iterable<Color> }
+    ): readonly [
+        hexGrid: ReturnType<typeof hexGrid>, 
+        trainList: ReturnType<typeof trainList>, 
+        clrs: Color[]
+    ] {
+        const trains = Array.from(data?.trains ?? []);
+
+        const hg = hexGrid("button");
+        const tl = trainList({trains});
+
+        function push(c: Color) {
+            trains.push(c);
+
+            const slots = document.querySelectorAll<HTMLDivElement>("div.tl-slot");
+            const nextEmpty = Array.from(slots)
+                .find(d => d.querySelector("div.tl-slot-inner.empty"));
+
+            if (nextEmpty) {
+                const inner = nextEmpty.querySelector<HTMLDivElement>("div.tl-slot-inner")!;
+                inner.style.backgroundColor = hexStr(Palette.Train[c]);
+                inner.classList.remove("empty");
+
+                nextEmpty.querySelector("button")!.disabled = false;
+            } else {
+                const list = document.querySelector<HTMLDivElement>("div.train-list")!;
+                const slot = tlSlot(c);
+
+                const i = slots.length;
+                slot.querySelector("button")!.addEventListener("click", () => {
+                    remove(i);
+                })
+                list.append(slot);
+            }
+
+            const but = document.querySelector<HTMLButtonElement>("button#edit-modal-ok")!
+            but.disabled = !trains.length;
+        }
+
+        function remove(i: number) {
+            trains.splice(i, 1);
+
+            const slots = document.querySelectorAll<HTMLDivElement>("div.tl-slot");
+            const filledSlots = Array.from(slots)
+                .filter(d => d.querySelector("div.tl-slot-inner:not(.empty)"));
+
+            // replace each filledSlot with the next color
+            for (let j = i; j < trains.length; j++) {
+                const inner = filledSlots[j].querySelector<HTMLDivElement>("div.tl-slot-inner")!;
+                const clr = trains[j];
+                inner.style.backgroundColor = hexStr(Palette.Train[clr]);
+            }
+
+            // remove last filledSlot
+            if (filledSlots.length > trains.length) {
+                const slot = filledSlots[filledSlots.length - 1];
+                const inner = slot.querySelector<HTMLDivElement>("div.tl-slot-inner")!;
+                inner.removeAttribute("style");
+                inner.classList.add("empty");
+
+                slot.querySelector("button")!.disabled = true;
+            }
+
+            // there should be 9 slots by default
+            if (slots.length > 9) {
+                slots[slots.length - 1].remove();
+            }
+
+            const but = document.querySelector<HTMLButtonElement>("button#edit-modal-ok")!
+            but.disabled = !trains.length;
+        }
+
+        hg.querySelectorAll<HTMLButtonElement>(".hex-grid > .hex-row > button")
+            .forEach((b, i) => b.addEventListener("click", () => {
+                push(HexOrder[i]);
+            }));
+        tl.querySelectorAll<HTMLButtonElement>(".tl-slot > button")
+            .forEach((b, i) => b.addEventListener("click", () => {
+                remove(i);
+            }));
+        
+        return [hg, tl, trains];
     }
 }
 

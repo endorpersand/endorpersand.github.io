@@ -102,7 +102,7 @@
                 <button type="button" data-a11y-dialog-hide aria-label="Cancel" class="modal-close-btn btn">
                     Cancel
                 </button>
-                <button type="button" aria-label="Ok" class="modal-close-btn btn">
+                <button type="button" aria-label="Ok" class="modal-close-btn btn" id="edit-modal-ok">
                     Ok
                 </button>
             </div>
@@ -150,12 +150,11 @@
             <slot name="tl-slot"></slot>
             <slot name="tl-slot"></slot>
             <slot name="tl-slot"></slot>
-            <slot name="tl-slot"></slot>
         </div>
     </template>
     <template id="modal-tl-slot">
         <div class="tl-slot">
-            <div class="tl-slot-inner"></div>
+            <div class="tl-slot-inner empty"></div>
             <button class="btn">&times;</button>
         </div>
     </template>
