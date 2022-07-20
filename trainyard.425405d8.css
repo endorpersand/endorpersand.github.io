@@ -1,5 +1,0 @@
-body.readonly-mode .reject-readonly-mode, body.railErase-mode .reject-railErase-mode, body.level-mode .reject-level-mode, body.rail-mode .reject-rail-mode, body.failed .reject-failed, body:not(.readonly-mode) .require-readonly-mode, body:not(.railErase-mode) .require-railErase-mode, body:not(.level-mode) .require-level-mode, body:not(.rail-mode) .require-rail-mode, body:not(.failed) .require-failed {
-  display: none;
-}
-
-/*# sourceMappingURL=trainyard.425405d8.css.map */
