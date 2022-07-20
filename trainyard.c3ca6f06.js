@@ -538,9 +538,9 @@ var _pixiJs = require("pixi.js");
 var _ = require("../../static/*");
 var _Default = parcelHelpers.interopDefault(_);
 var _logic = require("./logic");
+var _values = require("./values");
 var _dom = require("./dom");
 var _levels = require("./levels");
-const { Atlas , Grids , Palette  } = {};
 const DEBUG = true;
 const loader = _pixiJs.Loader.shared, resources = _pixiJs.Loader.shared.resources;
 _pixiJs.settings.SCALE_MODE = _pixiJs.SCALE_MODES.NEAREST;
@@ -549,14 +549,14 @@ const defaults = {
     cellSize: 72,
     cellLength: 7
 };
-const defaultWidth = defaults.cellSize * defaults.cellLength + Grids.TILE_GAP * (defaults.cellLength + 1);
+const defaultWidth = defaults.cellSize * defaults.cellLength + (0, _values.Grids).TILE_GAP * (defaults.cellLength + 1);
 const gridSize = Math.min(clientWidth, clientHeight, defaultWidth);
 const app = new _pixiJs.Application({
     width: gridSize,
     height: gridSize
 });
 document.querySelector("#game").prepend(app.view);
-app.renderer.backgroundColor = Palette.BG;
+app.renderer.backgroundColor = (0, _values.Palette).BG;
 app.renderer.plugins.interaction.moveWhenInside = true;
 loader.add((0, _Default.default)["trainyard.atlas.json"]).load(setup);
 let textures;
@@ -588,7 +588,7 @@ function enableDebug() {
     window.Levels = (0, _levels.ProvidedLevels);
 }
 
-},{"pixi.js":"eykev","./logic":"3vT9s","./dom":"bUk7d","./levels":"e0FkS","../../static/*":"eKo5Y","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eykev":[function(require,module,exports) {
+},{"pixi.js":"eykev","../../static/*":"eKo5Y","./logic":"3vT9s","./values":"bqD2l","./dom":"bUk7d","./levels":"e0FkS","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eykev":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "utils", ()=>_utils);
@@ -38539,7 +38539,55 @@ function __extends(d, b) {
     return AnimatedSprite1;
 }((0, _sprite.Sprite));
 
-},{"@pixi/core":"fJgId","@pixi/sprite":"hPZ17","@pixi/ticker":"1vt9N","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"3vT9s":[function(require,module,exports) {
+},{"@pixi/core":"fJgId","@pixi/sprite":"hPZ17","@pixi/ticker":"1vt9N","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eKo5Y":[function(require,module,exports) {
+const _temp0 = require("./trainyard.atlas.json");
+const _temp1 = require("./trainyard.png");
+module.exports = {
+    "trainyard.atlas.json": _temp0,
+    "trainyard.png": _temp1
+};
+
+},{"./trainyard.atlas.json":"BgXhK","./trainyard.png":"3oIFU"}],"BgXhK":[function(require,module,exports) {
+module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.atlas.17d92baf.json" + "?" + Date.now();
+
+},{"./helpers/bundle-url":"abFXz"}],"abFXz":[function(require,module,exports) {
+"use strict";
+var bundleURL = {};
+function getBundleURLCached(id) {
+    var value = bundleURL[id];
+    if (!value) {
+        value = getBundleURL();
+        bundleURL[id] = value;
+    }
+    return value;
+}
+function getBundleURL() {
+    try {
+        throw new Error();
+    } catch (err) {
+        var matches = ("" + err.stack).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^)\n]+/g);
+        if (matches) // The first two stack frames will be this function and getBundleURLCached.
+        // Use the 3rd one, which will be a runtime in the original bundle.
+        return getBaseURL(matches[2]);
+    }
+    return "/";
+}
+function getBaseURL(url) {
+    return ("" + url).replace(/^((?:https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/.+)\/[^/]+$/, "$1") + "/";
+} // TODO: Replace uses with `new URL(url).origin` when ie11 is no longer supported.
+function getOrigin(url) {
+    var matches = ("" + url).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^/]+/);
+    if (!matches) throw new Error("Origin not found");
+    return matches[0];
+}
+exports.getBundleURL = getBundleURLCached;
+exports.getBaseURL = getBaseURL;
+exports.getOrigin = getOrigin;
+
+},{}],"3oIFU":[function(require,module,exports) {
+module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.0dad5fb9.png" + "?" + Date.now();
+
+},{"./helpers/bundle-url":"abFXz"}],"3vT9s":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "EDIT_MODES", ()=>EDIT_MODES);
@@ -38550,11 +38598,11 @@ parcelHelpers.export(exports, "Step", ()=>Step);
 parcelHelpers.export(exports, "Tile", ()=>Tile);
 parcelHelpers.export(exports, "StatefulTile", ()=>StatefulTile);
 parcelHelpers.export(exports, "StageTile", ()=>StageTile);
+var _values = require("./values");
 var _pixiJs = require("pixi.js");
 var _components = require("./graphics/components");
 var _grid = require("./graphics/grid");
 var _array = require("./ext/array");
-const { CellPos , Color , Dir , Focus , Grids , Modal , Palette , PixelPos , PIXIResources , Train  } = {};
 const EDIT_MODES = [
     "readonly",
     "rail",
@@ -38587,21 +38635,18 @@ let Layer;
 })(Layer || (Layer = {}));
 class TileGrid {
     /**
-     * The tiles.
-     */ #tiles;
-    /**
      * Cache for this.container
-     */ #container = new _pixiJs.Container();
-    #rendered = false;
+     */ _container = new _pixiJs.Container();
+    _rendered = false;
     /**
      * Determines what can be edited on the grid
-     */ #editMode = "rail";
+     */ _editMode = "rail";
     /**
      * Map keeping track of listeners listening to an event
-     */ #eventListeners = {};
+     */ _eventListeners = {};
     /**
      * Stack keeping track of all the past actions (allowing for undoing)
-     */ #actionStack = [];
+     */ _actionStack = [];
     /**
      * What percentage of the tile from an edge you have to be at to be considered near the edge
      */ static EDGE_THRESHOLD = 0.2;
@@ -38613,8 +38658,8 @@ class TileGrid {
     constructor(gridSize, cellLength, pixi, tiles){
         this.cellLength = cellLength;
         this.loadGridSize = gridSize;
-        this.cellSize = Grids.optimalCellSize(this, gridSize);
-        this.#tiles = TileGrid.#normalizeTileMatrix(tiles, cellLength);
+        this.cellSize = (0, _values.Grids).optimalCellSize(this, gridSize);
+        this._tiles = TileGrid._normalizeTileMatrix(tiles, cellLength);
         this.pixi = pixi;
         this.pointerEvents = new PointerEvents(this);
         this.on("enterReadonly", ()=>{
@@ -38631,28 +38676,28 @@ class TileGrid {
             }, (_, y)=>Array.from({
                     length
                 }, (_, x)=>{
-                    const t = this.#tiles[y][x];
+                    const t = this._tiles[y][x];
                     return !(t instanceof Tile.Rail) ? t : new Tile.Blank();
                 }));
         });
         this.on("switchEdit", ()=>{
-            this.#actionStack.length = 0;
+            this._actionStack.length = 0;
         });
     }
     /**
      * The PIXI container for this TileGrid
      */ get container() {
-        if (!this.#rendered) return this.#renderContainer();
-        return this.#container;
+        if (!this._rendered) return this._renderContainer();
+        return this._container;
     }
     layer(layer) {
         const con = this.container.getChildByName("layers");
         return con.getChildAt(layer);
     }
     maybeLayer(layer) {
-        if (this.#rendered) return this.layer(layer);
+        if (this._rendered) return this.layer(layer);
     }
-    static  #normalizeTileMatrix(mat, length) {
+    static _normalizeTileMatrix(mat, length) {
         return Array.from({
             length
         }, (_, y)=>Array.from({
@@ -38660,29 +38705,29 @@ class TileGrid {
             }, (_, x)=>mat?.[y]?.[x] ?? new Tile.Blank()));
     }
     get tiles() {
-        return this.#tiles;
+        return this._tiles;
     }
-    set tiles(mat1) {
-        this.#tiles = TileGrid.#normalizeTileMatrix(mat1, this.cellLength);
-        this.#actionStack = []; // the tiles got reset, so can't do undos from here
-        this.#renderContainer(true);
+    set tiles(mat) {
+        this._tiles = TileGrid._normalizeTileMatrix(mat, this.cellLength);
+        this._actionStack = []; // the tiles got reset, so can't do undos from here
+        this._renderContainer(true);
     }
     load(tiles, cellSize) {
-        if ("board" in tiles) tiles = TileGrid.#tilesFromJSON(tiles);
+        if ("board" in tiles) tiles = TileGrid._tilesFromJSON(tiles);
         this.cellLength = length2D(tiles);
-        this.cellSize = cellSize ?? Grids.optimalCellSize(this, this.loadGridSize);
+        this.cellSize = cellSize ?? (0, _values.Grids).optimalCellSize(this, this.loadGridSize);
         this.tiles = tiles;
         return this;
     }
     get editMode() {
-        return this.#editMode;
+        return this._editMode;
     }
     set editMode(em) {
-        if (this.#editMode !== em) {
-            this.#dispatchEvent(`exit${capitalize(this.#editMode)}`);
-            this.#editMode = em;
-            this.#dispatchEvent(`enter${capitalize(em)}`);
-            this.#dispatchEvent("switchEdit");
+        if (this._editMode !== em) {
+            this._dispatchEvent(`exit${capitalize(this._editMode)}`);
+            this._editMode = em;
+            this._dispatchEvent(`enter${capitalize(em)}`);
+            this._dispatchEvent("switchEdit");
         }
     }
     /**
@@ -38691,8 +38736,8 @@ class TileGrid {
      * @param y cell y
      * @returns a tile, or `undefined` if out of bounds
      */ tile(x, y) {
-        const tile = this.#tiles?.[y]?.[x];
-        if (typeof tile === "undefined") return Grids.inBounds(this, x, y) ? new Tile.Blank() : undefined;
+        const tile = this._tiles?.[y]?.[x];
+        if (typeof tile === "undefined") return (0, _values.Grids).inBounds(this, x, y) ? new Tile.Blank() : undefined;
         return tile;
     }
     /**
@@ -38702,11 +38747,11 @@ class TileGrid {
      * @param t the new tile. `undefined`s are replaced with blank tiles
      * @param canUndo true if the action is undoable
      */ setTile(x, y, t, canUndo = true) {
-        Grids.assertInBounds(this, x, y);
+        (0, _values.Grids).assertInBounds(this, x, y);
         let current = this.tile(x, y);
         // coooould be problematic but should be fine as long as modifications to the tile do not occur
         if (current == t) return;
-        if (canUndo) this.#actionStack.push({
+        if (canUndo) this._actionStack.push({
             time: performance.now(),
             replaced: current,
             cellPos: [
@@ -38715,8 +38760,8 @@ class TileGrid {
             ]
         });
         t ??= new Tile.Blank();
-        this.#tiles[y] ??= [];
-        this.#tiles[y][x] = t;
+        this._tiles[y] ??= [];
+        this._tiles[y][x] = t;
         this.rerenderTileInContainer(x, y);
     }
     /**
@@ -38727,21 +38772,21 @@ class TileGrid {
      * @param canUndo true if the action is undoable
      * @returns the new tile
      */ replaceTile(x, y, f, canUndo = true) {
-        Grids.assertInBounds(this, x, y);
+        (0, _values.Grids).assertInBounds(this, x, y);
         let t = f(this.tile(x, y));
         this.setTile(x, y, t, canUndo);
         return t;
     }
     undo() {
-        if (this.#actionStack.length == 0) return;
+        if (this._actionStack.length == 0) return;
         let actions = [
-            this.#actionStack.pop()
+            this._actionStack.pop()
         ];
-        while(this.#actionStack.length > 0){
+        while(this._actionStack.length > 0){
             let fwd = actions.at(-1);
-            let rwd = this.#actionStack.at(-1);
+            let rwd = this._actionStack.at(-1);
             if (Math.abs(fwd.time - rwd.time) > TileGrid.UNDO_THRESHOLD_MS) break;
-            actions.push(this.#actionStack.pop());
+            actions.push(this._actionStack.pop());
         }
         for (let action of actions){
             const { replaced , cellPos  } = action;
@@ -38769,7 +38814,7 @@ class TileGrid {
         this.simulation = new Simulation.Simulator(this, this.layer(1));
     }
     dispatchFailEvent() {
-        this.#dispatchEvent("fail");
+        this._dispatchEvent("fail");
     }
     get failed() {
         return !this.simulation?.passing ?? false;
@@ -38780,7 +38825,7 @@ class TileGrid {
             []
         ];
         for (let e of EDIT_MODES){
-            const include = this.#editMode === e;
+            const include = this._editMode === e;
             buckets[+include].push(`${e}-mode`);
         }
         const failedInclude = typeof this.simulation !== "undefined" && !this.simulation.passing;
@@ -38803,27 +38848,27 @@ class TileGrid {
         con.visible = false;
         return con;
     }
-     #wipeContainer(con) {
+    _wipeContainer(con) {
         removeAllChildren(con, {
             children: true
         });
         this.pointerEvents.clearEvents(con);
         // removeOnReload
-        for (let [k, harr] of Object.entries(this.#eventListeners))if (harr.some((h)=>h.removeOnReload)) this.#eventListeners[k] = harr.filter((h)=>!h.removeOnReload);
+        for (let [k, harr] of Object.entries(this._eventListeners))if (harr.some((h)=>h.removeOnReload)) this._eventListeners[k] = harr.filter((h)=>!h.removeOnReload);
     }
     /**
      * Generate the tile grid's rendered PIXI container
      * Use this.container to fallback to cache if already created
      * @returns the container
-     */  #renderContainer(force = false) {
-        const con = this.#container;
-        if (force || !this.#rendered) {
-            this.#wipeContainer(con);
+     */ _renderContainer(force = false) {
+        const con = this._container;
+        if (force || !this._rendered) {
+            this._wipeContainer(con);
             // const con = new PIXI.Container();
             // background
-            const GRID_SIZE = Grids.gridSize(this);
+            const GRID_SIZE = (0, _values.Grids).gridSize(this);
             const bg = new _pixiJs.Sprite(_pixiJs.Texture.WHITE);
-            bg.tint = Palette.Grid.BG;
+            bg.tint = (0, _values.Palette).Grid.BG;
             bg.width = GRID_SIZE;
             bg.height = GRID_SIZE;
             con.addChild(bg);
@@ -38848,12 +38893,12 @@ class TileGrid {
             con.interactive = true;
             this.pointerEvents.applyEvents(con);
         }
-        this.#rendered = true;
-        this.#dispatchEvent("load");
+        this._rendered = true;
+        this._dispatchEvent("load");
         return con;
     }
     cellAt(pos) {
-        Grids.assertInBounds(this, ...pos);
+        (0, _values.Grids).assertInBounds(this, ...pos);
         const tile = this.tile(...pos);
         return this.layer(tile.layer).cellAt(pos);
     }
@@ -38887,7 +38932,7 @@ class TileGrid {
             ...options
         };
         for (const e of event){
-            const listeners = this.#eventListeners[e] ??= [];
+            const listeners = this._eventListeners[e] ??= [];
             listeners.push({
                 ...opts,
                 handler
@@ -38897,8 +38942,8 @@ class TileGrid {
     /**
      * Call all the event handlers for this event
      * @param e event
-     */  #dispatchEvent(e) {
-        const listeners = this.#eventListeners[e] ??= [];
+     */ _dispatchEvent(e) {
+        const listeners = this._eventListeners[e] ??= [];
         for (let { handler  } of listeners)handler();
     }
     /**
@@ -38908,7 +38953,7 @@ class TileGrid {
      * @returns a direction, if near enough to an edge, 
      *     or undefined if close to the center or far away from the cell
      */ nearestEdge({ x , y  }, [cellX, cellY]) {
-        const TILE_GAP = Grids.TILE_GAP;
+        const TILE_GAP = (0, _values.Grids).TILE_GAP;
         const EDGE_THRESHOLD = this.cellSize * TileGrid.EDGE_THRESHOLD;
         const DELTA = this.cellSize + TILE_GAP;
         const [minX, minY] = [
@@ -39008,8 +39053,8 @@ class TileGrid {
         // the other cell (the ones that aren't the shared cell)
         const nc1 = ptr1[oi];
         const nc2 = ptr2[oj];
-        const edge1 = typeof nc1 === "undefined" ? undefined : Dir.difference(match, nc1);
-        const edge2 = typeof nc2 === "undefined" ? undefined : Dir.difference(match, nc2);
+        const edge1 = typeof nc1 === "undefined" ? undefined : (0, _values.Dir).difference(match, nc1);
+        const edge2 = typeof nc2 === "undefined" ? undefined : (0, _values.Dir).difference(match, nc2);
         return [
             match,
             edge1,
@@ -39017,17 +39062,17 @@ class TileGrid {
         ];
     }
     toJSON() {
-        let length1 = this.cellLength;
+        let length = this.cellLength;
         let board = Array.from({
-            length: length1
+            length
         }, ()=>"");
         let tiles = {};
-        for(let y = 0; y < length1; y++){
+        for(let y = 0; y < length; y++){
             let row = "";
-            for(let x = 0; x < length1; x++){
+            for(let x = 0; x < length; x++){
                 let tile = this.tile(x, y);
                 row += Tile.isStageTile(tile) ? tile.serChar : " ";
-                if (typeof tile !== "undefined" && serializable(tile)) tiles[y * length1 + x] = tile;
+                if (typeof tile !== "undefined" && serializable(tile)) tiles[y * length + x] = tile;
             }
             board[y] = row;
         }
@@ -39040,7 +39085,7 @@ class TileGrid {
      * Create an initializer of a TileGrid from JSON serialized data
      * @param o the serialized JSON
      * @returns a function which accepts a size and texture parameter and gives out a TileGrid
-     */ static  #tilesFromJSON(o) {
+     */ static _tilesFromJSON(o) {
         let { board , tiles  } = o;
         let length = length2D(board);
         let newTiles = Array.from({
@@ -39070,84 +39115,81 @@ class TileGrid {
 const DBT_TIMEOUT_MS = 1000;
 const CLICK_IGNORE_MS = 200;
 class PointerEvents {
-    #grid;
-    #eventLayer;
     pointers = 0;
-    #editSquare = [
+    _editSquare = [
         0,
         0
     ];
-    #tt;
     constructor(grid){
-        this.#grid = grid;
-        this.#eventLayer = new _pixiJs.Container();
+        this._grid = grid;
+        this._eventLayer = new _pixiJs.Container();
     }
-    applyEvents(con1) {
-        this.#addEventLayer(con1);
-        this.#addPointersTracker(con1);
-        this.#applyHoverEvents(con1);
-        this.#applyPointerEvents(con1);
+    applyEvents(con) {
+        this._addEventLayer(con);
+        this._addPointersTracker(con);
+        this._applyHoverEvents(con);
+        this._applyPointerEvents(con);
     }
-    clearEvents(con2) {
-        for (let [name, h] of this.#containerEvents)con2.off(name, h);
-        this.#containerEvents.length = 0;
+    clearEvents(con) {
+        for (let [name, h] of this._containerEvents)con.off(name, h);
+        this._containerEvents.length = 0;
     }
-    #containerEvents = [];
-     #on(emitter, event, listener) {
-        this.#containerEvents.push([
+    _containerEvents = [];
+    _onPixi(emitter, event, listener) {
+        this._containerEvents.push([
             event,
             listener
         ]);
         emitter.on(event, listener);
     }
-     #addEventLayer(con3) {
-        if (this.#eventLayer.destroyed) this.#eventLayer = new _pixiJs.Container();
-        con3.addChild(this.#eventLayer);
-        this.#grid.on([
+    _addEventLayer(con) {
+        if (this._eventLayer.destroyed) this._eventLayer = new _pixiJs.Container();
+        con.addChild(this._eventLayer);
+        this._grid.on([
             "switchEdit",
             "load"
         ], ()=>{
-            for (let c of this.#eventLayer.children)c.visible = c.name === this.#grid.editMode;
+            for (let c of this._eventLayer.children)c.visible = c.name === this._grid.editMode;
         }, {
             removeOnReload: true
         });
     }
-     #addPointersTracker(con4) {
-        this.#on(con4, "pointerdown", ()=>{
+    _addPointersTracker(con) {
+        this._onPixi(con, "pointerdown", ()=>{
             this.pointers++;
         });
         const pointerup = ()=>{
             this.pointers = Math.max(this.pointers - 1, 0);
         };
-        this.#on(con4, "pointerup", pointerup);
-        this.#on(con4, "pointerupoutside", pointerup);
-        this.#on(con4, "pointercancel", ()=>{
+        this._onPixi(con, "pointerup", pointerup);
+        this._onPixi(con, "pointerupoutside", pointerup);
+        this._onPixi(con, "pointercancel", ()=>{
             this.pointers = 0;
         });
     }
-     #modeLayer(m) {
-        let layer = this.#eventLayer.getChildByName(m);
+    _modeLayer(m) {
+        let layer = this._eventLayer.getChildByName(m);
         if (layer) return layer;
-        layer = this.#eventLayer.addChild(new _pixiJs.Container());
+        layer = this._eventLayer.addChild(new _pixiJs.Container());
         layer.name = m;
         return layer;
     }
     // LEVEL EDIT MODE SETTINGS
     set tt(v) {
-        this.#tt = v;
-        this.#updateTT();
+        this._tt = v;
+        this._updateTT();
     }
     /**
      * Provide the stage tile at the given position.
      * @param cellPos 
      * @returns 
-     */  #stageTileAt(cellPos) {
-        Grids.assertInBounds(this.#grid, ...cellPos);
-        const tile = this.#grid.tile(...cellPos);
+     */ _stageTileAt(cellPos) {
+        (0, _values.Grids).assertInBounds(this._grid, ...cellPos);
+        const tile = this._grid.tile(...cellPos);
         if (Tile.isStageTile(tile)) return tile;
         throw new Error(`There is no stage tile at (${cellPos})`);
     }
-     #stOrder(t) {
+    _stOrder(t) {
         // enums can take string->number, so do that.
         return StageTile.Order[t.constructor.name];
     }
@@ -39155,75 +39197,75 @@ class PointerEvents {
      * Provide the button order (in the edit UI) of the tile at the position
      * @param cellPos position of the tile to find the order of (or the current edit position if unspecified)
      * @returns the button order
-     */ buttonOrderAt(cellPos1 = this.#editSquare) {
-        const tile = this.#stageTileAt(cellPos1);
-        return this.#stOrder(tile);
+     */ buttonOrderAt(cellPos = this._editSquare) {
+        const tile = this._stageTileAt(cellPos);
+        return this._stOrder(tile);
     }
-    stagePropertiesAt(cellPos2 = this.#editSquare) {
-        return this.#stageTileAt(cellPos2);
+    stagePropertiesAt(cellPos = this._editSquare) {
+        return this._stageTileAt(cellPos);
     }
-     #updateTT() {
-        if (this.#tt) {
-            const { ttButtons , editTileBtn  } = this.#tt;
+    _updateTT() {
+        if (this._tt) {
+            const { ttButtons , editTileBtn  } = this._tt;
             const selected = this.buttonOrderAt();
             const but = ttButtons[selected];
             if (typeof but !== "undefined") but.checked = true;
             editTileBtn.disabled = !this.stagePropertiesAt().modal;
         }
     }
-    #history = {};
-     #getDefaultTile(value) {
-        const last = this.#history[value];
+    _history = {};
+    _getDefaultTile(value) {
+        const last = this._history[value];
         if (last) return last.clone();
         if (value === StageTile.Order.Blank) return new Tile.Blank();
         else if (value === StageTile.Order.Goal) return new Tile.Goal([
-            Dir.Right
+            (0, _values.Dir).Right
         ], [
-            Color.Red
+            (0, _values.Color).Red
         ]);
-        else if (value === StageTile.Order.Outlet) return new Tile.Outlet(Dir.Right, [
-            Color.Red
+        else if (value === StageTile.Order.Outlet) return new Tile.Outlet((0, _values.Dir).Right, [
+            (0, _values.Color).Red
         ]);
         else if (value === StageTile.Order.Painter) return new Tile.Painter([
-            Dir.Left,
-            Dir.Right
-        ], Color.Red);
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Right
+        ], (0, _values.Color).Red);
         else if (value === StageTile.Order.Rock) return new Tile.Rock();
-        else if (value === StageTile.Order.Splitter) return new Tile.Splitter(Dir.Left);
+        else if (value === StageTile.Order.Splitter) return new Tile.Splitter((0, _values.Dir).Left);
         else {
             let _ = value;
         }
     }
     get editSquare() {
-        return this.#editSquare;
+        return this._editSquare;
     }
     set editSquare(v) {
-        this.#editSquare = v;
-        const ssq = this.#modeLayer("level").getChildByName("ssq");
-        ssq.position = Grids.cellToPosition(this.#grid, this.#editSquare);
-        this.#updateTT();
+        this._editSquare = v;
+        const ssq = this._modeLayer("level").getChildByName("ssq");
+        ssq.position = (0, _values.Grids).cellToPosition(this._grid, this._editSquare);
+        this._updateTT();
     }
-    setSquarePos(value1) {
-        assertEditMode(this.#grid.editMode, "level");
-        this.#grid.setTile(...this.editSquare, this.#getDefaultTile(value1));
+    setSquarePos(value) {
+        assertEditMode(this._grid.editMode, "level");
+        this._grid.setTile(...this.editSquare, this._getDefaultTile(value));
     }
     moveSquarePos(d) {
-        assertEditMode(this.#grid.editMode, "level");
-        const shifted = Dir.shift(this.editSquare, d);
-        if (Grids.inBounds(this.#grid, ...shifted)) this.editSquare = shifted;
+        assertEditMode(this._grid.editMode, "level");
+        const shifted = (0, _values.Dir).shift(this.editSquare, d);
+        if ((0, _values.Grids).inBounds(this._grid, ...shifted)) this.editSquare = shifted;
     }
-    setSquare(t1) {
-        assertEditMode(this.#grid.editMode, "level");
-        this.#history[this.#stOrder(t1)] = t1.clone();
-        this.#grid.setTile(...this.editSquare, t1);
+    setSquare(t) {
+        assertEditMode(this._grid.editMode, "level");
+        this._history[this._stOrder(t)] = t.clone();
+        this._grid.setTile(...this.editSquare, t);
     }
     //
     /**
      * Apply pointer events like click, drag, etc. to a container
      * @param con Container to apply to.
-     */  #applyPointerEvents(con5) {
-        const grid = this.#grid;
-        const levelLayer = this.#modeLayer("level");
+     */ _applyPointerEvents(con) {
+        const grid = this._grid;
+        const levelLayer = this._modeLayer("level");
         // TODO: make actual sprite for this
         const selectSquare = new _pixiJs.Sprite(_pixiJs.Texture.WHITE);
         selectSquare.width = grid.cellSize;
@@ -39247,24 +39289,24 @@ class PointerEvents {
         };
         /**
          * Creates drag pointer if it's `undefined`
-         */ const tryCreatePointer = (e1)=>{
-            const pos = e1.data.getLocalPosition(con5);
-            const cellPos3 = Grids.positionToCell(grid, pos);
+         */ const tryCreatePointer = (e)=>{
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = (0, _values.Grids).positionToCell(grid, pos);
             const editMode = grid.editMode;
             if (editMode !== this.pointer?.editMode) this.pointer = undefined;
             if (typeof this.pointer !== "undefined") return;
             if (editMode === "rail") {
-                let edge = grid.nearestEdge(pos, cellPos3);
+                let edge = grid.nearestEdge(pos, cellPos);
                 this.pointer = {
                     start: {
                         pixPos: pos,
-                        cellPos: cellPos3,
+                        cellPos,
                         time: performance.now()
                     },
                     editMode,
                     drag: [
-                        cellPos3,
-                        typeof edge !== "undefined" ? Dir.shift(cellPos3, edge) : undefined
+                        cellPos,
+                        typeof edge !== "undefined" ? (0, _values.Dir).shift(cellPos, edge) : undefined
                     ]
                 };
             } else if (editMode === "railErase") ;
@@ -39273,16 +39315,16 @@ class PointerEvents {
                 this.pointer = {
                     start: {
                         pixPos: pos,
-                        cellPos: cellPos3,
+                        cellPos,
                         time: performance.now()
                     },
                     editMode,
-                    drag: cellPos3
+                    drag: cellPos
                 };
                 // not technically pointer setting, but it's important in the pointer
-                selectCopy.addChild(grid.renderTileAt(...cellPos3, -1, true));
+                selectCopy.addChild(grid.renderTileAt(...cellPos, -1, true));
                 selectCopy.visible = true;
-                const ccmin = Grids.cellToPosition(grid, cellPos3);
+                const ccmin = (0, _values.Grids).cellToPosition(grid, cellPos);
                 ccshift = {
                     x: pos.x - ccmin.x,
                     y: pos.y - ccmin.y
@@ -39292,20 +39334,20 @@ class PointerEvents {
                 let _ = editMode;
             }
         };
-        this.#on(con5, "pointerdown", (e2)=>{
-            const pos = e2.data.getLocalPosition(con5);
-            const cellPos4 = Grids.positionToCell(grid, pos);
+        this._onPixi(con, "pointerdown", (e)=>{
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = (0, _values.Grids).positionToCell(grid, pos);
             // double tap check
             if (!dbtTile) {
                 // tap 1
-                dbtTile = cellPos4;
+                dbtTile = cellPos;
                 dbtTimeout = setTimeout(()=>{
                     dbtTile = undefined;
                 }, DBT_TIMEOUT_MS);
             } else // tap 2
-            if (cellPos4.equals(dbtTile)) {
+            if (cellPos.equals(dbtTile)) {
                 clearTimeout(dbtTimeout);
-                this.#onDoubleTap(dbtTile);
+                this._onDoubleTap(dbtTile);
                 dbtTile = undefined;
             }
             //
@@ -39313,11 +39355,11 @@ class PointerEvents {
                 invalidateDrag();
                 return;
             }
-            tryCreatePointer(e2);
+            tryCreatePointer(e);
             const editMode = grid.editMode;
             if (editMode === "rail") ;
-            else if (editMode === "railErase") grid.replaceTile(...cellPos4, (t2)=>{
-                return t2 instanceof Tile.Rail ? undefined : t2;
+            else if (editMode === "railErase") grid.replaceTile(...cellPos, (t)=>{
+                return t instanceof Tile.Rail ? undefined : t;
             });
             else if (editMode === "readonly") ;
             else if (editMode === "level") ;
@@ -39325,27 +39367,27 @@ class PointerEvents {
                 let _ = editMode;
             }
         });
-        this.#on(con5, "pointermove", (e3)=>{
-            const pos = e3.data.getLocalPosition(con5);
-            const cellPos5 = Grids.positionToCell(this.#grid, pos);
+        this._onPixi(con, "pointermove", (e)=>{
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = (0, _values.Grids).positionToCell(this._grid, pos);
             // pointer === 1 implies drag
             if (this.pointers !== 1) {
                 // can't really make sense of pointer if there's more than one finger dragging
                 invalidateDrag();
                 return;
             }
-            tryCreatePointer(e3);
+            tryCreatePointer(e);
             const editMode = grid.editMode;
             if (editMode === "rail") {
                 // because `tryCreatePointer`, this.pointer is defined and assigned to rail mode
                 if (this.pointer?.editMode !== "rail") throw new Error("Pointer in `pointermove` is in an invalid state");
                 // pointer can now only bind to edges, so ignore centers.
-                let edge = grid.nearestEdge(pos, cellPos5);
+                let edge = grid.nearestEdge(pos, cellPos);
                 if (typeof edge === "undefined") return;
                 const point = this.pointer.drag;
                 const newPoint = [
-                    cellPos5,
-                    Dir.shift(cellPos5, edge)
+                    cellPos,
+                    (0, _values.Dir).shift(cellPos, edge)
                 ];
                 // If the cell pointers are in the same cell, we can try to create a rail
                 const result = grid.findSharedCell(point, newPoint);
@@ -39354,11 +39396,11 @@ class PointerEvents {
                     // edge + edge = make connection
                     // center + edge = make straight line
                     let e1 = me1;
-                    let e0 = me0 ?? Dir.flip(e1);
-                    if (e0 !== e1) grid.replaceTile(...shared, (t3)=>{
-                        if (t3 instanceof Tile.Blank) return new Tile.SingleRail(e0, e1);
-                        else if (t3 instanceof Tile.Rail) return Tile.Rail.of(new Tile.SingleRail(e0, e1), t3.top());
-                        else return t3;
+                    let e0 = me0 ?? (0, _values.Dir).flip(e1);
+                    if (e0 !== e1) grid.replaceTile(...shared, (t)=>{
+                        if (t instanceof Tile.Blank) return new Tile.SingleRail(e0, e1);
+                        else if (t instanceof Tile.Rail) return Tile.Rail.of(new Tile.SingleRail(e0, e1), t.top());
+                        else return t;
                     });
                 }
                 // move pointer to next edge
@@ -39367,8 +39409,8 @@ class PointerEvents {
                     drag: newPoint
                 };
             } else if (editMode === "readonly") ;
-            else if (editMode === "railErase") grid.replaceTile(...cellPos5, (t4)=>{
-                return t4 instanceof Tile.Rail ? undefined : t4;
+            else if (editMode === "railErase") grid.replaceTile(...cellPos, (t)=>{
+                return t instanceof Tile.Rail ? undefined : t;
             });
             else if (editMode === "level") {
                 selectCopy.visible = true;
@@ -39380,27 +39422,27 @@ class PointerEvents {
                 let _ = editMode;
             }
         });
-        this.#on(con5, "pointerup", (e4)=>{
+        this._onPixi(con, "pointerup", (e)=>{
             if (this.pointer?.editMode === "level") {
-                const pos = e4.data.getLocalPosition(con5);
-                const cellPos6 = Grids.positionToCell(grid, pos);
+                const pos = e.data.getLocalPosition(con);
+                const cellPos = (0, _values.Grids).positionToCell(grid, pos);
                 const start = this.pointer.start;
-                const isClick = start && start.cellPos.equals(cellPos6) && performance.now() - start.time <= CLICK_IGNORE_MS;
+                const isClick = start && start.cellPos.equals(cellPos) && performance.now() - start.time <= CLICK_IGNORE_MS;
                 if (isClick) {
                     selectSquare.visible = true;
-                    this.editSquare = cellPos6;
+                    this.editSquare = cellPos;
                 } else {
-                    grid.setTile(...cellPos6, grid.tile(...this.pointer.drag).clone());
-                    this.#updateTT();
+                    grid.setTile(...cellPos, grid.tile(...this.pointer.drag).clone());
+                    this._updateTT();
                 }
             }
             invalidateDrag();
         });
-        this.#on(con5, "pointerupoutside", invalidateDrag);
-        this.#on(con5, "pointercancel", invalidateDrag);
-    // this.#on(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
+        this._onPixi(con, "pointerupoutside", invalidateDrag);
+        this._onPixi(con, "pointercancel", invalidateDrag);
+    // this._onPixi(con, "click", (e: PIXI.InteractionEvent) => console.log(e.data.global));
     }
-     #hoverSquare(size) {
+    _hoverSquare(size) {
         const hoverSquare = new _pixiJs.Sprite(_pixiJs.Texture.WHITE);
         hoverSquare.width = size;
         hoverSquare.height = size;
@@ -39412,33 +39454,33 @@ class PointerEvents {
      * On desktop, display a rail indicator that marks which edge the mouse is nearest to.
      * (This is not supported on mobile cause it looks bad and is not properly functional on mobile)
      * @param con Container to apply to
-     */  #applyHoverEvents(con6) {
-        const grid = this.#grid;
+     */ _applyHoverEvents(con) {
+        const grid = this._grid;
         const railMarker = _components.hoverIndicator(grid.pixi, grid.cellSize);
-        railMarker.tint = Palette.Hover;
+        railMarker.tint = (0, _values.Palette).Hover;
         railMarker.visible = false;
         railMarker.interactive = true;
         railMarker.cursor = "grab";
-        this.#modeLayer("rail").addChild(railMarker);
-        const levelSquare = this.#modeLayer("level").addChild(this.#hoverSquare(grid.cellSize));
-        const eraseSquare = this.#modeLayer("railErase").addChild(this.#hoverSquare(grid.cellSize));
+        this._modeLayer("rail").addChild(railMarker);
+        const levelSquare = this._modeLayer("level").addChild(this._hoverSquare(grid.cellSize));
+        const eraseSquare = this._modeLayer("railErase").addChild(this._hoverSquare(grid.cellSize));
         let // yeah i should probably just use a BitSet library but also it's like 3 bits :|
         Condition1;
-        (function(Condition2) {
-            Condition2[Condition2[/**
+        (function(Condition) {
+            Condition[Condition[/**
              * `true` if the pointer isn't in the bounds of the grid
              * This will always be false if on mobile.
              */ "IN_BOUNDS"] = 0] = "IN_BOUNDS";
-            Condition2[Condition2[/**
+            Condition[Condition[/**
              * `true` if not currently dragging the pointer
              */ "NOT_DRAGGING"] = 1] = "NOT_DRAGGING";
-            Condition2[Condition2[/**
+            Condition[Condition[/**
              * `true` if the current hovering position can be replaced by a rail
              */ "RAILABLE"] = 2] = "RAILABLE";
         })(Condition1 || (Condition1 = {}));
         let visibility = 0b010;
-        const setVis = (condition, bit2)=>{
-            if (bit2) visibility |= 1 << condition;
+        const setVis = (condition, bit)=>{
+            if (bit) visibility |= 1 << condition;
             else visibility &= ~(1 << condition);
         };
         const bit1 = (condition)=>!!(visibility >> condition & 1);
@@ -39452,57 +39494,57 @@ class PointerEvents {
             // it must always appear when dragging, even on mobile, so:
             levelSquare.visible = bit1(0) || !bit1(1);
         };
-        this.#on(con6, "pointermove", (e5)=>{
-            const pos = e5.data.getLocalPosition(con6);
-            const cellPos7 = Grids.positionToCell(grid, pos);
-            const tile = grid.tile(...cellPos7);
+        this._onPixi(con, "pointermove", (e)=>{
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = (0, _values.Grids).positionToCell(grid, pos);
+            const tile = grid.tile(...cellPos);
             if (grid.editMode === "rail") {
-                let dir = grid.nearestEdge(pos, cellPos7);
+                let dir = grid.nearestEdge(pos, cellPos);
                 if (typeof dir === "undefined") setVis(2, false);
                 else // If you can place a rail on this tile, mark the tile on the nearest edge
                 if (tile?.railable) {
                     setVis(2, true);
-                    railMarker.position = Grids.cellToPosition(grid, cellPos7);
+                    railMarker.position = (0, _values.Grids).cellToPosition(grid, cellPos);
                     railMarker.angle = -90 * dir;
                 } else {
-                    let neighborPos = Dir.shift(cellPos7, dir);
+                    let neighborPos = (0, _values.Dir).shift(cellPos, dir);
                     let neighbor = grid.tile(...neighborPos);
                     if (neighbor?.railable) {
                         setVis(2, true);
-                        railMarker.position = Grids.cellToPosition(grid, neighborPos);
-                        railMarker.angle = -90 * Dir.flip(dir);
+                        railMarker.position = (0, _values.Grids).cellToPosition(grid, neighborPos);
+                        railMarker.angle = -90 * (0, _values.Dir).flip(dir);
                     } else setVis(2, false);
                 }
             } else if (grid.editMode === "railErase") {
                 setVis(2, !!tile?.railable);
-                eraseSquare.position = Grids.cellToPosition(grid, cellPos7);
-            } else if (grid.editMode === "level") levelSquare.position = Grids.cellToPosition(grid, cellPos7);
+                eraseSquare.position = (0, _values.Grids).cellToPosition(grid, cellPos);
+            } else if (grid.editMode === "level") levelSquare.position = (0, _values.Grids).cellToPosition(grid, cellPos);
             else if (grid.editMode === "readonly") ;
             else {
                 let _ = grid.editMode;
             }
             updateVis();
         });
-        this.#on(con6, "pointerdown", (e6)=>{
-            const pos = e6.data.getLocalPosition(con6);
-            const cellPos8 = Grids.positionToCell(grid, pos);
-            levelSquare.position = Grids.cellToPosition(grid, cellPos8);
+        this._onPixi(con, "pointerdown", (e)=>{
+            const pos = e.data.getLocalPosition(con);
+            const cellPos = (0, _values.Grids).positionToCell(grid, pos);
+            levelSquare.position = (0, _values.Grids).cellToPosition(grid, cellPos);
             setVis(1, false);
             updateVis();
         });
-        this.#on(con6, "pointerup", (e)=>{
+        this._onPixi(con, "pointerup", (e)=>{
             setVis(1, true);
             updateVis();
         });
-        this.#on(con6, "pointerupoutside", (e)=>{
+        this._onPixi(con, "pointerupoutside", (e)=>{
             setVis(1, true);
             updateVis();
         });
-        this.#on(con6, "mouseover", (e)=>{
+        this._onPixi(con, "mouseover", (e)=>{
             setVis(0, true);
             updateVis();
         });
-        this.#on(con6, "mouseout", (e)=>{
+        this._onPixi(con, "mouseout", (e)=>{
             setVis(0, false);
             updateVis();
         });
@@ -39510,33 +39552,31 @@ class PointerEvents {
     /**
      * Handles what happens when a tile is double tapped
      * @param dbtTile the tile that was double tapped
-     */  #onDoubleTap(dbtTile) {
-        if (this.#grid.editMode === "rail") // double tap to swap rails (on a double rail)
-        this.#grid.replaceTile(...dbtTile, (t5)=>{
-            if (t5 instanceof Tile.DoubleRail) return t5.flipped();
-            return t5;
+     */ _onDoubleTap(dbtTile) {
+        if (this._grid.editMode === "rail") // double tap to swap rails (on a double rail)
+        this._grid.replaceTile(...dbtTile, (t)=>{
+            if (t instanceof Tile.DoubleRail) return t.flipped();
+            return t;
         });
     }
 }
 class GridCursor {
-    #grid;
-    #pos;
     constructor(grid, pos){
-        this.#grid = grid;
-        this.#pos = pos;
+        this._grid = grid;
+        this._pos = pos;
     }
     /**
      * Get the neighbor tile in a specific direction
      * @param direction the direction
      * @returns the neighbor tile
      */ neighbor(direction) {
-        return this.#grid.tile(...Dir.shift(this.#pos, direction));
+        return this._grid.tile(...(0, _values.Dir).shift(this._pos, direction));
     }
     updateRender(progress, call) {
-        const updates = this.#grid.simulation.renderUpdates;
+        const updates = this._grid.simulation.renderUpdates;
         const result = [
             progress,
-            ()=>call(this.#grid.cellAt(this.#pos))
+            ()=>call(this._grid.cellAt(this._pos))
         ];
         let gtIndex = updates.findIndex(([p, _])=>progress < p);
         if (gtIndex == -1) updates.splice(updates.length, 0, result);
@@ -39555,32 +39595,30 @@ let Simulation;
 (function(Simulation1) {
     const FRAMES_PER_STEP = 30;
     class Simulator {
-        #grid;
-        #trainCon;
-        #peeked = [];
+        _peeked = [];
         passing = true;
         progress = 0;
         renderUpdates = [];
         constructor(grid, tc){
-            this.#grid = grid;
-            this.#trainCon = tc;
-            for (let [pos, tile] of this.#grid.statefulTiles()){
+            this._grid = grid;
+            this._trainCon = tc;
+            for (let [pos, tile] of this._grid.statefulTiles()){
                 tile.initState();
                 // render trains
-                for (let t6 of tile.state.trainState.trains)this.#trainCon.createBody(pos, undefined, t6);
+                for (let t of tile.state.trainState.trains)this._trainCon.createBody(pos, undefined, t);
             }
-            this.iterator = new Iterator(this.#grid);
+            this.iterator = new Iterator(this._grid);
         }
         /**
          * Peek at a future move, and do not render it.
          * @param advance Number of moves to look forward. By default, 1.
          */ peek(advance = 1) {
-            while(this.#peeked.length < advance && !this.iterator.done){
+            while(this._peeked.length < advance && !this.iterator.done){
                 const ent = this.iterator.next();
                 if (ent.done) return undefined;
-                this.#peeked.push(ent.value);
+                this._peeked.push(ent.value);
             }
-            return this.#peeked[advance - 1];
+            return this._peeked[advance - 1];
         }
         /**
          * Move to the next move and do not render it.
@@ -39593,7 +39631,7 @@ let Simulation;
             //     }
             // }
             // console.log("next move");
-            return this.#peeked.shift() ?? this.iterator.next().value;
+            return this._peeked.shift() ?? this.iterator.next().value;
         }
         /**
          * Move to the next move and render it.
@@ -39618,17 +39656,17 @@ let Simulation;
          * Render a set of grid moves.
          */ render(step) {
             for (let [i, deployedTrains] of step.entries()){
-                const pos = Grids.indexToCell(this.#grid, +i);
-                if (deployedTrains.some((m1)=>m1.move == "destroy" && m1.crashed)) this.fail();
-                this.#trainCon.moveBodies(pos, deployedTrains);
+                const pos = (0, _values.Grids).indexToCell(this._grid, +i);
+                if (deployedTrains.some((m)=>m.move == "destroy" && m.crashed)) this.fail();
+                this._trainCon.moveBodies(pos, deployedTrains);
             }
             for (let [_, call] of this.renderUpdates)call();
             this.renderUpdates = [];
         }
         renderPartial(step) {
             for (let [i, deployedTrains] of step.entries()){
-                const pos = Grids.indexToCell(this.#grid, +i);
-                this.#trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
+                const pos = (0, _values.Grids).indexToCell(this._grid, +i);
+                this._trainCon.moveBodiesPartial(pos, deployedTrains, this.progress);
             }
             while(this.renderUpdates.length > 0 && this.renderUpdates[0][0] <= this.progress)this.renderUpdates.shift()[1]();
         }
@@ -39637,27 +39675,26 @@ let Simulation;
          */ fail() {
             if (this.passing) {
                 this.passing = false;
-                this.#grid.dispatchFailEvent();
+                this._grid.dispatchFailEvent();
             }
         }
         /**
          * Wipes all state. Resets simulating state.
          */ close() {
-            for (let [pos, tile] of this.#grid.statefulTiles()){
+            for (let [pos, tile] of this._grid.statefulTiles()){
                 tile.state = undefined;
-                this.#grid.rerenderTileInContainer(...pos);
+                this._grid.rerenderTileInContainer(...pos);
             }
-            this.#trainCon.clearBodies();
-            this.#grid.simulation = undefined;
+            this._trainCon.clearBodies();
+            this._grid.simulation = undefined;
         }
     }
     Simulation1.Simulator = Simulator;
     class Iterator {
-        #grid;
         done = false;
         constructor(grid){
-            this.#grid = grid;
-            this.curs = new Map(Array.from(this.#grid.statefulTiles(), ([pos, tile])=>[
+            this._grid = grid;
+            this.curs = new Map(Array.from(this._grid.statefulTiles(), ([pos, tile])=>[
                     tile,
                     new GridCursor(grid, pos)
                 ]));
@@ -39675,7 +39712,7 @@ let Simulation;
             //      Accept entering trains.
             let deploys = new Map();
             let done = true;
-            for (let [_, tile] of this.#grid.statefulTiles()){
+            for (let [_, tile] of this._grid.statefulTiles()){
                 const trainState = tile.state.trainState;
                 if (trainState.length > 0) {
                     tile.step(this.curs.get(tile));
@@ -39686,33 +39723,33 @@ let Simulation;
                 value: undefined,
                 done: true
             };
-            let trainEdges = new Focus.FocusMap(this.#grid);
+            let trainEdges = new (0, _values.Focus).FocusMap(this._grid);
             // check intra collisions
-            for (let [pos, tile1] of this.#grid.statefulTiles()){
+            for (let [pos, tile1] of this._grid.statefulTiles()){
                 const trainState = tile1.state.trainState;
-                for (let t7 of trainState.exitingTrains)trainEdges.setDefault([
+                for (let t of trainState.exitingTrains)trainEdges.setDefault([
                     pos,
-                    t7.dir
+                    t.dir
                 ], ()=>[]).push([
                     trainState,
-                    t7
+                    t
                 ]);
             }
             // check inter collisions: mix/merge trains on the same edge
             for (let trains of trainEdges.values())if (trains.length > 1) {
-                const trainColors = trains.map(([_, t10])=>t10.color);
-                const color = Color.mixMany(trainColors);
-                for (let [trainState, t8] of trains)trainState.replaceExit(t8, {
+                const trainColors = trains.map(([_, t])=>t.color);
+                const color = (0, _values.Color).mixMany(trainColors);
+                for (let [trainState, t1] of trains)trainState.replaceExit(t1, {
                     color,
-                    dir: t8.dir
+                    dir: t1.dir
                 }, Step.EdgeCollision);
             }
             // deploy
-            for (let [pos1, tile2] of this.#grid.statefulTiles()){
+            for (let [pos1, tile2] of this._grid.statefulTiles()){
                 const trainState = tile2.state.trainState;
                 trainState.deployExiting(this.curs.get(tile2));
                 if (trainState.tileMoves.length > 0) {
-                    const i = Grids.cellToIndex(this.#grid, pos1);
+                    const i = (0, _values.Grids).cellToIndex(this._grid, pos1);
                     deploys.set(i, [
                         ...trainState.tileMoves
                     ]);
@@ -39720,7 +39757,7 @@ let Simulation;
                 }
             }
             // finalize
-            for (let [_1, tile3] of this.#grid.statefulTiles())tile3.state.trainState.finalize();
+            for (let [_1, tile3] of this._grid.statefulTiles())tile3.state.trainState.finalize();
             return {
                 value: deploys,
                 done: false
@@ -39734,32 +39771,29 @@ let Simulation;
 const TRAIN_CRASH = Symbol("train crashed");
 class TrainState {
     /**
-     * A list of the trains currently on the tile.
-     */ #trains;
-    /**
      * Trains that are entering this tile in finalization.
-     */ #enteringTrains = [];
+     */ _enteringTrains = [];
     /**
      * Trains that will be exiting this tile in deploy.
-     */ #exitingTrains = [];
+     */ _exitingTrains = [];
     /**
      * Path that a train took through this tile.
-     */ #paths = [];
+     */ _paths = [];
     /**
      * A mapping keeping track of which trains moved to where during the step calculation.
      * It is used during finalization to move train sprites on the stage.
      */ tileMoves = [];
     constructor(iter = []){
-        this.#trains = Array.from(iter);
+        this._trains = Array.from(iter);
     }
     get length() {
-        return this.#trains.length;
+        return this._trains.length;
     }
     get trains() {
-        return this.#trains;
+        return this._trains;
     }
     get exitingTrains() {
-        return this.#exitingTrains;
+        return this._exitingTrains;
     }
     replaceExit(exiting, newExiting, step) {
         let i;
@@ -39773,62 +39807,62 @@ class TrainState {
             throw new Error(`Train[color=${color}, dir=${dir}] isn't exiting`);
         }
         if (exiting === newExiting) return;
-        this.#exitingTrains[i] = newExiting;
-        this.#trackMove(exiting, [
+        this._exitingTrains[i] = newExiting;
+        this._trackMove(exiting, [
             newExiting
         ], step);
     }
     sendToExit(preimage, image) {
         if (image === TRAIN_CRASH) {
-            this.#trackMove(preimage, image, Step.Main);
+            this._trackMove(preimage, image, Step.Main);
             return;
         }
-        const pimPairs = image.map((t11)=>[
+        const pimPairs = image.map((t)=>[
                 preimage,
-                t11
+                t
             ]);
-        this.#trackMove(preimage, image, Step.Main);
-        this.#exitingTrains.push(...image);
-        this.#paths.push(...pimPairs);
+        this._trackMove(preimage, image, Step.Main);
+        this._exitingTrains.push(...image);
+        this._paths.push(...pimPairs);
     }
-    mergePass(m2) {
-        let mergingMove = this.tileMoves.find((tm)=>tm.move === "pass" && tm.image === m2.preimage);
-        mergingMove.image = m2.image;
-        mergingMove.step = m2.step;
+    mergePass(m) {
+        let mergingMove = this.tileMoves.find((tm)=>tm.move === "pass" && tm.image === m.preimage);
+        mergingMove.image = m.image;
+        mergingMove.step = m.step;
     }
     deployExiting(cur) {
         // merge trains that are leaving the same edge
         const groupMap = new Map();
-        for (let t12 of this.#exitingTrains)groupMap.setDefault(t12.dir, ()=>[]).push(t12);
+        for (let t of this._exitingTrains)groupMap.setDefault(t.dir, ()=>[]).push(t);
         for (let [d, trains] of groupMap){
             const nb = cur.neighbor(d);
-            let t13;
+            let t3;
             if (trains.length > 1) {
-                const tc = trains.map((t15)=>t15.color);
-                t13 = {
+                const tc = trains.map((t)=>t.color);
+                t3 = {
                     dir: d,
-                    color: Color.mixMany(tc)
+                    color: (0, _values.Color).mixMany(tc)
                 };
-                this.#trackMerge(trains, t13, Step.Deploy);
-            } else t13 = trains[0];
-            if (nb?.accepts(t13)) nb.state.trainState.#enteringTrains.push(t13);
-            else this.#trackMove(t13, TRAIN_CRASH, Step.Deploy);
+                this._trackMerge(trains, t3, Step.Deploy);
+            } else t3 = trains[0];
+            if (nb?.accepts(t3)) nb.state.trainState._enteringTrains.push(t3);
+            else this._trackMove(t3, TRAIN_CRASH, Step.Deploy);
         }
-        this.#exitingTrains.length = 0;
+        this._exitingTrains.length = 0;
     }
     /**
      * After all the steps have been computed, this should be called.
      */ finalize() {
         // do train collapsing here
-        this.#trains.push(...this.#enteringTrains);
-        this.#enteringTrains = [];
+        this._trains.push(...this._enteringTrains);
+        this._enteringTrains = [];
     }
-     #trackMerge(preimage, image, step) {
+    _trackMerge(preimage, image, step) {
         // if only 1 preimage, this is just an extension of the previous move
         if (preimage.length == 1) {
-            const im = this.tileMoves.find((m3)=>m3.move == "pass" && m3.image == preimage[0]);
+            const im = this.tileMoves.find((m)=>m.move == "pass" && m.image == preimage[0]);
             if (im) im.image = image;
-            else this.#trackMove(preimage[0], [
+            else this._trackMove(preimage[0], [
                 image
             ], step);
         } else this.tileMoves.push({
@@ -39838,66 +39872,66 @@ class TrainState {
             image
         });
     }
-     #trackMove(preimage1, image1, step1) {
+    _trackMove(preimage, image, step) {
         let move;
-        if (image1 === TRAIN_CRASH) move = {
-            step: step1,
+        if (image === TRAIN_CRASH) move = {
+            step,
             move: "destroy",
-            preimage: preimage1,
+            preimage,
             crashed: true
         };
-        else if (image1.length == 0) move = {
-            step: step1,
+        else if (image.length == 0) move = {
+            step,
             move: "destroy",
-            preimage: preimage1,
+            preimage,
             crashed: false
         };
-        else if (image1.length == 1) move = {
-            step: step1,
+        else if (image.length == 1) move = {
+            step,
             move: "pass",
-            preimage: preimage1,
-            image: image1[0]
+            preimage,
+            image: image[0]
         };
         else move = {
-            step: step1,
+            step,
             move: "split",
-            preimage: preimage1,
-            image: image1
+            preimage,
+            image
         };
         this.tileMoves.push(move);
         return move;
     }
-     #normalizeImage(image2) {
-        image2 ??= [];
-        if (image2 === TRAIN_CRASH) return TRAIN_CRASH;
-        if (!(image2 instanceof Array)) image2 = [
-            image2
+    _normalizeImage(image) {
+        image ??= [];
+        if (image === TRAIN_CRASH) return TRAIN_CRASH;
+        if (!(image instanceof Array)) image = [
+            image
         ];
-        return image2;
+        return image;
     }
-     #computeImage(preimage2, f) {
-        return f ? this.#normalizeImage(f(preimage2)) : [
-            preimage2
+    _computeImage(preimage, f) {
+        return f ? this._normalizeImage(f(preimage)) : [
+            preimage
         ];
     }
     /**
      * Take out one train from the list of trains and send it to a neighboring tile.
      * @param f a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
-     */ deployOne(f1) {
-        const preimage3 = this.#trains.shift();
-        if (preimage3) {
+     */ deployOne(f) {
+        const preimage = this._trains.shift();
+        if (preimage) {
             // convert image result into Train[]
-            let image3 = this.#computeImage(preimage3, f1);
-            this.sendToExit(preimage3, image3);
+            let image = this._computeImage(preimage, f);
+            this.sendToExit(preimage, image);
         }
     }
     /**
      * Take out every train from the list of trains and send them to neighboring tiles.
      * @param f  a function which modifies how the train exits the tile.
      *     The direction of the train designates which neighbor the train goes to.
-     */ deployAll(f2) {
-        while(this.#trains.length > 0)this.deployOne(f2);
+     */ deployAll(f) {
+        while(this._trains.length > 0)this.deployOne(f);
     }
 }
 class Tile {
@@ -39921,7 +39955,7 @@ class StatefulTile extends Tile {
      */ serChar = " ";
     constructor(...actives){
         super();
-        this.actives = new Dir.Flags(actives);
+        this.actives = new (0, _values.Dir).Flags(actives);
     }
     /**
      * @returns a default state initialization, for any StatefulTile<TileState>
@@ -39940,7 +39974,7 @@ class StatefulTile extends Tile {
      * @param train
      * @returns true if the train can enter
      */ accepts(train) {
-        return this.actives.has(Dir.flip(train.dir));
+        return this.actives.has((0, _values.Dir).flip(train.dir));
     }
 }
 let StageTile;
@@ -39956,8 +39990,8 @@ let StageTile;
     })(Order1 = StageTile1.Order || (StageTile1.Order = {}));
 })(StageTile || (StageTile = {}));
 (function(Tile1) {
-    function isStageTile(t16) {
-        return nonNullable(t16) && "serChar" in t16;
+    function isStageTile(t) {
+        return nonNullable(t) && "serChar" in t;
     }
     Tile1.isStageTile = isStageTile;
     class Outlet extends StatefulTile {
@@ -39980,8 +40014,8 @@ let StageTile;
         step(cur) {
             // While the outlet has trains, deploy one.
             this.state.trainState.deployOne();
-            cur.updateRender(0, (con7)=>{
-                const symbols = con7.getChildByName("symbols", false);
+            cur.updateRender(0, (con)=>{
+                const symbols = con.getChildByName("symbols", false);
                 symbols.removeChildAt(0).destroy({
                     children: true
                 });
@@ -39990,19 +40024,19 @@ let StageTile;
         toJSON() {
             return {
                 out: this.out,
-                colors: this.colors.map((c)=>Color[c])
+                colors: this.colors.map((c)=>(0, _values.Color)[c])
             };
         }
         static fromJSON({ out , colors  }) {
-            const outR = Dir.parse(out);
-            const colorsR = colors.map(Color.parse);
+            const outR = (0, _values.Dir).parse(out);
+            const colorsR = colors.map((0, _values.Color).parse);
             return new Outlet(outR, colorsR);
         }
-        render(resources, size1) {
-            const con8 = new _pixiJs.Container();
+        render(resources, size) {
+            const con = new _pixiJs.Container();
             const [box, inner] = _components.box(resources, {
                 ratio: _components.Ratios.Box.Outline.OUTLET
-            }, size1);
+            }, size);
             const center = [
                 Math.floor(box.width / 2),
                 Math.floor(box.height / 2)
@@ -40010,27 +40044,27 @@ let StageTile;
             const symbols = _components.symbolSet(resources, this.colors, [
                 center,
                 inner,
-                size1
+                size
             ], "plus");
             symbols.name = "symbols";
-            const exit = _components.passiveSide(resources, this.out, size1);
-            con8.addChild(exit, box, symbols);
-            return con8;
+            const exit = _components.passiveSide(resources, this.out, size);
+            con.addChild(exit, box, symbols);
+            return con;
         }
         modal() {
-            const [hexGrid, trainList, clrs] = Modal.pairedTrainList({
+            const [hexGrid, trainList, clrs] = (0, _values.Modal).pairedTrainList({
                 trains: this.colors
             });
-            const trio = Modal.trioBox(Modal.box(trainList), Modal.box(Modal.dirEditor(1, {
+            const trio = (0, _values.Modal).trioBox((0, _values.Modal).box(trainList), (0, _values.Modal).box((0, _values.Modal).dirEditor(1, {
                 actives: [
                     this.out
                 ]
-            })), Modal.box(hexGrid));
+            })), (0, _values.Modal).box(hexGrid));
             return {
                 inner: [
                     trio
                 ],
-                parse: ({ dirs  })=>new Outlet(dirs?.[0] ?? Dir.Right, clrs)
+                parse: ({ dirs  })=>new Outlet(dirs?.[0] ?? (0, _values.Dir).Right, clrs)
             };
         }
         clone() {
@@ -40060,8 +40094,8 @@ let StageTile;
                 let i = remaining.indexOf(train.color);
                 if (i != -1) {
                     remaining.splice(i, 1);
-                    cur.updateRender(0.5, (con9)=>{
-                        const targets = con9.getChildByName("targets");
+                    cur.updateRender(0.5, (con)=>{
+                        const targets = con.getChildByName("targets");
                         targets.removeChildAt(i).destroy({
                             children: true
                         });
@@ -40073,22 +40107,22 @@ let StageTile;
         }
         toJSON() {
             return {
-                targets: this.targets.map((c)=>Color[c]),
+                targets: this.targets.map((c)=>(0, _values.Color)[c]),
                 actives: this.actives.bits
             };
         }
         static fromJSON({ targets , actives  }) {
-            const targetsR = targets.map(Color.parse);
+            const targetsR = targets.map((0, _values.Color).parse);
             const entrances = [
-                ...new Dir.Flags(actives)
+                ...new (0, _values.Dir).Flags(actives)
             ];
             return new Goal(entrances, targetsR);
         }
-        render(resources, size2) {
-            const con10 = new _pixiJs.Container();
+        render(resources, size) {
+            const con = new _pixiJs.Container();
             const [box, inner] = _components.box(resources, {
-                color: Palette.Box.Outline.Goal
-            }, size2);
+                color: (0, _values.Palette).Box.Outline.Goal
+            }, size);
             const center = [
                 Math.floor(box.width / 2),
                 Math.floor(box.height / 2)
@@ -40096,27 +40130,27 @@ let StageTile;
             const symbols = _components.symbolSet(resources, this.targets, [
                 center,
                 inner,
-                size2
+                size
             ], "circle");
             symbols.name = "targets";
-            let activeSides = Array.from(this.actives, (e7)=>_components.activeSide(resources, e7, size2));
-            con10.addChild(...activeSides, box, symbols);
-            return con10;
+            let activeSides = Array.from(this.actives, (e)=>_components.activeSide(resources, e, size));
+            con.addChild(...activeSides, box, symbols);
+            return con;
         }
         modal() {
-            const [hexGrid, trainList, clrs] = Modal.pairedTrainList({
+            const [hexGrid, trainList, clrs] = (0, _values.Modal).pairedTrainList({
                 trains: this.targets
             });
-            const trio = Modal.trioBox(Modal.box(trainList), Modal.box(Modal.dirEditor({
+            const trio = (0, _values.Modal).trioBox((0, _values.Modal).box(trainList), (0, _values.Modal).box((0, _values.Modal).dirEditor({
                 min: 1,
                 max: 4
-            }, this)), Modal.box(hexGrid));
+            }, this)), (0, _values.Modal).box(hexGrid));
             return {
                 inner: [
                     trio
                 ],
                 parse: ({ dirs  })=>new Goal(dirs ?? [
-                        Dir.Right
+                        (0, _values.Dir).Right
                     ], clrs)
             };
         }
@@ -40143,7 +40177,7 @@ let StageTile;
             // Paint the train and output it.
             this.state.trainState.deployAll((train)=>{
                 // Get the output direction.
-                let outDir = this.actives.dirExcluding(Dir.flip(train.dir));
+                let outDir = this.actives.dirExcluding((0, _values.Dir).flip(train.dir));
                 return {
                     color: this.color,
                     dir: outDir
@@ -40153,12 +40187,12 @@ let StageTile;
         toJSON() {
             return {
                 actives: this.actives.bits,
-                color: Color[this.color]
+                color: (0, _values.Color)[this.color]
             };
         }
         static fromJSON({ actives , color  }) {
-            const colorR = Color.parse(color);
-            const activesR = new Dir.Flags(actives);
+            const colorR = (0, _values.Color).parse(color);
+            const activesR = new (0, _values.Dir).Flags(actives);
             if (activesR.ones != 2) throw new TypeError("Painter must have 2 active sides");
             const [a1, a2] = activesR;
             return new Painter([
@@ -40166,19 +40200,19 @@ let StageTile;
                 a2
             ], colorR);
         }
-        render(resources, size3) {
-            const con11 = new _pixiJs.Graphics();
+        render(resources, size) {
+            const con = new _pixiJs.Graphics();
             const [box] = _components.box(resources, {
-                color: Palette.Train[this.color]
-            }, size3);
-            const painter = _components.painterSymbol(resources, this.color, size3);
-            const activeSides = Array.from(this.actives, (e8)=>_components.activeSide(resources, e8, size3));
-            con11.addChild(...activeSides, box, painter);
-            return con11;
+                color: (0, _values.Palette).Train[this.color]
+            }, size);
+            const painter = _components.painterSymbol(resources, this.color, size);
+            const activeSides = Array.from(this.actives, (e)=>_components.activeSide(resources, e, size));
+            con.addChild(...activeSides, box, painter);
+            return con;
         }
         modal() {
-            const ls = Modal.box(Modal.dirEditor(2, this));
-            const rs = Modal.box(Modal.hexGrid("radio", {
+            const ls = (0, _values.Modal).box((0, _values.Modal).dirEditor(2, this));
+            const rs = (0, _values.Modal).box((0, _values.Modal).hexGrid("radio", {
                 colors: [
                     this.color
                 ]
@@ -40192,11 +40226,11 @@ let StageTile;
                     let d1, d2;
                     if (dirs && dirs.length >= 2) [d1, d2] = dirs;
                     else [d1, d2] = [
-                        Dir.Left,
-                        Dir.Right
+                        (0, _values.Dir).Left,
+                        (0, _values.Dir).Right
                     ];
                     const [clr] = gridClrs ?? [
-                        Color.Red
+                        (0, _values.Color).Red
                     ];
                     return new Painter([
                         d1,
@@ -40222,8 +40256,8 @@ let StageTile;
         }
         get sides() {
             return [
-                Dir.rotate(this.active, 1),
-                Dir.rotate(this.active, 3), 
+                (0, _values.Dir).rotate(this.active, 1),
+                (0, _values.Dir).rotate(this.active, 3), 
             ];
         }
         createState() {
@@ -40233,7 +40267,7 @@ let StageTile;
             const [ldir, rdir] = this.sides;
             this.state.trainState.deployAll((train)=>{
                 // Split train's colors, pass the new trains through the two passive sides.
-                const [lclr, rclr] = Color.split(train.color);
+                const [lclr, rclr] = (0, _values.Color).split(train.color);
                 return [
                     {
                         color: lclr,
@@ -40252,29 +40286,29 @@ let StageTile;
             };
         }
         static fromJSON({ actives  }) {
-            const af = new Dir.Flags(actives);
+            const af = new (0, _values.Dir).Flags(actives);
             if (af.ones != 1) throw new TypeError("Splitter must have 1 active side");
             const [active] = af;
             return new Splitter(active);
         }
-        render(resources, size4) {
-            const con12 = new _pixiJs.Container();
-            const [box] = _components.box(resources, {}, size4);
-            con12.addChild(box);
-            const splitter = _components.splitterSymbol(resources, this.active, size4);
+        render(resources, size) {
+            const con = new _pixiJs.Container();
+            const [box] = _components.box(resources, {}, size);
+            con.addChild(box);
+            const splitter = _components.splitterSymbol(resources, this.active, size);
             const sides = [
-                _components.activeSide(resources, this.active, size4),
-                ...this.sides.map((s)=>_components.passiveSide(resources, s, size4))
+                _components.activeSide(resources, this.active, size),
+                ...this.sides.map((s)=>_components.passiveSide(resources, s, size))
             ];
-            con12.addChild(...sides, box, splitter);
-            return con12;
+            con.addChild(...sides, box, splitter);
+            return con;
         }
         modal() {
             return {
                 inner: [
-                    Modal.dirEditor(1, this)
+                    (0, _values.Modal).dirEditor(1, this)
                 ],
-                parse: ({ dirs  })=>new Splitter(dirs?.[0] ?? Dir.Left)
+                parse: ({ dirs  })=>new Splitter(dirs?.[0] ?? (0, _values.Dir).Left)
             };
         }
         clone() {
@@ -40285,16 +40319,16 @@ let StageTile;
     class Blank extends Tile {
         serChar = " ";
         railable = true;
-        render(_resources, size5, drag) {
-            const con13 = new _pixiJs.Container();
+        render(_resources, size, drag) {
+            const con = new _pixiJs.Container();
             if (drag) {
                 const sprite = new _pixiJs.Sprite(_pixiJs.Texture.WHITE);
-                sprite.width = size5;
-                sprite.height = size5;
-                sprite.tint = Palette.BG;
-                con13.addChild(sprite);
-            } else con13.visible = false;
-            return con13;
+                sprite.width = size;
+                sprite.height = size;
+                sprite.tint = (0, _values.Palette).BG;
+                con.addChild(sprite);
+            } else con.visible = false;
+            return con;
         }
         clone() {
             return new Blank();
@@ -40303,10 +40337,10 @@ let StageTile;
     Tile1.Blank = Blank;
     class Rock extends Tile {
         serChar = "r";
-        render(resources, size6) {
-            const con14 = new _pixiJs.Container();
-            con14.addChild(_components.rock(resources, size6));
-            return con14;
+        render(resources, size) {
+            const con = new _pixiJs.Container();
+            con.addChild(_components.rock(resources, size));
+            return con;
         }
         clone() {
             return new Rock();
@@ -40340,7 +40374,7 @@ let StageTile;
             ]);
         }
         static redirect(d, path) {
-            let enterDir = Dir.flip(d);
+            let enterDir = (0, _values.Dir).flip(d);
             // A train that entered through one entrance exits through the other entrance
             if (path.has(enterDir)) return path.dirExcluding(enterDir);
         // invalid state if not in the path
@@ -40361,7 +40395,7 @@ let StageTile;
         }
         step(cur) {
             const trainState = this.state.trainState;
-            const color = Color.mixMany(trainState.trains.map((t17)=>t17.color)); // there has to be trains if step was called
+            const color = (0, _values.Color).mixMany(trainState.trains.map((t)=>t.color)); // there has to be trains if step was called
             trainState.deployAll(({ dir  })=>{
                 const newDir = Rail.redirect(dir, this.actives);
                 if (typeof newDir === "number") return {
@@ -40372,12 +40406,12 @@ let StageTile;
             });
             this.updateContainer(cur);
         }
-        render(resources, size7) {
-            const con15 = new _pixiJs.Container();
-            con15.addChild(_components.rail(resources, [
+        render(resources, size) {
+            const con = new _pixiJs.Container();
+            con.addChild(_components.rail(resources, [
                 ...this.actives
-            ], size7));
-            return con15;
+            ], size));
+            return con;
         }
         top() {
             return this;
@@ -40389,13 +40423,12 @@ let StageTile;
     }
     Tile1.SingleRail = SingleRail;
     class DoubleRail extends Rail {
-        #overlapping;
         constructor(paths){
             let [e0, e1] = paths;
             if (e0.equals(e1)) throw new Error("Rails match");
             super(e0.or(e1));
             this.paths = paths;
-            this.#overlapping = [
+            this._overlapping = [
                 ...this.actives
             ].length < 4;
         }
@@ -40418,23 +40451,23 @@ let StageTile;
                 [],
                 []
             ];
-            for (let t18 of trains1){
-                const i = paths.findIndex((p)=>p.has(Dir.flip(t18.dir)));
-                if (i !== -1) pathTrains[i].push(t18);
+            for (let t4 of trains1){
+                const i = paths.findIndex((p)=>p.has((0, _values.Dir).flip(t4.dir)));
+                if (i !== -1) pathTrains[i].push(t4);
             }
             let pathColors;
-            if (!this.#overlapping && this.crossesOver) {
-                const color = Color.mixMany(trains1.map((t19)=>t19.color)); // there has to be trains if step was called
+            if (!this._overlapping && this.crossesOver) {
+                const color = (0, _values.Color).mixMany(trains1.map((t)=>t.color)); // there has to be trains if step was called
                 pathColors = [
                     color,
                     color
                 ];
             } else pathColors = pathTrains.map((trains)=>{
-                const clrs = trains.map((t20)=>t20.color);
-                if (clrs.length > 0) return Color.mixMany(clrs);
+                const clrs = trains.map((t)=>t.color);
+                if (clrs.length > 0) return (0, _values.Color).mixMany(clrs);
             });
             trainState.deployAll(({ dir  })=>{
-                const i = paths.findIndex((p)=>p.has(Dir.flip(dir)));
+                const i = paths.findIndex((p)=>p.has((0, _values.Dir).flip(dir)));
                 if (i !== -1) {
                     const exitDir = Rail.redirect(dir, paths[i]);
                     if (typeof exitDir === "number") return {
@@ -40448,15 +40481,15 @@ let StageTile;
             state.topIndex %= 2;
             this.updateContainer(cur);
         }
-        render(resources, size8) {
-            const con16 = new _pixiJs.Container();
+        render(resources, size) {
+            const con = new _pixiJs.Container();
             const rails = this.paths.map((p)=>_components.rail(resources, [
                     ...p
-                ], size8));
-            if (this.#overlapping) rails[1].tint = Palette.Shadow;
+                ], size));
+            if (this._overlapping) rails[1].tint = (0, _values.Palette).Shadow;
             rails.reverse();
-            con16.addChild(...rails);
-            return con16;
+            con.addChild(...rails);
+            return con;
         }
         /**
          * @returns the flipped version of the double rail, where the other rail is on top
@@ -40472,20 +40505,20 @@ let StageTile;
             return new Tile.SingleRail(d1, d2);
         }
         get crossesOver() {
-            if (this.#overlapping) return true;
+            if (this._overlapping) return true;
             const [[a1, a2], [b1, b2]] = this.paths;
             // if true, this is the + rail
             // if false, this is the wavy rail.
             return (a2 - a1) % 2 == 0 && (b2 - b1) % 2 == 0;
         }
         updateContainer(cur) {
-            cur.updateRender(1, (con17)=>{
-                const [c1, c2] = con17.children;
+            cur.updateRender(1, (con)=>{
+                const [c1, c2] = con.children;
                 [c1.tint, c2.tint] = [
                     c2.tint,
                     c1.tint
                 ];
-                con17.swapChildren(c1, c2);
+                con.swapChildren(c1, c2);
             });
         }
         clone() {
@@ -40506,7 +40539,678 @@ let StageTile;
     var flatDeserChars = Tile1.flatDeserChars = deserChars;
 })(Tile || (Tile = {}));
 
-},{"pixi.js":"eykev","./graphics/components":"jwhvA","./graphics/grid":"lwUfs","./ext/array":"ejYUE","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"jwhvA":[function(require,module,exports) {
+},{"./values":"bqD2l","pixi.js":"eykev","./graphics/components":"jwhvA","./graphics/grid":"lwUfs","./ext/array":"ejYUE","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"bqD2l":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "Color", ()=>Color);
+parcelHelpers.export(exports, "Dir", ()=>Dir);
+parcelHelpers.export(exports, "Palette", ()=>Palette);
+parcelHelpers.export(exports, "Focus", ()=>Focus);
+parcelHelpers.export(exports, "Grids", ()=>Grids);
+parcelHelpers.export(exports, "Modal", ()=>Modal);
+let Color;
+(function(Color1) {
+    Color1[Color1[// primaries
+    "Red"] = 0b001] = "Red";
+    Color1[Color1["Yellow"] = 0b010] = "Yellow";
+    Color1[Color1["Blue"] = 0b100] = "Blue";
+    Color1[Color1[// secondaries
+    "Orange"] = 0b011] = "Orange";
+    Color1[Color1["Green"] = 0b110] = "Green";
+    Color1[Color1["Purple"] = 0b101] = "Purple";
+    Color1[Color1["Brown"] = 0b111] = "Brown";
+})(Color || (Color = {}));
+(function(Color2) {
+    function isSecondary(c) {
+        // https://stackoverflow.com/a/600306
+        return !!(c & c - 1);
+    }
+    function mix(a, b) {
+        a &= 0b111;
+        b &= 0b111;
+        // C + C = C (for any color C)
+        if (a === b) return a;
+        // S + C = Brown (for any color C, any secondary color S)
+        if (isSecondary(a) || isSecondary(b)) return Color.Brown;
+        return a | b;
+    }
+    Color2.mix = mix;
+    function mixMany(clrs) {
+        switch(clrs.length){
+            case 0:
+                return undefined;
+            case 1:
+                return clrs[0];
+            case 2:
+                return mix(clrs[0], clrs[1]);
+            default:
+                // If the colors are all the same, return that color.
+                // Otherwise, return Brown.
+                let mixes = new Set(clrs);
+                if (mixes.size === 1) return [
+                    ...mixes
+                ][0];
+                return Color.Brown;
+        }
+    }
+    Color2.mixMany = mixMany;
+    function split(a) {
+        switch(a){
+            case Color.Purple:
+                return [
+                    Color.Blue,
+                    Color.Red
+                ];
+            case Color.Green:
+                return [
+                    Color.Blue,
+                    Color.Yellow
+                ];
+            case Color.Orange:
+                return [
+                    Color.Yellow,
+                    Color.Red
+                ];
+            default:
+                return [
+                    a,
+                    a
+                ];
+        }
+    }
+    Color2.split = split;
+    function parse(name) {
+        // @ts-ignore
+        let clr = Color[name];
+        if (typeof clr === "number") return clr;
+        throw new TypeError(`Invalid color ${name}`);
+    }
+    Color2.parse = parse;
+})(Color || (Color = {}));
+let Dir;
+(function(Dir1) {
+    Dir1[Dir1["Right"] = 0] = "Right";
+    Dir1[Dir1["Up"] = 1] = "Up";
+    Dir1[Dir1["Left"] = 2] = "Left";
+    Dir1[Dir1["Down"] = 3] = "Down";
+})(Dir || (Dir = {}));
+(function(Dir2) {
+    class Flags {
+        static _MAX_BITS = 4;
+        constructor(dirs = []){
+            if (dirs instanceof Flags) this._flags = dirs._flags;
+            else if (typeof dirs === "number") this._flags = dirs;
+            else this._flags = dirs.reduce((acc, cv)=>acc | 1 << cv, 0b0000);
+            let f = this._flags;
+            if (f < 0 || f >= 1 << Flags._MAX_BITS) throw new Error("Invalid direction entered");
+        }
+        get bits() {
+            return this._flags;
+        }
+        get ones() {
+            return Array.from(this, ()=>1).reduce((acc, cv)=>acc + cv, 0);
+        }
+        has(dir) {
+            return !!(this._flags & 1 << dir);
+        }
+        // only works given all inputs are valid and flags only has 2 dirs in it
+        dirExcluding(dir) {
+            let bits = this._flags ^ 1 << dir;
+            return 31 - Math.clz32(bits);
+        }
+        equals(df) {
+            return this._flags === df._flags;
+        }
+        or(df) {
+            let out = new Flags();
+            out._flags = this._flags | df._flags;
+            return out;
+        }
+        and(df) {
+            let out = new Flags();
+            out._flags = this._flags & df._flags;
+            return out;
+        }
+        *[Symbol.iterator]() {
+            let f = this._flags;
+            let i = 0;
+            while(f > 0){
+                if (f & 0b1) yield i;
+                i++;
+                f >>= 1;
+            }
+        }
+    }
+    Dir2.Flags = Flags;
+    function rotate(d, n = 1) {
+        return (d + n) % 4;
+    }
+    Dir2.rotate = rotate;
+    function flip(d) {
+        return rotate(d, 2);
+    }
+    Dir2.flip = flip;
+    function shift([x, y], d, n = 1) {
+        switch(d){
+            case Dir.Right:
+                return [
+                    x + n,
+                    y
+                ];
+            case Dir.Up:
+                return [
+                    x,
+                    y - n
+                ];
+            case Dir.Left:
+                return [
+                    x - n,
+                    y
+                ];
+            case Dir.Down:
+                return [
+                    x,
+                    y + n
+                ];
+        }
+    }
+    Dir2.shift = shift;
+    function shifts(pos, n = 1, ...d) {
+        return d.reduce((acc, cv)=>shift(acc, cv, n), pos);
+    }
+    Dir2.shifts = shifts;
+    function difference([x1, y1], [x2, y2]) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        if (dx > 0 && dy == 0) return Dir.Right;
+        if (dx == 0 && dy < 0) return Dir.Up;
+        if (dx < 0 && dy == 0) return Dir.Left;
+        if (dx == 0 && dy > 0) return Dir.Down;
+        return undefined;
+    }
+    Dir2.difference = difference;
+    function edge(d, size = 1) {
+        const mid = size / 2;
+        const center = [
+            mid,
+            mid
+        ];
+        return typeof d === "number" ? shift(center, d, mid) : center;
+    }
+    Dir2.edge = edge;
+    function parse(index) {
+        let d = Dir[index];
+        if (typeof d === "string") return index;
+        throw new TypeError(`Invalid direction ${index}`);
+    }
+    Dir2.parse = parse;
+})(Dir || (Dir = {}));
+const Palette = {
+    Train: {
+        [Color.Red]: 0xEE3030,
+        [Color.Orange]: 0xEE8F30,
+        [Color.Yellow]: 0xEFEF3F,
+        [Color.Green]: 0x36EE30,
+        [Color.Blue]: 0x3056EE,
+        [Color.Purple]: 0xB530EE,
+        [Color.Brown]: 0x9C6D2F
+    },
+    BG: 0x2F2F2F,
+    Grid: {
+        BG: 0x1C1D22,
+        Line: 0x3D4E4D
+    },
+    Shadow: 0x7F7F7F,
+    Hover: 0xD7FFE7,
+    Box: {
+        BG: 0x252525,
+        Outline: {
+            Default: 0xB8B8B8,
+            Goal: 0xDDDDDD
+        }
+    },
+    Rail: {
+        Inner: 0xB3B3B3,
+        Outer: 0xB3B3B3
+    }
+};
+let Focus;
+(function(Focus1) {
+    function intoAbsolute(f) {
+        const [c1, d] = f;
+        if (typeof d === "undefined") return [
+            c1,
+            d
+        ];
+        return [
+            c1,
+            Dir.shift(c1, d)
+        ];
+    }
+    Focus1.intoAbsolute = intoAbsolute;
+    function intoRelative(f) {
+        const [c1, c2] = f;
+        if (typeof c2 === "undefined") return [
+            [
+                c1,
+                c2
+            ]
+        ];
+        // if d is Left, c2 is left of c1
+        const d = Dir.difference(c1, c2);
+        const relatives = [
+            [
+                c1,
+                d
+            ]
+        ];
+        if (typeof d !== "undefined") relatives.push([
+            c2,
+            Dir.flip(d)
+        ]);
+        return relatives;
+    }
+    Focus1.intoRelative = intoRelative;
+    function isRelative(f) {
+        return typeof f[1] === "number";
+    }
+    function equals(f1, f2) {
+        if (isRelative(f1)) f1 = intoAbsolute(f1);
+        if (isRelative(f2)) f2 = intoAbsolute(f2);
+        const [f1a, f1b] = f1;
+        const [f2a, f2b] = f2;
+        return f1a === f2a && f1b === f2b || f1a === f2b && f2a === f1b;
+    }
+    Focus1.equals = equals;
+    class FocusMap {
+        _map = new Map();
+        constructor(grid){
+            this._grid = grid;
+        }
+        _realKey(k) {
+            if (isRelative(k)) k = intoAbsolute(k);
+            const [c1, c2] = k;
+            const i1 = Grids.cellToIndex(this._grid, c1);
+            if (typeof c2 === "undefined") return `${i1}_${undefined}`;
+            const i2 = Grids.cellToIndex(this._grid, c2);
+            if (i1 > i2) return `${i2}_${i1}`;
+            return `${i1}_${i2}`;
+        }
+        get(key) {
+            return this._map.get(this._realKey(key))?.[1];
+        }
+        has(key) {
+            return this._map.has(this._realKey(key));
+        }
+        set(key, value) {
+            if (isRelative(key)) key = intoAbsolute(key);
+            this._map.set(this._realKey(key), [
+                key,
+                value
+            ]);
+            return this;
+        }
+        clear() {
+            this._map.clear();
+        }
+        delete(key) {
+            return this._map.delete(this._realKey(key));
+        }
+        forEach(callbackfn // primaries
+        , thisArg) {
+            this._map.forEach((v)=>callbackfn(v[1], v[0], this), thisArg);
+        }
+        get size() {
+            return this._map.size;
+        }
+        entries() {
+            return this._map.values();
+        }
+        *keys() {
+            for (let [k] of this._map.values())yield k;
+        }
+        *values() {
+            for (let [_, v] of this._map.values())yield v;
+        }
+        popItem(k) {
+            return this._map.popItem(this._realKey(k))?.[1];
+        }
+        setDefault(k, def) {
+            const key = isRelative(k) ? intoAbsolute(k) : k;
+            return this._map.setDefault(this._realKey(key), ()=>[
+                    key,
+                    def()
+                ])[1];
+        }
+        [Symbol.iterator]() {
+            return this.entries();
+        }
+        get [Symbol.toStringTag]() {
+            return "FocusMap";
+        }
+    }
+    Focus1.FocusMap = FocusMap;
+})(Focus || (Focus = {}));
+let Grids;
+(function(Grids1) {
+    var TILE_GAP = Grids1.TILE_GAP = 1;
+    function gridSize1({ cellSize , cellLength  }) {
+        return cellSize * cellLength + TILE_GAP * (cellLength + 1);
+    }
+    Grids1.gridSize = gridSize1;
+    function optimalCellSize({ cellLength  }, gridSize) {
+        const cellSpace = gridSize - TILE_GAP * (cellLength + 1);
+        return Math.floor(cellSpace / cellLength);
+    }
+    Grids1.optimalCellSize = optimalCellSize;
+    function positionToCell({ cellSize , cellLength  }, { x , y  }) {
+        const DELTA = cellSize + TILE_GAP;
+        let [cx, cy] = [
+            Math.floor(x / DELTA),
+            Math.floor(y / DELTA)
+        ];
+        return [
+            Math.max(0, Math.min(cx, cellLength - 1)),
+            Math.max(0, Math.min(cy, cellLength - 1))
+        ];
+    }
+    Grids1.positionToCell = positionToCell;
+    function cellToPosition({ cellSize  }, [x, y], shift = [
+        0,
+        0
+    ]) {
+        const DELTA = cellSize + TILE_GAP;
+        const [dx, dy] = shift;
+        return {
+            x: TILE_GAP + DELTA * x + dx,
+            y: TILE_GAP + DELTA * y + dy
+        };
+    }
+    Grids1.cellToPosition = cellToPosition;
+    function cellToIndex({ cellLength  }, [x, y]) {
+        return y * cellLength + x;
+    }
+    Grids1.cellToIndex = cellToIndex;
+    function indexToCell({ cellLength  }, i) {
+        return [
+            i % cellLength,
+            Math.floor(i / cellLength)
+        ];
+    }
+    Grids1.indexToCell = indexToCell;
+    function inBounds({ cellLength  }, x, y) {
+        return [
+            x,
+            y
+        ].every((t)=>0 <= t && t < cellLength);
+    }
+    Grids1.inBounds = inBounds;
+    function assertInBounds(grid, x, y) {
+        if (!inBounds(grid, x, y)) throw new Error(`Position is not located within tile: (${x}, ${y})`);
+    }
+    Grids1.assertInBounds = assertInBounds;
+})(Grids || (Grids = {}));
+let Modal;
+(function(Modal1) {
+    const Templates = {
+        activesGrid: document.querySelector("template#modal-actives-grid"),
+        hexGrid: document.querySelector("template#modal-hex-color-grid"),
+        trainList: document.querySelector("template#modal-train-list"),
+        tlSlot: document.querySelector("template#modal-tl-slot")
+    };
+    /**
+     * Clones a template.
+     * @param template Template ID to clone
+     * @param fillSlot Method to determine how <slot> elements should be changed
+     * @returns the cloned template
+     */ function cloneTemplate(template, fillSlot) {
+        const frag = Templates[template].content.cloneNode(true);
+        fillSlot ??= ()=>{};
+        const slots = frag.querySelectorAll("slot");
+        const slotCounter = new Map();
+        for (let s of slots){
+            const name = s.name;
+            const count = slotCounter.setDefault(name, ()=>0);
+            const ns = fillSlot(name, count, s);
+            if (ns) s.replaceWith(ns);
+            else s.remove();
+            slotCounter.set(name, count + 1);
+        }
+        return frag;
+    }
+    /**
+     * Create a label with a custom display (rather than the regular input button)
+     * @param options properties for the input element
+     * @param innerLabel the custom display
+     * @returns this label
+     */ function label1(options, innerLabel) {
+        const { inputType , name , checked  } = options;
+        const label = document.createElement("label");
+        label.classList.add("radio-label");
+        const input = document.createElement("input");
+        input.name = name;
+        input.type = inputType;
+        if (checked) input.checked = checked;
+        label.append(input, innerLabel());
+        return label;
+    }
+    function dirEditor(allow, data) {
+        if (typeof allow === "number") allow = {
+            min: allow,
+            max: allow
+        };
+        const { min , max  } = allow;
+        if (allow.min > allow.max) throw new Error(`Invalid argument for allow: {min: ${allow.min}, max: ${allow.max}}`);
+        const useRadio = allow.min === 1 && allow.max === 1;
+        const actives = Array.from(data?.actives ?? []);
+        const nodes = cloneTemplate("activesGrid", (name, i)=>{
+            return label1({
+                inputType: useRadio ? "radio" : "checkbox",
+                name,
+                checked: actives.includes(i)
+            }, ()=>{
+                // TODO, map to user's keyboard
+                const key = element1("div", [
+                    "key"
+                ], "DWAS"[i]);
+                const div = element1("div", [
+                    "keyed",
+                    "btn"
+                ], `${i + 1}`, key);
+                return div;
+            });
+        });
+        if (useRadio) return nodes;
+        if (allow.min === 0 && allow.max === 4) return nodes;
+        const btns = nodes.querySelectorAll("input");
+        const checked = Array.from(btns).filter((b)=>b.checked);
+        btns.forEach((el)=>el.addEventListener("click", (e)=>{
+                if (el.checked) {
+                    if (!checked.includes(el)) checked.push(el);
+                } else if (checked.length === min) e.preventDefault();
+                else {
+                    const i = checked.indexOf(el);
+                    if (i !== -1) checked.splice(i, 1);
+                }
+                if (checked.length > max) checked.shift().checked = false;
+            }));
+        return nodes;
+    }
+    Modal1.dirEditor = dirEditor;
+    /**
+     * Fast element util.
+     * @param element Element tag to create
+     * @param classes Classes on the div
+     * @param children Children of the div.
+     * @returns `<div>`
+     */ function element1(element, classes, ...children) {
+        const el = document.createElement(element);
+        el.classList.add(...classes);
+        el.append(...children);
+        return el;
+    }
+    function box(...children) {
+        return element1("div", [
+            "modal-box"
+        ], ...children);
+    }
+    Modal1.box = box;
+    function trioBox(...children) {
+        return element1("div", [
+            "modal-trio"
+        ], ...children);
+    }
+    Modal1.trioBox = trioBox;
+    function hexStr(n) {
+        return `#${n.toString(16).padStart(6, "0")}`;
+    }
+    var HexOrder = Modal1.HexOrder = [
+        Color.Red,
+        Color.Purple,
+        Color.Orange,
+        Color.Brown,
+        Color.Blue,
+        Color.Yellow,
+        Color.Green
+    ];
+    var HexMapping = Modal1.HexMapping = [
+        0,
+        2,
+        5,
+        6,
+        4,
+        1,
+        3
+    ];
+    var HMInverse = Modal1.HMInverse = new Map(Array.from(HexMapping, (v, k)=>[
+            v,
+            k
+        ]));
+    function hexGrid(type, data) {
+        const enabled = Array.from(data?.colors ?? [], (c)=>HexOrder.indexOf(c));
+        return cloneTemplate("hexGrid", (name, i)=>{
+            const hex = hexStr(Palette.Train[HexOrder[i]]);
+            const key = element1("div", [
+                "key"
+            ]);
+            key.textContent = "" + (HMInverse.get(i) + 1);
+            const hexagon = element1("div", [
+                "hexagon"
+            ]);
+            hexagon.style.backgroundColor = hex;
+            const wrapper = new DocumentFragment();
+            wrapper.append(hexagon, key);
+            let tile;
+            if (type === "button") {
+                tile = document.createElement("button");
+                tile.appendChild(wrapper);
+            } else tile = label1({
+                inputType: type,
+                name,
+                checked: enabled.includes(i)
+            }, ()=>wrapper);
+            tile.classList.add("keyed");
+            return tile;
+        });
+    }
+    Modal1.hexGrid = hexGrid;
+    /**
+     * A train slot. Fits a train.
+     * @param train The train color (or empty if no train)
+     * @returns the slot.
+     */ function tlSlot(train) {
+        const slot = cloneTemplate("tlSlot");
+        if (train) {
+            const inner = slot.querySelector("div.tl-slot-inner");
+            inner.style.backgroundColor = hexStr(Palette.Train[train]);
+            inner.classList.remove("empty");
+        } else slot.querySelector("button").disabled = true;
+        return slot;
+    }
+    /**
+     * Creates a list of train slots.
+     * @param data The color of the trains in the slots
+     * @returns the train slots (in a box)
+     */ function trainList(data) {
+        const iterator = (data?.trains ?? [])[Symbol.iterator]();
+        const frag = cloneTemplate("trainList", (name)=>{
+            if (name === "tl-slot") {
+                const c = iterator.next();
+                return tlSlot(!c.done ? c.value : undefined);
+            }
+        });
+        return element1("div", [
+            "keyed"
+        ], frag, element1("div", [
+            "key"
+        ], "Backspace"));
+    }
+    function pairedTrainList(data) {
+        const trains = Array.from(data?.trains ?? []);
+        const hg = hexGrid("button");
+        const tl = trainList({
+            trains
+        });
+        function push(c) {
+            trains.push(c);
+            const slots = document.querySelectorAll("div.tl-slot");
+            const nextEmpty = Array.from(slots).find((d)=>d.querySelector("div.tl-slot-inner.empty"));
+            if (nextEmpty) {
+                const inner = nextEmpty.querySelector("div.tl-slot-inner");
+                inner.style.backgroundColor = hexStr(Palette.Train[c]);
+                inner.classList.remove("empty");
+                nextEmpty.querySelector("button").disabled = false;
+            } else {
+                const list = document.querySelector("div.train-list");
+                const slot = tlSlot(c);
+                const i = slots.length;
+                slot.querySelector("button").addEventListener("click", ()=>{
+                    remove(i);
+                });
+                list.append(slot);
+            }
+            const but = document.querySelector("button#edit-modal-ok");
+            but.disabled = !trains.length;
+        }
+        function remove(i) {
+            trains.splice(i, 1);
+            const slots = document.querySelectorAll("div.tl-slot");
+            const filledSlots = Array.from(slots).filter((d)=>d.querySelector("div.tl-slot-inner:not(.empty)"));
+            // replace each filledSlot with the next color
+            for(let j = i; j < trains.length; j++){
+                const inner = filledSlots[j].querySelector("div.tl-slot-inner");
+                const clr = trains[j];
+                inner.style.backgroundColor = hexStr(Palette.Train[clr]);
+            }
+            // remove last filledSlot
+            if (filledSlots.length > trains.length) {
+                const slot = filledSlots[filledSlots.length - 1];
+                const inner = slot.querySelector("div.tl-slot-inner");
+                inner.removeAttribute("style");
+                inner.classList.add("empty");
+                slot.querySelector("button").disabled = true;
+            }
+            // there should be 9 slots by default
+            if (slots.length > 9) slots[slots.length - 1].remove();
+            const but = document.querySelector("button#edit-modal-ok");
+            but.disabled = !trains.length;
+        }
+        hg.querySelectorAll(".hex-grid > .hex-row > button").forEach((b, i)=>b.addEventListener("click", ()=>{
+                push(HexOrder[i]);
+            }));
+        tl.querySelectorAll(".tl-slot > button").forEach((b, i)=>b.addEventListener("click", ()=>{
+                remove(i);
+            }));
+        return [
+            hg,
+            tl,
+            trains
+        ];
+    }
+    Modal1.pairedTrainList = pairedTrainList;
+})(Modal || (Modal = {}));
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"jwhvA":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "Ratios", ()=>Ratios);
@@ -40591,7 +41295,7 @@ parcelHelpers.export(exports, "Ratios", ()=>Ratios);
 /**
  * Utility namespace to provide some shapes to build tile graphics with
  */ var _pixiJs = require("pixi.js");
-const { Color , Dir , Palette , PIXIResources  } = {};
+var _values = require("../values");
 const SpriteCache = {};
 const Ratios = {
     Box: {
@@ -40634,16 +41338,14 @@ let Symbols;
     Symbols1.plus = plus;
 })(Symbols || (Symbols = {}));
 class TwoAnchorSprite extends _pixiJs.Sprite {
-    #posAnchor;
-    #position;
     constructor(texture){
         super(texture);
-        this.#posAnchor = this.#makePoint(0, 0);
-        this.#position = this.#makePoint(this.transform.position.x, this.transform.position.y);
+        this._posAnchor = this._makePoint(0, 0);
+        this.__position = this._makePoint(this.transform.position.x, this.transform.position.y);
         const anchorCB = this._anchor.cb;
         this._anchor.cb = function() {
             anchorCB();
-            this.#updatePosition();
+            this._updatePosition();
         };
     }
     /**
@@ -40653,50 +41355,50 @@ class TwoAnchorSprite extends _pixiJs.Sprite {
         sprite.anchor.set(0.5, 0.5);
         return sprite;
     }
-     #updatePosition() {
-        const panchor = this.#panchor;
+    _updatePosition() {
+        const panchor = this._panchor;
         const anchor = this.anchor;
         const dx = (panchor.x - anchor.x) * this.width;
         const dy = (panchor.y - anchor.y) * this.height;
         // dx, dy = -16, -16
         // panchor is 16, 16 up/left from anchor
-        const { x , y  } = this.#position;
+        const { x , y  } = this.__position;
         this.transform.position.set(x - dx, y - dy);
     }
     updatePosition() {
-        return this.#updatePosition();
+        return this._updatePosition();
     }
-     #makePoint(x, y) {
-        return new _pixiJs.ObservablePoint(this.#updatePosition, this, x, y);
+    _makePoint(x, y) {
+        return new _pixiJs.ObservablePoint(this._updatePosition, this, x, y);
     }
-    get #panchor() {
-        return this.#posAnchor ?? this._anchor;
+    get _panchor() {
+        return this._posAnchor ?? this._anchor;
     }
     /** The positional origin point of the sprite */ get posAnchor() {
-        return this.#posAnchor;
+        return this._posAnchor;
     }
     set posAnchor(v) {
-        this.#posAnchor.copyFrom(v);
+        this._posAnchor.copyFrom(v);
     }
     get position() {
-        return this.#position;
+        return this.__position;
     }
     set position(v) {
-        this.#position.copyFrom(v);
+        this.__position.copyFrom(v);
     }
     get width() {
         return super.width;
     }
     set width(w) {
         super.width = w;
-        this.#updatePosition();
+        this._updatePosition();
     }
     get height() {
         return super.height;
     }
     set height(h) {
         super.height = h;
-        this.#updatePosition();
+        this._updatePosition();
     }
 }
 /**
@@ -40704,13 +41406,13 @@ class TwoAnchorSprite extends _pixiJs.Sprite {
  * @param x Number to round
  * @param toOdd True? Round to nearest odd. False? Round to nearest even.
  * @returns Rounded number
- */ function roundToParity(x1, toOdd) {
+ */ function roundToParity(x, toOdd) {
     const parity = +!!(+toOdd % 2);
-    return 2 * Math.round((x1 + parity) / 2) - parity;
+    return 2 * Math.round((x + parity) / 2) - parity;
 }
 function box({ renderer  }, outline, size) {
     const ratio = outline.ratio ?? Ratios.Box.Outline.DEFAULT;
-    const color = outline.color ?? Palette.Box.Outline.Default;
+    const color = outline.color ?? (0, _values.Palette).Box.Outline.Default;
     const OUTLINE = Math.floor(size * ratio);
     const SPACE = Math.floor(size * Ratios.Box.SPACE);
     const outer = size - 2 * SPACE;
@@ -40728,7 +41430,7 @@ function box({ renderer  }, outline, size) {
     const outlineSprite = new _pixiJs.Sprite(outlineRT);
     outlineSprite.tint = color;
     const bg = new _pixiJs.Sprite(bgRT);
-    bg.tint = Palette.Box.BG;
+    bg.tint = (0, _values.Palette).Box.BG;
     const box1 = new _pixiJs.Container();
     box1.addChild(bg, outlineSprite);
     return [
@@ -40789,7 +41491,7 @@ function symbolSet({ renderer  }, clrs, bounds, symbol) {
     const OUTER_SYM_GAP = Math.round(fullCellSize * Ratios.Symbols.OUTER_GAP);
     const n = clrs.length;
     const rowN = Math.ceil(Math.sqrt(n));
-    const [originX, originY] = boundsCenter.map((x2)=>x2 - boundsSize / 2);
+    const [originX, originY] = boundsCenter.map((x)=>x - boundsSize / 2);
     const cellSize = (boundsSize - (rowN - 1) * INNER_SYM_GAP - 2 * OUTER_SYM_GAP) / rowN;
     const drawSize1 = cellSize * SYM_TEXTURE_SCALE;
     let symName, s;
@@ -40814,7 +41516,7 @@ function symbolSet({ renderer  }, clrs, bounds, symbol) {
         let sym = new _pixiJs.Sprite(rt);
         sym.scale.set(1 / SYM_TEXTURE_SCALE);
         sym.position.set(centerX - cellSize / 2, centerY - cellSize / 2);
-        sym.tint = Palette.Train[clr];
+        sym.tint = (0, _values.Palette).Train[clr];
         con.addChild(sym);
     }
     return con;
@@ -40823,7 +41525,7 @@ function painterSymbol({ textures  }, c, size) {
     const sprite = new _pixiJs.Sprite(textures["t_painter.png"]);
     sprite.width = size;
     sprite.height = size;
-    sprite.tint = Palette.Train[c];
+    sprite.tint = (0, _values.Palette).Train[c];
     return sprite;
 }
 function splitterSymbol({ textures  }, d, size) {
@@ -40848,7 +41550,7 @@ function rail({ renderer  }, entrances, size1) {
         const width = size;
         const outerHeight = roundToParity(size * Ratios.Rail.OUTER_WIDTH, 0);
         const innerHeight = roundToParity(size * Ratios.Rail.INNER_WIDTH, 0);
-        return new _pixiJs.Graphics().beginFill(Palette.Rail.Outer).drawRect(size / 2 - width / 2, size / 2 - outerHeight / 2, width, outerHeight).endFill().beginFill(Palette.Rail.Inner).drawRect(size / 2 - width / 2, size / 2 - innerHeight / 2, width, innerHeight).endFill();
+        return new _pixiJs.Graphics().beginFill((0, _values.Palette).Rail.Outer).drawRect(size / 2 - width / 2, size / 2 - outerHeight / 2, width, outerHeight).endFill().beginFill((0, _values.Palette).Rail.Inner).drawRect(size / 2 - width / 2, size / 2 - innerHeight / 2, width, innerHeight).endFill();
     });
     else rt = loadRenderTexture(renderer, "railCurved", size1 * SYM_TEXTURE_SCALE, (size)=>{
         const outerThickness = roundToParity(size * Ratios.Rail.OUTER_WIDTH, 0);
@@ -40859,7 +41561,7 @@ function rail({ renderer  }, entrances, size1) {
             0
         ];
         const radius = size / 2;
-        return new _pixiJs.Graphics().beginFill(Palette.Rail.Outer).moveTo(...center).arc(...center, radius + outerThickness / 2, 0, 2 * Math.PI).endFill().beginHole().moveTo(...center).arc(...center, radius - outerThickness / 2, 0, 2 * Math.PI).endHole().beginFill(Palette.Rail.Inner).moveTo(...center).arc(...center, radius + innerThickness / 2, 0, 2 * Math.PI).endFill().beginHole().moveTo(...center).arc(...center, radius - innerThickness / 2, 0, 2 * Math.PI).endHole();
+        return new _pixiJs.Graphics().beginFill((0, _values.Palette).Rail.Outer).moveTo(...center).arc(...center, radius + outerThickness / 2, 0, 2 * Math.PI).endFill().beginHole().moveTo(...center).arc(...center, radius - outerThickness / 2, 0, 2 * Math.PI).endHole().beginFill((0, _values.Palette).Rail.Inner).moveTo(...center).arc(...center, radius + innerThickness / 2, 0, 2 * Math.PI).endFill().beginHole().moveTo(...center).arc(...center, radius - innerThickness / 2, 0, 2 * Math.PI).endHole();
     });
     const sprite = TwoAnchorSprite.centered(rt);
     sprite.width = size1;
@@ -40894,16 +41596,16 @@ function train({ renderer  }, size2) {
     return TwoAnchorSprite.centered(rt);
 }
 
-},{"pixi.js":"eykev","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"lwUfs":[function(require,module,exports) {
+},{"pixi.js":"eykev","../values":"bqD2l","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"lwUfs":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "GridContainer", ()=>GridContainer);
 parcelHelpers.export(exports, "TrainContainer", ()=>TrainContainer);
 var _pixiJs = require("pixi.js");
 var _logic = require("../logic");
+var _values = require("../values");
 var _components = require("./components");
 var _map = require("../ext/map");
-const { CellPos , Dir , Grids , Palette , PIXIResources , Train  } = {};
 class AbsGriddedContainer extends _pixiJs.Container {
     constructor(options){
         super();
@@ -40915,16 +41617,16 @@ class AbsGriddedContainer extends _pixiJs.Container {
 class GridContainer extends AbsGriddedContainer {
     constructor(options){
         super(options);
-        if (options.drawGrid ?? true) this.#drawGrid();
+        if (options.drawGrid ?? true) this._drawGrid();
         const cells = this.cells = new _pixiJs.Container();
         cells.name = "cells";
         this.addChild(cells);
     }
-     #drawGrid() {
-        const TILE_GAP = Grids.TILE_GAP;
+    _drawGrid() {
+        const TILE_GAP = (0, _values.Grids).TILE_GAP;
         const DELTA = this.cellSize + TILE_GAP;
-        const GRID_SIZE = Grids.gridSize(this);
-        const grid = new _pixiJs.Graphics().beginFill(Palette.Grid.Line);
+        const GRID_SIZE = (0, _values.Grids).gridSize(this);
+        const grid = new _pixiJs.Graphics().beginFill((0, _values.Palette).Grid.Line);
         for(let i = 0; i <= this.cellLength; i++){
             let x = 0 + DELTA * i;
             grid.drawRect(x, 0, TILE_GAP, GRID_SIZE);
@@ -40938,7 +41640,7 @@ class GridContainer extends AbsGriddedContainer {
     loadCells(cons) {
         for(let y = 0; y < this.cellLength; y++)for(let x = 0; x < this.cellLength; x++){
             let t = cons?.[y]?.[x] ?? new _pixiJs.Container();
-            t.position = Grids.cellToPosition(this, [
+            t.position = (0, _values.Grids).cellToPosition(this, [
                 x,
                 y
             ]);
@@ -40947,7 +41649,7 @@ class GridContainer extends AbsGriddedContainer {
         return this;
     }
     replaceCell([x, y], con) {
-        Grids.assertInBounds(this, x, y);
+        (0, _values.Grids).assertInBounds(this, x, y);
         const cells = this.cells;
         const index = y * this.cellLength + x;
         con.position = cells.getChildAt(index).position;
@@ -40962,7 +41664,7 @@ class GridContainer extends AbsGriddedContainer {
      * @param param0 cell position
      * @returns container
      */ cellAt([x, y]) {
-        Grids.assertInBounds(this, x, y);
+        (0, _values.Grids).assertInBounds(this, x, y);
         return this.cells.getChildAt(y * this.cellLength + x);
     }
 }
@@ -40994,9 +41696,9 @@ class TrainContainer extends AbsGriddedContainer {
     constructor(options){
         super(options);
     }
-     #interp(pos, d1, d2, progress) {
-        const edge1 = Grids.cellToPosition(this, pos, Dir.edge(d1, this.cellSize));
-        const edge2 = Grids.cellToPosition(this, pos, Dir.edge(d2, this.cellSize));
+    _interp(pos, d1, d2, progress) {
+        const edge1 = (0, _values.Grids).cellToPosition(this, pos, (0, _values.Dir).edge(d1, this.cellSize));
+        const edge2 = (0, _values.Grids).cellToPosition(this, pos, (0, _values.Dir).edge(d2, this.cellSize));
         const straight = typeof d1 === "undefined" || typeof d2 === "undefined" || (d1 - d2) % 2 === 0;
         if (straight) {
             const { x: x1 , y: y1  } = edge1;
@@ -41009,19 +41711,19 @@ class TrainContainer extends AbsGriddedContainer {
             };
         }
         const radius = this.cellSize / 2;
-        const center = Grids.cellToPosition(this, pos, Dir.shifts([
+        const center = (0, _values.Grids).cellToPosition(this, pos, (0, _values.Dir).shifts([
             radius,
             radius
         ], radius, d1, d2));
         // circle direction & angle
-        const cDir1 = Dir.difference([
+        const cDir1 = (0, _values.Dir).difference([
             center.x,
             center.y
         ], [
             edge1.x,
             edge1.y
         ]);
-        const cDir2 = Dir.difference([
+        const cDir2 = (0, _values.Dir).difference([
             center.x,
             center.y
         ], [
@@ -41069,14 +41771,14 @@ class TrainContainer extends AbsGriddedContainer {
                 const { preimage , image  } = m;
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, _] = this.trainBodies.popItem(preimage);
-                    this.#passBody(trainBody, preImagePos, image);
+                    this._passBody(trainBody, preImagePos, image);
                 }
             } else if (m.move == "split") {
                 const { preimage , image  } = m;
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, _] = this.trainBodies.popItem(preimage);
-                    this.#passBody(trainBody, preImagePos, image.shift());
-                    for (let t of image)this.createBody(Dir.shift(preImagePos, t.dir), Dir.flip(t.dir), t);
+                    this._passBody(trainBody, preImagePos, image.shift());
+                    for (let t of image)this.createBody((0, _values.Dir).shift(preImagePos, t.dir), (0, _values.Dir).flip(t.dir), t);
                 } else // If a partial step occurred, we need to move the new bodies into the right place.
                 // Pass does exactly what we want, sooooooo...
                 this.moveBodies(preImagePos, image.map((t)=>({
@@ -41090,7 +41792,7 @@ class TrainContainer extends AbsGriddedContainer {
                 let first = preimage.shift();
                 if (this.trainBodies.has(first)) {
                     const [trainBody, _] = this.trainBodies.popItem(first);
-                    this.#passBody(trainBody, preImagePos, image);
+                    this._passBody(trainBody, preImagePos, image);
                     for (let t of preimage)if (this.trainBodies.has(t)) {
                         const [trainBody, _] = this.trainBodies.popItem(t);
                         this.removeChild(trainBody).destroy();
@@ -41102,7 +41804,7 @@ class TrainContainer extends AbsGriddedContainer {
         }
         moves.length = 0;
     }
-    moveBodiesPartial(preImagePos, moves, progress1) {
+    moveBodiesPartial(preImagePos, moves, progress) {
         // these steps are handled at the end (by `moveBodies`)
         const NO_PARTIAL_RENDER = [
             (0, _logic.Step).EdgeCollision,
@@ -41115,10 +41817,10 @@ class TrainContainer extends AbsGriddedContainer {
                 const { preimage , image  } = m1;
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, initDir] = this.trainBodies.get(preimage);
-                    const transform = this.#interp(preImagePos, initDir, image.dir, progress1);
+                    const transform = this._interp(preImagePos, initDir, image.dir, progress);
                     // after progress 0.5, the trains likely intersected, so color changes
-                    const c = progress1 > 0.5 ? image : preimage;
-                    this.#redressBody(trainBody, {
+                    const c = progress > 0.5 ? image : preimage;
+                    this._redressBody(trainBody, {
                         ...transform,
                         train: c
                     });
@@ -41129,10 +41831,10 @@ class TrainContainer extends AbsGriddedContainer {
                     this.trainBodies.set(image[0], this.trainBodies.get(preimage));
                     for(let i = 1; i < image.length; i++){
                         // create preimage body, but assign the image to it
-                        const body = this.createBody(preImagePos, Dir.flip(preimage.dir), preimage);
+                        const body = this.createBody(preImagePos, (0, _values.Dir).flip(preimage.dir), preimage);
                         this.trainBodies.set(image[i], [
                             body,
-                            Dir.flip(preimage.dir)
+                            (0, _values.Dir).flip(preimage.dir)
                         ]);
                     }
                     // erase any instance of preimage body
@@ -41142,16 +41844,16 @@ class TrainContainer extends AbsGriddedContainer {
                     if (this.trainBodies.has(t)) {
                         const tbd = this.trainBodies.get(t);
                         const [trainBody, initDir] = tbd;
-                        const { pos: pos1 , rotation  } = this.#interp(preImagePos, initDir, t.dir, progress1);
+                        const { pos , rotation  } = this._interp(preImagePos, initDir, t.dir, progress);
                         // after the trains are deep inside (and not visible), we can do color change
-                        if (progress1 > 0.5) // prevent recoloring changes until the trains have moved in
-                        this.#redressBody(trainBody, {
-                            pos: pos1,
+                        if (progress > 0.5) // prevent recoloring changes until the trains have moved in
+                        this._redressBody(trainBody, {
+                            pos,
                             rotation,
                             train: t
                         });
-                        else this.#redressBody(trainBody, {
-                            pos: pos1,
+                        else this._redressBody(trainBody, {
+                            pos,
                             rotation
                         });
                     }
@@ -41160,9 +41862,9 @@ class TrainContainer extends AbsGriddedContainer {
                 const { preimage  } = m1;
                 if (this.trainBodies.has(preimage)) {
                     const [trainBody, initDir] = this.trainBodies.get(preimage);
-                    const transform = this.#interp(preImagePos, initDir, preimage.dir, progress1);
-                    this.#redressBody(trainBody, transform);
-                    if (progress1 > 0.5) {
+                    const transform = this._interp(preImagePos, initDir, preimage.dir, progress);
+                    this._redressBody(trainBody, transform);
+                    if (progress > 0.5) {
                         this.trainBodies.delete(preimage);
                         trainBody.destroy();
                     }
@@ -41173,14 +41875,14 @@ class TrainContainer extends AbsGriddedContainer {
             }
         }
     }
-     #passBody(body, preImagePos, t) {
+    _passBody(body, preImagePos, t) {
         if (body) {
             this.trainBodies.set(t, [
                 body,
-                Dir.flip(t.dir)
+                (0, _values.Dir).flip(t.dir)
             ]);
-            const pixPos = Grids.cellToPosition(this, preImagePos, Dir.edge(t.dir, this.cellSize));
-            this.#redressBody(body, {
+            const pixPos = (0, _values.Grids).cellToPosition(this, preImagePos, (0, _values.Dir).edge(t.dir, this.cellSize));
+            this._redressBody(body, {
                 pos: pixPos,
                 train: t
             });
@@ -41191,14 +41893,14 @@ class TrainContainer extends AbsGriddedContainer {
      * @param body train sprite
      * @param pos pixel position
      * @param param2 train data
-     */  #redressBody(body1, options) {
+     */ _redressBody(body, options) {
         if (!options) return;
         const { pos , rotation , train  } = options;
-        if (pos) body1.position = pos;
+        if (pos) body.position = pos;
         if (train) {
-            body1.rotation = rotation ?? -train.dir * Math.PI / 2;
-            body1.tint = Palette.Train[train.color];
-        } else if (typeof rotation === "number") body1.rotation = rotation;
+            body.rotation = rotation ?? -train.dir * Math.PI / 2;
+            body.tint = (0, _values.Palette).Train[train.color];
+        } else if (typeof rotation === "number") body.rotation = rotation;
     }
     /**
      * Make a new sprite for a train and register it into trainBodies and the stage
@@ -41206,20 +41908,20 @@ class TrainContainer extends AbsGriddedContainer {
      * @param edge edge where body should be created
      * @param t new train
      * @returns the sprite
-     */ createBody(pos2, edge, t3) {
-        const body2 = _components.train(this.pixi, this.cellSize);
-        body2.posAnchor.set(0.5, 0.5);
-        const pixPos = Grids.cellToPosition(this, pos2, Dir.edge(edge, this.cellSize));
-        this.#redressBody(body2, {
+     */ createBody(pos, edge, t) {
+        const body = _components.train(this.pixi, this.cellSize);
+        body.posAnchor.set(0.5, 0.5);
+        const pixPos = (0, _values.Grids).cellToPosition(this, pos, (0, _values.Dir).edge(edge, this.cellSize));
+        this._redressBody(body, {
             pos: pixPos,
-            train: t3
+            train: t
         });
-        this.addChild(body2);
-        this.trainBodies.set(t3, [
-            body2,
+        this.addChild(body);
+        this.trainBodies.set(t, [
+            body,
             edge
         ]);
-        return body2;
+        return body;
     }
     clearBodies() {
         this.trainBodies.clear();
@@ -41229,7 +41931,7 @@ class TrainContainer extends AbsGriddedContainer {
     }
 }
 
-},{"pixi.js":"eykev","../logic":"3vT9s","./components":"jwhvA","../ext/map":"deAmT","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"deAmT":[function(require,module,exports) {
+},{"pixi.js":"eykev","../logic":"3vT9s","../values":"bqD2l","./components":"jwhvA","../ext/map":"deAmT","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"deAmT":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 Object.defineProperty(Map.prototype, "popItem", {
@@ -41279,7 +41981,7 @@ var _a11YDialog = require("a11y-dialog");
 var _a11YDialogDefault = parcelHelpers.interopDefault(_a11YDialog);
 var _levels = require("./levels");
 var _logic = require("./logic");
-const { Dir , Modal  } = {};
+var _values = require("./values");
 let Elements;
 (function(Elements1) {
     var slider = Elements1.slider = document.querySelector("#speed-controls > input[type=range]");
@@ -41496,7 +42198,7 @@ function applyButtons(grid1) {
                 const gridClrs = hgInputs ? Array.from(hgInputs, (e, i)=>[
                         e,
                         i
-                    ]).filter(([e])=>e.checked).map(([_, i])=>Modal.HexOrder[i]) : undefined;
+                    ]).filter(([e])=>e.checked).map(([_, i])=>(0, _values.Modal).HexOrder[i]) : undefined;
                 grid.pointerEvents.setSquare(parse({
                     dirs,
                     gridClrs
@@ -41509,14 +42211,14 @@ function applyButtons(grid1) {
         EditModal.Modal.show();
     });
     const DirKeys = {
-        ArrowLeft: Dir.Left,
-        KeyA: Dir.Left,
-        ArrowUp: Dir.Up,
-        KeyW: Dir.Up,
-        ArrowRight: Dir.Right,
-        KeyD: Dir.Right,
-        ArrowDown: Dir.Down,
-        KeyS: Dir.Down
+        ArrowLeft: (0, _values.Dir).Left,
+        KeyA: (0, _values.Dir).Left,
+        ArrowUp: (0, _values.Dir).Up,
+        KeyW: (0, _values.Dir).Up,
+        ArrowRight: (0, _values.Dir).Right,
+        KeyD: (0, _values.Dir).Right,
+        ArrowDown: (0, _values.Dir).Down,
+        KeyS: (0, _values.Dir).Down
     };
     // probably should be more like ignoreCode, but whatever
     const ignoreKey = new Set();
@@ -41558,7 +42260,7 @@ function applyButtons(grid1) {
                 if (e.code.startsWith("Digit")) {
                     const d = +e.code.slice(5);
                     if (1 <= d && d <= 7) {
-                        const btn = btns[Modal.HexMapping[d - 1]];
+                        const btn = btns[(0, _values.Modal).HexMapping[d - 1]];
                         if (btn instanceof HTMLButtonElement && !btn.classList.contains("active")) {
                             btn.click();
                             btn.classList.add("active");
@@ -41676,7 +42378,7 @@ levelDD.addEventListener("input", ()=>{
     Dropdowns.LevelHandlers.call();
 });
 
-},{"a11y-dialog":"bq1tV","./levels":"e0FkS","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq","./logic":"3vT9s"}],"bq1tV":[function(require,module,exports) {
+},{"a11y-dialog":"bq1tV","./levels":"e0FkS","./logic":"3vT9s","./values":"bqD2l","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"bq1tV":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "default", ()=>A11yDialog);
@@ -41964,9 +42666,9 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "ProvidedLevels", ()=>ProvidedLevels);
 parcelHelpers.export(exports, "Default", ()=>Default);
 var _logic = require("./logic");
+var _values = require("./values");
 var _levelsJson = require("./levels.json");
 var _levelsJsonDefault = parcelHelpers.interopDefault(_levelsJson);
-const { Color , Dir  } = {};
 let TestLevels;
 (function(TestLevels1) {
     function repeat(t, length) {
@@ -41991,150 +42693,150 @@ let TestLevels;
         }, (_, i)=>mapfn(...i));
     }
     var CachePerfTest = TestLevels1.CachePerfTest = gridFrom(7, (x, y)=>{
-        return new (0, _logic.Tile).Outlet(Dir.Down, repeat(Color.Red, y * 7 + x + 1));
+        return new (0, _logic.Tile).Outlet((0, _values.Dir).Down, repeat((0, _values.Color).Red, y * 7 + x + 1));
     });
     var CachePerfTest10 = TestLevels1.CachePerfTest10 = gridFrom(10, (x, y)=>{
-        return new (0, _logic.Tile).Outlet(Dir.Down, repeat(Math.floor(Math.random() * 7) + 1, y * 10 + x + 1));
+        return new (0, _logic.Tile).Outlet((0, _values.Dir).Down, repeat(Math.floor(Math.random() * 7) + 1, y * 10 + x + 1));
     });
     var SixBySix = TestLevels1.SixBySix = gridFrom(6, ()=>{
-        return new (0, _logic.Tile).Outlet(Dir.Down, [
-            Color.Red
+        return new (0, _logic.Tile).Outlet((0, _values.Dir).Down, [
+            (0, _values.Color).Red
         ]);
     });
     const tilesToLoad = [
-        new (0, _logic.Tile).Outlet(Dir.Right, repeat(Color.Red, 1)),
-        new (0, _logic.Tile).Outlet(Dir.Up, repeat(Color.Orange, 2)),
-        new (0, _logic.Tile).Outlet(Dir.Left, repeat(Color.Yellow, 3)),
-        new (0, _logic.Tile).Outlet(Dir.Down, repeat(Color.Green, 4)),
-        new (0, _logic.Tile).Splitter(Dir.Right),
-        new (0, _logic.Tile).Splitter(Dir.Up),
-        new (0, _logic.Tile).Splitter(Dir.Left),
-        new (0, _logic.Tile).Splitter(Dir.Down),
+        new (0, _logic.Tile).Outlet((0, _values.Dir).Right, repeat((0, _values.Color).Red, 1)),
+        new (0, _logic.Tile).Outlet((0, _values.Dir).Up, repeat((0, _values.Color).Orange, 2)),
+        new (0, _logic.Tile).Outlet((0, _values.Dir).Left, repeat((0, _values.Color).Yellow, 3)),
+        new (0, _logic.Tile).Outlet((0, _values.Dir).Down, repeat((0, _values.Color).Green, 4)),
+        new (0, _logic.Tile).Splitter((0, _values.Dir).Right),
+        new (0, _logic.Tile).Splitter((0, _values.Dir).Up),
+        new (0, _logic.Tile).Splitter((0, _values.Dir).Left),
+        new (0, _logic.Tile).Splitter((0, _values.Dir).Down),
         new (0, _logic.Tile).Painter([
-            Dir.Right,
-            Dir.Up
-        ], Color.Red),
+            (0, _values.Dir).Right,
+            (0, _values.Dir).Up
+        ], (0, _values.Color).Red),
         new (0, _logic.Tile).Painter([
-            Dir.Right,
-            Dir.Left
-        ], Color.Orange),
+            (0, _values.Dir).Right,
+            (0, _values.Dir).Left
+        ], (0, _values.Color).Orange),
         new (0, _logic.Tile).Painter([
-            Dir.Right,
-            Dir.Down
-        ], Color.Yellow),
+            (0, _values.Dir).Right,
+            (0, _values.Dir).Down
+        ], (0, _values.Color).Yellow),
         new (0, _logic.Tile).Painter([
-            Dir.Up,
-            Dir.Left
-        ], Color.Green),
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Left
+        ], (0, _values.Color).Green),
         new (0, _logic.Tile).Painter([
-            Dir.Up,
-            Dir.Down
-        ], Color.Blue),
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Down
+        ], (0, _values.Color).Blue),
         new (0, _logic.Tile).Painter([
-            Dir.Left,
-            Dir.Down
-        ], Color.Purple),
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Down
+        ], (0, _values.Color).Purple),
         new (0, _logic.Tile).Rock(),
         new (0, _logic.Tile).Blank(),
-        new (0, _logic.Tile).Goal([], repeat(Color.Red, 1)),
+        new (0, _logic.Tile).Goal([], repeat((0, _values.Color).Red, 1)),
         new (0, _logic.Tile).Goal([
-            Dir.Right
-        ], repeat(Color.Orange, 2)),
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Orange, 2)),
         new (0, _logic.Tile).Goal([
-            Dir.Up
-        ], repeat(Color.Yellow, 3)),
+            (0, _values.Dir).Up
+        ], repeat((0, _values.Color).Yellow, 3)),
         new (0, _logic.Tile).Goal([
-            Dir.Up,
-            Dir.Right
-        ], repeat(Color.Green, 4)),
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Green, 4)),
         new (0, _logic.Tile).Goal([
-            Dir.Left
-        ], repeat(Color.Blue, 5)),
+            (0, _values.Dir).Left
+        ], repeat((0, _values.Color).Blue, 5)),
         new (0, _logic.Tile).Goal([
-            Dir.Left,
-            Dir.Right
-        ], repeat(Color.Purple, 6)),
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Purple, 6)),
         new (0, _logic.Tile).Goal([
-            Dir.Left,
-            Dir.Up
-        ], repeat(Color.Brown, 7)),
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Up
+        ], repeat((0, _values.Color).Brown, 7)),
         new (0, _logic.Tile).Goal([
-            Dir.Left,
-            Dir.Up,
-            Dir.Right
-        ], repeat(Color.Red, 8)),
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Red, 8)),
         new (0, _logic.Tile).Goal([
-            Dir.Down
-        ], repeat(Color.Orange, 9)),
+            (0, _values.Dir).Down
+        ], repeat((0, _values.Color).Orange, 9)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Right
-        ], repeat(Color.Yellow, 10)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Yellow, 10)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Up
-        ], repeat(Color.Green, 11)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Up
+        ], repeat((0, _values.Color).Green, 11)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Up,
-            Dir.Right
-        ], repeat(Color.Blue, 12)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Blue, 12)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Left
-        ], repeat(Color.Purple, 13)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Left
+        ], repeat((0, _values.Color).Purple, 13)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Left,
-            Dir.Right
-        ], repeat(Color.Brown, 14)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Brown, 14)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Left,
-            Dir.Up
-        ], repeat(Color.Red, 15)),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Up
+        ], repeat((0, _values.Color).Red, 15)),
         new (0, _logic.Tile).Goal([
-            Dir.Down,
-            Dir.Left,
-            Dir.Up,
-            Dir.Right
-        ], repeat(Color.Orange, 16)),
-        new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up),
-        new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left),
-        new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down),
-        new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left),
-        new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down),
-        new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down),
+            (0, _values.Dir).Down,
+            (0, _values.Dir).Left,
+            (0, _values.Dir).Up,
+            (0, _values.Dir).Right
+        ], repeat((0, _values.Color).Orange, 16)),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down),
+        new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down),
         new (0, _logic.Tile).Blank(),
         new (0, _logic.Tile).Blank(),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up), new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up), new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Up), new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Right, Dir.Down), new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Left), new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down)),
-        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail(Dir.Up, Dir.Down), new (0, _logic.Tile).SingleRail(Dir.Left, Dir.Down)), 
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up), new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up), new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Up), new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Right, (0, _values.Dir).Down), new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Left), new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down)),
+        (0, _logic.Tile).Rail.of(new (0, _logic.Tile).SingleRail((0, _values.Dir).Up, (0, _values.Dir).Down), new (0, _logic.Tile).SingleRail((0, _values.Dir).Left, (0, _values.Dir).Down)), 
     ];
     var TextureLoadTest = TestLevels1.TextureLoadTest = gridFrom(8, (x, y)=>tilesToLoad[y * 8 + x]);
     var TextureLoadTest7 = TestLevels1.TextureLoadTest7 = gridFrom(7, (x, y)=>tilesToLoad[(y * 7 + x + 32) % tilesToLoad.length]);
     var MergeTest = TestLevels1.MergeTest = [
         [
-            new (0, _logic.Tile).Outlet(Dir.Right, [
-                Color.Red
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Right, [
+                (0, _values.Color).Red
             ]),
             ,
             new (0, _logic.Tile).Rock(),
             new (0, _logic.Tile).Rock(),
-            new (0, _logic.Tile).Outlet(Dir.Down, [
-                Color.Red
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Down, [
+                (0, _values.Color).Red
             ]),
             new (0, _logic.Tile).Rock()
         ],
@@ -42142,71 +42844,71 @@ let TestLevels;
             new (0, _logic.Tile).Rock(),
             ,
             new (0, _logic.Tile).Goal([
-                Dir.Left
+                (0, _values.Dir).Left
             ], [
-                Color.Purple
+                (0, _values.Color).Purple
             ]),
-            new (0, _logic.Tile).Outlet(Dir.Right, [
-                Color.Blue
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Right, [
+                (0, _values.Color).Blue
             ])
         ],
         [
-            new (0, _logic.Tile).Outlet(Dir.Right, [
-                Color.Blue
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Right, [
+                (0, _values.Color).Blue
             ]),
             ,
             new (0, _logic.Tile).Rock(),
             new (0, _logic.Tile).Rock(),
             ,
             new (0, _logic.Tile).Goal([
-                Dir.Up,
-                Dir.Left
+                (0, _values.Dir).Up,
+                (0, _values.Dir).Left
             ], [
-                Color.Blue,
-                Color.Red
+                (0, _values.Color).Blue,
+                (0, _values.Color).Red
             ])
         ],
         [
             new (0, _logic.Tile).Rock(),
-            new (0, _logic.Tile).Outlet(Dir.Down, [
-                Color.Red
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Down, [
+                (0, _values.Color).Red
             ]),
             new (0, _logic.Tile).Rock(),
-            new (0, _logic.Tile).Outlet(Dir.Down, [
-                Color.Red
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Down, [
+                (0, _values.Color).Red
             ]),
             new (0, _logic.Tile).Rock(),
             new (0, _logic.Tile).Goal([
-                Dir.Down
+                (0, _values.Dir).Down
             ], [
-                Color.Purple
+                (0, _values.Color).Purple
             ])
         ],
         [
-            new (0, _logic.Tile).Outlet(Dir.Right, [
-                Color.Blue
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Right, [
+                (0, _values.Color).Blue
             ])
         ],
         [
             new (0, _logic.Tile).Rock(),
             ,
             new (0, _logic.Tile).Goal([
-                Dir.Up,
-                Dir.Left
+                (0, _values.Dir).Up,
+                (0, _values.Dir).Left
             ], [
-                Color.Purple,
-                Color.Purple
+                (0, _values.Color).Purple,
+                (0, _values.Color).Purple
             ]),
             new (0, _logic.Tile).Goal([
-                Dir.Up
+                (0, _values.Dir).Up
             ], [
-                Color.Purple
+                (0, _values.Color).Purple
             ]),
-            new (0, _logic.Tile).Outlet(Dir.Up, [
-                Color.Blue
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Up, [
+                (0, _values.Color).Blue
             ]),
-            new (0, _logic.Tile).Outlet(Dir.Up, [
-                Color.Blue
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Up, [
+                (0, _values.Color).Blue
             ])
         ], 
     ];
@@ -42216,25 +42918,25 @@ let TestLevels;
             ,
             ,
             new (0, _logic.Tile).Painter([
-                Dir.Down,
-                Dir.Right
-            ], Color.Green)
+                (0, _values.Dir).Down,
+                (0, _values.Dir).Right
+            ], (0, _values.Color).Green)
         ],
         [],
         [],
         [
-            new (0, _logic.Tile).Outlet(Dir.Right, [
-                Color.Green
+            new (0, _logic.Tile).Outlet((0, _values.Dir).Right, [
+                (0, _values.Color).Green
             ]),
             ,
-            new (0, _logic.Tile).Splitter(Dir.Left),
+            new (0, _logic.Tile).Splitter((0, _values.Dir).Left),
             ,
-            new (0, _logic.Tile).Splitter(Dir.Left),
+            new (0, _logic.Tile).Splitter((0, _values.Dir).Left),
             ,
             new (0, _logic.Tile).Goal([
-                Dir.Left
+                (0, _values.Dir).Left
             ], [
-                Color.Green
+                (0, _values.Color).Green
             ])
         ],
         [],
@@ -42243,9 +42945,9 @@ let TestLevels;
             ,
             ,
             new (0, _logic.Tile).Goal([
-                Dir.Up
+                (0, _values.Dir).Up
             ], [
-                Color.Green
+                (0, _values.Color).Green
             ])
         ], 
     ];
@@ -42260,57 +42962,9 @@ const Default = [
     "Multicolor"
 ];
 
-},{"./logic":"3vT9s","./levels.json":"dDgqv","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"dDgqv":[function(require,module,exports) {
+},{"./logic":"3vT9s","./values":"bqD2l","./levels.json":"dDgqv","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"dDgqv":[function(require,module,exports) {
 module.exports = JSON.parse('{"Abbotsford":{"Red Line":{"board":["       ","       ","       "," +   o ","       ","       ","       "],"tiles":{"22":{"out":0,"colors":["Red"]},"26":{"targets":["Red"],"actives":4}}},"Grorange lines":{"board":["       "," +     ","       ","       ","       "," o+  o ","       "],"tiles":{"8":{"out":3,"colors":["Green"]},"36":{"targets":["Green"],"actives":2},"37":{"out":0,"colors":["Orange"]},"40":{"targets":["Orange"],"actives":4}}},"Yorple lines":{"board":["o     +","       "," +   o ","       "," o   + ","       ","+     o"],"tiles":{"0":{"targets":["Purple"],"actives":1},"6":{"out":2,"colors":["Purple"]},"15":{"out":3,"colors":["Yellow"]},"19":{"targets":["Yellow"],"actives":8},"29":{"targets":["Yellow"],"actives":2},"33":{"out":1,"colors":["Yellow"]},"42":{"out":0,"colors":["Purple"]},"48":{"targets":["Purple"],"actives":4}}},"Magical Trains":{"board":["   o   ","       ","       ","+     o","       ","       ","   +   "],"tiles":{"3":{"targets":["Purple"],"actives":8},"21":{"out":0,"colors":["Purple"]},"27":{"targets":["Purple"],"actives":4},"45":{"out":1,"colors":["Purple"]}}},"The Red Corner":{"board":["       "," +     ","       ","       ","       ","     o ","       "],"tiles":{"8":{"out":3,"colors":["Red"]},"40":{"targets":["Red"],"actives":4}}},"Purpablu":{"board":["       "," +   o ","       ","       ","       "," +   o ","       "],"tiles":{"8":{"out":0,"colors":["Purple"]},"12":{"targets":["Purple"],"actives":1},"36":{"out":3,"colors":["Blue"]},"40":{"targets":["Blue"],"actives":2}}}},"Brampton":{"A Rock in the Way":{"board":["   o   ","       ","       ","   r   ","       ","       ","   +   "],"tiles":{"3":{"targets":["Green"],"actives":8},"45":{"out":1,"colors":["Green"]}}},"Green Wally":{"board":["       "," o r + ","   r   ","   r   ","   r   ","   r   ","   r   "],"tiles":{"8":{"targets":["Green"],"actives":8},"12":{"out":3,"colors":["Green"]}}},"Yellow Snake":{"board":["      +"," rrrrrr","       ","rrrrrr ","       ","       ","o      "],"tiles":{"6":{"out":2,"colors":["Yellow"]},"42":{"targets":["Yellow"],"actives":1}}},"U-Turn":{"board":["+ro or+"," r   r "," r   r "," r   r "," r   r "," r   r ","       "],"tiles":{"0":{"out":3,"colors":["Purple"]},"2":{"targets":["Purple"],"actives":8},"4":{"targets":["Red"],"actives":8},"6":{"out":3,"colors":["Red"]}}},"Journey":{"board":["r     o","   r   "," r     ","    r  ","      r","  r    ","+    r "],"tiles":{"6":{"targets":["Orange"],"actives":8},"42":{"out":1,"colors":["Orange"]}}}},"Calgary":{"Rainbow":{"board":["o+o+o+o","       ","       ","       ","       ","       ","+o+o+o+"],"tiles":{"0":{"targets":["Red"],"actives":8},"1":{"out":3,"colors":["Purple"]},"2":{"targets":["Blue"],"actives":8},"3":{"out":3,"colors":["Green"]},"4":{"targets":["Yellow"],"actives":8},"5":{"out":3,"colors":["Orange"]},"6":{"targets":["Red"],"actives":8},"42":{"out":1,"colors":["Red"]},"43":{"targets":["Purple"],"actives":2},"44":{"out":1,"colors":["Blue"]},"45":{"targets":["Green"],"actives":2},"46":{"out":1,"colors":["Yellow"]},"47":{"targets":["Orange"],"actives":2},"48":{"out":1,"colors":["Red"]}}},"Innie Outie":{"board":["       ","     + ","    +  ","       ","  o    "," o     ","       "],"tiles":{"12":{"out":0,"colors":["Red"]},"18":{"out":0,"colors":["Blue"]},"30":{"targets":["Blue"],"actives":4},"36":{"targets":["Red"],"actives":4}}},"Around the Back":{"board":["       "," +   o ","       "," +   o ","       "," +   o ","       "],"tiles":{"8":{"out":0,"colors":["Red"]},"12":{"targets":["Blue"],"actives":4},"22":{"out":0,"colors":["Yellow"]},"26":{"targets":["Red"],"actives":4},"36":{"out":0,"colors":["Blue"]},"40":{"targets":["Yellow"],"actives":4}}},"Multicolor":{"board":["   +   ","       ","       ","+  o  +","       ","       ","   +   "],"tiles":{"3":{"out":3,"colors":["Blue"]},"21":{"out":0,"colors":["Green"]},"24":{"targets":["Green","Blue","Red","Yellow"],"actives":15},"27":{"out":2,"colors":["Yellow"]},"45":{"out":1,"colors":["Red"]}}},"Squiggle":{"board":["       ","       ","   +   ","   o   ","   +   ","       ","       "],"tiles":{"17":{"out":1,"colors":["Orange"]},"24":{"targets":["Green","Orange"],"actives":5},"31":{"out":0,"colors":["Green"]}}},"Two Two":{"board":["   o   ","       ","       ","       ","       ","       ","   +   "],"tiles":{"3":{"targets":["Red","Red"],"actives":8},"45":{"out":1,"colors":["Red","Red"]}}},"Crossover":{"board":["   +   ","       ","       ","+     o","       ","       ","   o   "],"tiles":{"3":{"out":3,"colors":["Blue"]},"21":{"out":0,"colors":["Red"]},"27":{"targets":["Red"],"actives":4},"45":{"targets":["Blue"],"actives":2}}}},"Delson":{"Mellow Yellow":null,"Delivering Oranges":null,"Purple Parcels":null,"Prellow":null,"Around the Bend":null,"Preenies":null,"Too Many":null},"Edmonton":{"Yield":null,"Blue Boys":null,"Timing Test":null,"Grimace Town":null,"Lemon Latency":null,"Three Reds":null,"Colour Theory":null,"Secondary":null,"Nurple":null},"Fredericton":{"Micro Mix":null,"The First":null,"Wait Outside":null,"Nine Men\'s Morris":null,"Eee Tee":null,"Relish":null},"Guelph":{"Mirror Squad":null,"Cute Loop":{"board":["+     +","r rrrrr","    r o","    r  ","    r  ","    r  ","       "],"tiles":{"0":{"out":0,"colors":["Red"]},"6":{"out":2,"colors":["Blue"]},"20":{"targets":["Purple"],"actives":4}}},"Hourglass":null,"Gauss":null,"Third Wheel":null,"Turtles":null,"Royals":null,"Spiced":null},"Halifax":{"Handlebars":null,"Compact":null,"Wailing":null,"Laser Master":null,"Squads":null,"Aspire":null,"Under The Fence":null},"Iqaluit":{"Inverse":null,"Totem Pole":null,"Western":null,"Collider":null,"Starship Sandwich":null,"The Classic":null},"Joliette":{"Red Pear":null,"Paint The Town":null,"Lopsided":null,"Plus":null,"Orange Wall":null},"Kamloops":{"Podded Peas":null,"Let Them Yellow":null,"The Original":null,"Stuck To You":null,"Diagonal Mirror":null,"Four Shadowing":null,"Fireball Island":null},"London":{"Round The Twist":null,"More Is Merrier":null,"Three Peas":null,"Ackee Tree":null,"Hookshot":null,"Pick Your Partner":null,"Primer":null,"Reunited":null,"Star Stuck":null},"Mississauga":{"Warm Up":null,"The Numerator":null,"Drone vs Probe":null,"Ochos Rios":null,"Port Credit":null,"Turtle":null,"Factories":null,"Tor":null},"Niagara Falls":{"Horhey":null,"Christmas Eve":null,"Candlesticks":null,"Argentan":null,"Wagon Wheels":null,"Gaius":null,"Machine Gun":null,"Humber":null,"Cooksville Creek":null}}');
 
-},{}],"eKo5Y":[function(require,module,exports) {
-const _temp0 = require("./trainyard.atlas.json");
-const _temp1 = require("./trainyard.png");
-module.exports = {
-    "trainyard.atlas.json": _temp0,
-    "trainyard.png": _temp1
-};
-
-},{"./trainyard.atlas.json":"BgXhK","./trainyard.png":"3oIFU"}],"BgXhK":[function(require,module,exports) {
-module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.atlas.17d92baf.json" + "?" + Date.now();
-
-},{"./helpers/bundle-url":"abFXz"}],"abFXz":[function(require,module,exports) {
-"use strict";
-var bundleURL = {};
-function getBundleURLCached(id) {
-    var value = bundleURL[id];
-    if (!value) {
-        value = getBundleURL();
-        bundleURL[id] = value;
-    }
-    return value;
-}
-function getBundleURL() {
-    try {
-        throw new Error();
-    } catch (err) {
-        var matches = ("" + err.stack).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^)\n]+/g);
-        if (matches) // The first two stack frames will be this function and getBundleURLCached.
-        // Use the 3rd one, which will be a runtime in the original bundle.
-        return getBaseURL(matches[2]);
-    }
-    return "/";
-}
-function getBaseURL(url) {
-    return ("" + url).replace(/^((?:https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/.+)\/[^/]+$/, "$1") + "/";
-} // TODO: Replace uses with `new URL(url).origin` when ie11 is no longer supported.
-function getOrigin(url) {
-    var matches = ("" + url).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^/]+/);
-    if (!matches) throw new Error("Origin not found");
-    return matches[0];
-}
-exports.getBundleURL = getBundleURLCached;
-exports.getBaseURL = getBaseURL;
-exports.getOrigin = getOrigin;
-
-},{}],"3oIFU":[function(require,module,exports) {
-module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.0dad5fb9.png" + "?" + Date.now();
-
-},{"./helpers/bundle-url":"abFXz"}]},["jKkdu","3WHKO"], "3WHKO", "parcelRequire94c2")
+},{}]},["jKkdu","3WHKO"], "3WHKO", "parcelRequire94c2")
 
 //# sourceMappingURL=trainyard.c3ca6f06.js.map

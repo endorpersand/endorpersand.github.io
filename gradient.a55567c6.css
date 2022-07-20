@@ -1,12 +1,11 @@
 .wrapper {
-  flex-direction: row;
-  justify-content: space-between;
+  gap: 30px;
   display: flex;
 }
 
-.wrapper > :first-child {
+#input {
   flex-direction: column;
-  flex-basis: 100%;
+  gap: 5px;
   display: flex;
 }
 
@@ -19,6 +18,23 @@
 #colors > div {
   grid-template-columns: 1fr 1fr;
   display: grid;
+}
+
+#results {
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+  display: flex;
+}
+
+.result {
+  flex-direction: column;
+  gap: 5px;
+  display: flex;
+}
+
+#css-gradient {
+  aspect-ratio: 512 / 64;
 }
 
 @media (max-width: 700px) {

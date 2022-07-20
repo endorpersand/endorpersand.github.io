@@ -535,10 +535,30 @@ function hmrAcceptRun(bundle, id) {
 var _mathjs = require("mathjs");
 const math = (0, _mathjs.create)((0, _mathjs.all));
 onmessage = function(e) {
-    let { pev , cd , chunk  } = e.data;
+    let data = e.data;
+    if (data.action === "init") {
+        self.postMessage({
+            action: "ready"
+        });
+        return;
+    }
+    let { pev , cd  } = data;
+    let chunk;
+    if (data.action === "chunkRequest") chunk = data.chunk;
+    else if (data.action === "mainRequest") chunk = {
+        width: cd.width,
+        height: cd.height,
+        offx: 0,
+        offy: 0
+    };
+    else {
+        let _ = data;
+        throw new Error("Unrecognized request into chunkLoader");
+    }
     let ev = buildEvaluator(pev);
     let buf = computeBuffer(ev, cd, chunk);
     let msg = {
+        action: "chunkDone",
         buf,
         chunk
     };
@@ -546,14 +566,24 @@ onmessage = function(e) {
         buf
     ]);
 };
-function buildEvaluator(pev) {
+/**
+ * Take a partially computed evaluator and fully evaluate it.
+ * @param pev partially computed evaluator
+ * @returns the full evaluator
+ */ function buildEvaluator(pev) {
     let { fstr , inverse  } = pev;
     return {
         f: math.evaluate(fstr),
         inverse
     };
 }
-function computeBuffer(ev, cd, chunk) {
+/**
+ * Compute the ArrayBuffer for the chunk
+ * @param ev The function evaluator
+ * @param cd Canvas dimension data
+ * @param chunk Chunk position and size
+ * @returns the computed chunk
+ */ function computeBuffer(ev, cd, chunk) {
     let { f , inverse  } = ev;
     let { width , height  } = chunk;
     let buf = new ArrayBuffer(4 * width * height);
@@ -574,27 +604,44 @@ function computeBuffer(ev, cd, chunk) {
     }
     return buf;
 }
-function convPlanes(x, y, cd, chunk) {
+/**
+  * Converts xy canvas pixels to values in the complex plane
+ * @param x x coord
+ * @param y y coord
+ * @param cd canvas data
+ * @param chunk chunk offset data
+ * @returns the complex value associated
+ */ function convPlanes(x, y, cd, chunk) {
     //converts xy pixel plane to complex plane
     // let cmx =  (row - rx) / (rx / 2) / scale,
     //     cmy = -(col - ry) / (ry / 2) / scale;
     // row - rx: distance from center, in canvas pixels
     // / (rx / 2): normalizes that so the edge is 2
     // / scale: scale mult.
-    let { width , height , scale  } = cd;
+    let { width , height , zoom  } = cd;
     let { offx , offy  } = chunk;
     let [rx, ry] = [
         (width - 1) / 2,
         (height - 1) / 2
     ];
-    let cmx = (x + offx - rx) / (rx / 2) / scale, cmy = -(y + offy - ry) / (ry / 2) / scale;
+    let cmx = (x + offx - rx) / (rx / 2) / zoom, cmy = -(y + offy - ry) / (ry / 2) / zoom;
     return math.complex(cmx, cmy);
 }
-function forceComplex(z) {
+/**
+ * Force the input to be a complex value
+ * @param z maybe complex value
+ * @returns Complex value
+ */ function forceComplex(z) {
     // z as any is ok here
     return math.complex(z);
 }
-function polarToColor(rad, theta, inverse) {
+/**
+ * Takes a polar coordinate and maps it to a color
+ * @param rad Radius
+ * @param theta Angle
+ * @param inverse Whether to invert the brightness
+ * @returns the associated color in RGB
+ */ function polarToColor(rad, theta, inverse) {
     let hue, brightness, c, x, m, r, g, b;
     hue = mod(theta * 3 / Math.PI, 6); // hue [0,6)
     if (inverse) hue = 6 - hue;
@@ -639,7 +686,12 @@ function polarToColor(rad, theta, inverse) {
     ]; // should never happen?
     return -16777216 | (b + m) * 0xFF << 16 | (g + m) * 0xFF << 8 | (r + m) * 0xFF;
 }
-function bfunc(r, inv) {
+/**
+ * Brightness computation
+ * @param r Radius
+ * @param inv Whether to invert the brightness
+ * @returns the brightness as float
+ */ function bfunc(r, inv) {
     // bfunc needs to match the identities:
     // b(1/x) = 1 - b(x)
     // b(0) = 0
