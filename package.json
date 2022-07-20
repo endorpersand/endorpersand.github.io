@@ -2,10 +2,11 @@
     "files": [
         "src/"
     ],
+    "source": "src/index.html",
     "scripts": {
-        "start": "parcel src/index.html",
-        "build": "cross-env NODE_ENV=production parcel build src/index.html --public-url .",
-        "deploy": "gh-pages -d dist"
+        "start": "parcel",
+        "build": "cross-env NODE_ENV=production parcel build --public-url .",
+        "site": "gh-pages -d dist"
     },
     "dependencies": {
         "a11y-dialog": "^7.5.0",
