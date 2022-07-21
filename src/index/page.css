@@ -1,9 +1,22 @@
+body {
+    display: flex;
+    align-items: stretch;
+}
+
+body > div {
+    display: flex;
+    flex-flow: column wrap;
+    align-items: center;
+    text-align: center;
+}
+
 .wrapper {
+    flex: 1;
+
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
-    grid-auto-rows: minmax(200px, auto);
-    gap: 10px;
-    width: 100%;
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 0.5em;
 }
 .wrapper .box {
     text-align: center;
@@ -19,15 +32,19 @@
     transition: background-color 0.25s ease-in-out;
 }
 
-a {
+a.box {
     text-decoration: none;
-    color: #111;
+    color: #000;
 }
+a.box:visited {
+    color: #000000;
+}
+
 .box {
     position: relative;
 }
 .box > div {
-    margin: 5px;
+    margin: 0.25em;
 }
 .colhex {
     position: absolute;
@@ -36,6 +53,9 @@ a {
     color: #0000007f;
 }
 .title {
-    font-weight: bolder;
-    font-size: 110%;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.big-text {
+    font-size: 4em;
 }

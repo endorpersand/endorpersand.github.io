@@ -34,13 +34,6 @@ form {
     color: red;
 }
 
-a {
-    color: lightblue;
-}
-a:visited {
-    color: plum;
-}
-
 @media (width <= 815px) {
     #wrapper {
         flex-direction: column-reverse;

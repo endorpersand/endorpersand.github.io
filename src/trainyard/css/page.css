@@ -121,6 +121,7 @@ body.readonly-mode {
     display: flex;
     justify-content: center;
     align-items: center;
+    align-self: center;
 }
 
 #navbar {
@@ -134,11 +135,11 @@ body.readonly-mode {
 /* navbar drop-down */
 #nv-dd {
     display: flex;
-    gap: 0 5px;
+    gap: 0 1px;
 }
 
 #nv-dd select {
-    font-size: 18px;
+    font-size: 1em;
 }
 
 /* navbar mode controls */
@@ -468,11 +469,13 @@ button.modal-close-btn {
     flex-direction: column;
     align-items: stretch;
 
+    /* TODO, not hardcode numbers? */
     width: 30px;
+    height: 78px;
 }
 
 .tl-slot-inner {
-    aspect-ratio: 1 / 2;
+    flex: 1;
     background-color: var(--pal-modal-debug-placeholder);
     border: 5px solid var(--pal-modal-darker);
 }
@@ -607,11 +610,12 @@ label.radio-label input + div {
     color: var(--pal-text);
     font-size: 18px;
     
+    text-align: center;
+    vertical-align: middle;
+
     display: flex;
     justify-content: center;
     align-items: center;
-
-    padding: 0 0;
 }
 
 .show-keys .keyed {
@@ -700,4 +704,10 @@ input[type=number]::-webkit-outer-spin-button {
     -moz-appearance: none;
     appearance: none;
     margin: 0; 
+}
+
+@media (width < 600px) {
+    #wrapper {
+        flex: 1;
+    }
 }
