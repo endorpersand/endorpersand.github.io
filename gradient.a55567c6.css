@@ -1,40 +1,47 @@
 .wrapper {
-  gap: 30px;
+  gap: 1.8em;
   display: flex;
 }
 
 #input {
   flex-direction: column;
-  gap: 5px;
+  gap: .3em;
   display: flex;
 }
 
 #colors {
-  width: 100px;
+  width: 10em;
   flex-direction: column;
   display: flex;
 }
 
 #colors > div {
-  grid-template-columns: 1fr 1fr;
-  display: grid;
+  display: flex;
+}
+
+#colors > div > * {
+  flex: 1;
 }
 
 #results {
   flex-direction: column;
   flex: 1;
-  gap: 10px;
+  gap: .6em;
   display: flex;
 }
 
 .result {
   flex-direction: column;
-  gap: 5px;
+  gap: .3em;
   display: flex;
 }
 
 #css-gradient {
   aspect-ratio: 512 / 64;
+}
+
+#gamma-input {
+  width: 5ch;
 }
 
 @media (max-width: 700px) {

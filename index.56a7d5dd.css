@@ -1,8 +1,20 @@
+body {
+  align-items: stretch;
+  display: flex;
+}
+
+body > div {
+  text-align: center;
+  flex-flow: column wrap;
+  align-items: center;
+  display: flex;
+}
+
 .wrapper {
   grid-template-columns: repeat(var(--cols), 1fr);
-  width: 100%;
-  grid-auto-rows: minmax(200px, auto);
-  gap: 10px;
+  flex: 1;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: .5em;
   display: grid;
 }
 
@@ -21,9 +33,13 @@
   transition: background-color .25s ease-in-out;
 }
 
-a {
-  color: #111;
+a.box {
+  color: #000;
   text-decoration: none;
+}
+
+a.box:visited {
+  color: #000;
 }
 
 .box {
@@ -31,7 +47,7 @@ a {
 }
 
 .box > div {
-  margin: 5px;
+  margin: .25em;
 }
 
 .colhex {
@@ -42,8 +58,12 @@ a {
 }
 
 .title {
-  font-size: 110%;
-  font-weight: bolder;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.big-text {
+  font-size: 4em;
 }
 
 /*# sourceMappingURL=index.56a7d5dd.css.map */

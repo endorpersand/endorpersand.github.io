@@ -84,6 +84,7 @@ body.readonly-mode {
 
 #game {
   justify-content: center;
+  align-self: center;
   align-items: center;
   display: flex;
 }
@@ -97,12 +98,12 @@ body.readonly-mode {
 }
 
 #nv-dd {
-  gap: 0 5px;
+  gap: 0 1px;
   display: flex;
 }
 
 #nv-dd select {
-  font-size: 18px;
+  font-size: 1em;
 }
 
 #nv-mode-controls {
@@ -369,15 +370,16 @@ button.modal-close-btn {
 
 .tl-slot {
   width: 30px;
+  height: 78px;
   flex-direction: column;
   align-items: stretch;
   display: flex;
 }
 
 .tl-slot-inner {
-  aspect-ratio: 1 / 2;
   background-color: var(--pal-modal-debug-placeholder);
   border: 5px solid var(--pal-modal-darker);
+  flex: 1;
 }
 
 .tl-slot-inner.empty {
@@ -511,9 +513,10 @@ label.radio-label input + div {
   border-width: 3px;
   border-color: var(--button-outset);
   color: var(--pal-text);
+  text-align: center;
+  vertical-align: middle;
   justify-content: center;
   align-items: center;
-  padding: 0;
   font-size: 18px;
   display: flex;
 }
@@ -603,6 +606,12 @@ input[type="number"] {
 input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button {
   appearance: none;
   margin: 0;
+}
+
+@media (max-width: 599.999px) {
+  #wrapper {
+    flex: 1;
+  }
 }
 
 /*# sourceMappingURL=trainyard.ba19ab4a.css.map */
