@@ -1,20 +1,22 @@
 .wrapper {
     display: flex;
-    gap: 30px;
+    gap: 1.8em;
 }
 #input {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 0.3em;
 }
 #colors {
     display: flex;
     flex-direction: column;
-    width: 100px;
+    width: 10em;
 }
 #colors > div {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+}
+#colors > div > * {
+    flex: 1;
 }
 
 #results {
@@ -22,17 +24,21 @@
 
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0.6em;
 }
 
 .result {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 0.3em;
 }
 
 #css-gradient {
     aspect-ratio: 512 / 64;
+}
+
+#gamma-input {
+    width: 5ch;
 }
 
 @media (width <= 700px) {

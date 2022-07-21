@@ -10,11 +10,32 @@ const cssCanvas = document.querySelector<HTMLDivElement>("#css-result div#css-gr
 
 const coloradd = document.querySelector<HTMLButtonElement>('button#coloradd')!;
 const colorsWrapper = document.querySelector<HTMLDivElement>('div#colors')!;
+
+const gammaInput = document.querySelector<HTMLInputElement>("input#gamma-input")!;
+
+const DEFAULT_GAMMA = 2.2;
 type RGB = [r: number, g: number, b: number];
+
+/**
+ * Computes the input gamma.
+ */
+function gamma() {
+    if (!gammaInput.checkValidity() || gammaInput.value === "") {
+        gammaInput.value = "" + DEFAULT_GAMMA;
+    }
+    
+    return +gammaInput.value;
+}
 
 updateAll();
 document.querySelectorAll('input[type=color]').forEach(x => x.addEventListener('change', updateAll));
+gammaInput.addEventListener("input", updateAll);
 
+/**
+ * Add another color stop to the display. This automatically inserts the color input to DOM.
+ * @param update Whether or not the gradients should be refreshed.
+ * @returns the color stop element
+ */
 function addColorInput(update = true) {
     let div = makeColorDiv();
     colorsWrapper.insertBefore(div, coloradd);
@@ -111,8 +132,8 @@ function makeColorDiv(hex = '#000000') {
  * @param prog [0, 1)
  * @returns interpolated value
  */
-function rmsInterpolate(a: number, b: number, prog: number) {
-    return Math.hypot(a * Math.sqrt(1 - prog), b * Math.sqrt(prog));
+function gammaInterpolate(a: number, b: number, gamma: number, prog: number) {
+    return ((1 - prog) * (a ** gamma) + prog * (b ** gamma)) ** (1 / gamma);
 }
 
 /**
@@ -160,7 +181,7 @@ function updateCanvas(ctx: CanvasRenderingContext2D, ipol: IpolType, clrs: strin
             const pos = (i / arr32LastIndex) * lastIndex;
             const [j, prog] = [Math.floor(pos), pos % 1];
             const [a, b] = [clrs[j], clrs[j + 1] ?? '#000000'].map(x => rgb(x));
-            const c = Array.from({length: 3}, (_, i) => rmsInterpolate(a[i], b[i], prog));
+            const c = Array.from({length: 3}, (_, i) => gammaInterpolate(a[i], b[i], gamma(), prog));
             arr32[i] = 0xFF << 24
                      | c[2] << 16
                      | c[1] <<  8
