@@ -122,21 +122,35 @@ function forceComplex(z: number | Complex) {
  * @returns the associated color in RGB
  */
 function polarToColor(rad: number, theta: number, inverse: boolean) {
-    let hue, brightness, c, x, m, r, g, b;
-    hue = mod(theta * 3 / Math.PI, 6); // hue [0,6)
+    let hue = mod(theta * 3 / Math.PI, 6); // hue [0,6)
     if (inverse) hue = 6 - hue;
 
-    brightness = bfunc(rad, inverse);
-    c = 1 - Math.abs(2 * brightness - 1);
-    x = c * (1 - Math.abs(mod(hue, 2) - 1));
-    m = brightness - c / 2;
-    if (0 <= hue && hue < 1) [r, g, b] = [c, x, 0];
-    else if (1 <= hue && hue < 2) [r, g, b] = [x, c, 0];
-    else if (2 <= hue && hue < 3) [r, g, b] = [0, c, x];
-    else if (3 <= hue && hue < 4) [r, g, b] = [0, x, c];
-    else if (4 <= hue && hue < 5) [r, g, b] = [x, 0, c];
-    else if (5 <= hue && hue < 6) [r, g, b] = [c, 0, x];
-    else [r, g, b] = [c, x, 0]; // should never happen?
+    return hsl2rgb(
+        hue,
+        1,
+        bfunc(rad, inverse),
+    );
+}
+
+/**
+ * Converts HSL to RGBA
+ * @param h hue [0, 6]
+ * @param s saturation [0, 1]
+ * @param l lightness [0, 1]
+ * @returns 4-byte RGBA number ([0, 255], alpha is always 255)
+ */
+function hsl2rgb(h: number, s: number, l: number) {
+    let c, x, m, r, g, b;
+    c = (1 - Math.abs(2 * l - 1)) * s;
+    x = c * (1 - Math.abs(mod(h, 2) - 1));
+    m = l - c / 2;
+    if (0 <= h && h < 1) [r, g, b] = [c, x, 0];
+    else if (1 <= h && h < 2) [r, g, b] = [x, c, 0];
+    else if (2 <= h && h < 3) [r, g, b] = [0, c, x];
+    else if (3 <= h && h < 4) [r, g, b] = [0, x, c];
+    else if (4 <= h && h < 5) [r, g, b] = [x, 0, c];
+    else if (5 <= h && h < 6) [r, g, b] = [c, 0, x];
+    else [r, g, b] = [c, x, 0];
 
     return (    0xFF  << 24) | 
     (((b + m) * 0xFF) << 16) |

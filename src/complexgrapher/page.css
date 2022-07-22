@@ -37,9 +37,14 @@ form {
 @media (width <= 815px) {
     #wrapper {
         flex-direction: column-reverse;
+        align-items: center;
         padding: 8px;
     }
 
+    #zcoord {
+        align-self: center;
+    }
+    
     #controls {
         align-self: stretch;
     }
