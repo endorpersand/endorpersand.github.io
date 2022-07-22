@@ -80,8 +80,10 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     
     worker.onerror = onComputeError;
     graphButton.disabled = false;
-    graph(); // Don't need to await it. We just want it to happen eventually.
     webkitTest.terminate();
+
+    document.querySelectorAll(".initializing").forEach(e => e.classList.remove("initializing"));
+    graph(); // Don't need to await it. We just want it to happen eventually.
 }
 
 /**

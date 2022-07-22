@@ -23,7 +23,7 @@ body {
     transition: ease-in-out opacity .2s;
 }
 
-#controls:not(:hover) {
+#controls:not(:hover):not(.initializing) {
     opacity: 0.1;
 }
 .smallgap {
