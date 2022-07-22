@@ -11,32 +11,25 @@
             <div id="controls">
                 <div class="smallgap">
                     <div id='zcoord'>Loading page...</div>
-                    <div id="funcControls">
+                    <div id="func-controls">
                         <span>f(z) = </span>
-                        <form id='funcForm'>
-                            <input value='z'>
+                        <form class="graph-submit">
+                            <input id="func-input" value='z'>
                         </form>
-                        <button id='graphButton' disabled>Graph!</button>
+                        <button id='graph-button' class='graph-submit' disabled>Graph!</button>
                     </div>
                 </div>
-                <div id="zoomButtonControls">
-                    <button class='zoom'>Zoom in</button>
+                <div id="zoom-button-controls">
+                    <button class='zoom graph-submit'>Zoom in</button>
                     <button class='zoom'>Reset zoom</button>
-                    <button class='zoom'>Zoom out</button>
+                    <button class='zoom graph-submit'>Zoom out</button>
                 </div>
                 <div>
                     <span>Current zoom: 
-                        <form id='zoomForm'>
-                            <input value='1' size='4'>
+                        <form id="zoom-form" class="graph-submit">
+                            <input id="zoom-input" type="number" min="0" value="1" step="any">
                         </form>x
                     </span>
-                    <div id="scaleControls">
-                        <span>Current radius: </span>
-                        <form id='scaleForm'>
-                            <input type='number' value='250' size='4' required>
-                        </form>
-                        <span>px</span>
-                    </div>
                     <div>
                         Current domain: <code class='domain'>-2 - 2i</code> to <code class='domain'>2 + 2i</code>
                     </div>

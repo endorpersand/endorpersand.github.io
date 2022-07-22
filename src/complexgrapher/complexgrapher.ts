@@ -2,18 +2,13 @@ import { create, all } from "mathjs";
 import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
-const wrapper     = document.querySelector('#wrapper')!     as HTMLDivElement,
-      funcForm    = document.querySelector('#funcForm')!    as HTMLFormElement,
-      input       = funcForm.querySelector('input')!        as HTMLInputElement,
-      graphButton = document.querySelector('#graphButton')! as HTMLButtonElement,
-      zcoord      = document.querySelector('#zcoord')!      as HTMLDivElement,
-      zoomButtons = document.querySelectorAll('button.zoom'),
-      zoomForm    = document.querySelector('#zoomForm')!    as HTMLFormElement,
-      zoomInput   = zoomForm.querySelector('input')!        as HTMLInputElement,
-      scaleForm   = document.querySelector('#scaleForm')!   as HTMLFormElement,
-      scaleInput  = scaleForm.querySelector('input')!       as HTMLInputElement,
-      warning     = document.querySelector('#warning')!     as HTMLDivElement,
-      domain      = document.querySelectorAll('.domain');
+const wrapper     = document.querySelector<HTMLDivElement>('div#wrapper')!,
+      funcInput   = document.querySelector<HTMLInputElement>('input#func-input')!,
+      graphButton = document.querySelector<HTMLButtonElement>('#graph-button')!,
+      zcoord      = document.querySelector<HTMLDivElement>('div#zcoord')!,
+      zoomButtons = document.querySelectorAll<HTMLButtonElement>('button.zoom'),
+      zoomInput   = document.querySelector<HTMLInputElement>('input#zoom-input')!,
+      domain      = document.querySelectorAll<HTMLElement>('.domain');
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
@@ -85,7 +80,7 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     
     worker.onerror = onComputeError;
     graphButton.disabled = false;
-    graphButton.click();
+    graph(); // Don't need to await it. We just want it to happen eventually.
     webkitTest.terminate();
 }
 
@@ -103,8 +98,7 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     code.append("" + convPlanes(cx, cy));
     zcoord.append(code);
 };
-canvas.addEventListener('mousemove', coordinateDisplay);
-document.body.addEventListener('mousemove', coordinateDisplay);
+
 canvas.addEventListener('click', e => {
     let cx = e.pageX - canvas.offsetLeft;
     let cy = e.pageY - canvas.offsetTop;
@@ -113,100 +107,76 @@ canvas.addEventListener('click', e => {
     console.log(`z = ${z},\nf(z) = ${d(z)}`);
 });
 
-
 // Function input handlers:
-input.addEventListener('input', () => {
-    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, '');
-});
-funcForm.addEventListener('submit', e => {
-    e.preventDefault();
-    graphButton.click();
+funcInput.addEventListener('input', () => {
+    funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, '');
 });
 
-// zoom in
-zoomButtons[0].addEventListener('click', () => {
-    scale /= 2;
-    graphButton.click();
-});
-// reset zoom
-zoomButtons[1].addEventListener('click', () => {
-    if (scale !== 2) {
-        scale = 2;
-        graphButton.click();
-    }
-});
-// zoom out
-zoomButtons[2].addEventListener('click', () => {
-    scale *= 2;
-    graphButton.click();
-});
+{
+    const [zoomIn, zoomReset, zoomOut] = zoomButtons;
 
-// arbitrary zoom
-zoomInput.addEventListener('input', () => {
-    zoomInput.value = zoomInput.value.replace(/[^0-9.]/g, '');
-    if (isNaN(+scaleInput.value)) zoomInput.value = "1";
+    zoomIn.addEventListener('click', () => {
+        scale /= 2;
+    });
 
-    if ([...zoomInput.value].filter(x => x === '.').length > 1) {
-        var ziArray = zoomInput.value.split('.');
-        zoomInput.value = ziArray[0] + '.' + ziArray.slice(1).join('');
-    }
-});
-zoomForm.addEventListener('submit', e => {
-    e.preventDefault();
-    // if (zoom !== +zoomInput.value) {
-        // zoom = +zoomInput.value || 0;
-        graphButton.click();
-    // }
-});
+    zoomReset.addEventListener('click', () => {
+        if (scale !== 2) {
+            scale = 2;
+            graph();
+        }
+    });
 
-// scale handler:
-// scaleInput.addEventListener('input', () => {
-//     if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
-//     warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
-// });
-scaleForm.addEventListener('submit', e => {
-    e.preventDefault();
-    let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) {
-    // canvas.width = canvas.height = size;
-    graphButton.click();
-    }
-});
+    zoomOut.addEventListener('click', () => {
+        scale *= 2;
+    });
+}
 
 let resizeCheck: NodeJS.Timer | undefined;
 window.addEventListener("resize", e => {
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
-
-    // defaultRadius = computeDefRadius();
-    // scaleInput.value = "" + defaultRadius;
-    // warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
-
     // if resize is done then perform recompute
-    resizeCheck = setTimeout(() => graphButton.click(), 200);
+    resizeCheck = setTimeout(async () => await graph(), 200);
 });
 
-graphButton.addEventListener('click', async () => {
+document.querySelector<HTMLFormElement>("form#zoom-form")!.addEventListener("submit", () => {
+    if (zoomInput.checkValidity()) {
+        scale = 2 / +zoomInput.value;
+    }
+});
+
+// For things that unconditionally graph after being pressed:
+document.querySelectorAll<HTMLFormElement>("form.graph-submit").forEach(f => {
+    f.addEventListener("submit", e => {
+        e.preventDefault();
+        graph();
+    });
+});
+document.querySelectorAll<HTMLButtonElement>("button.graph-submit").forEach(b => {
+    b.addEventListener("click", () => {
+        graph();
+    });
+});
+
+async function graph() {
     if (!canNest) graphButton.disabled = true;
 
     zcoord.classList.remove('error');
-    // zoomInput.value = zoom.toString();
-
-    let size = +scaleInput.value * 2 + 1;
-    // if (canvas.width !== size) canvas.width = canvas.height = size;
+    
+    zoomInput.value = `${2 / scale}`;
+    zoomInput.style.width = `${zoomInput.value.length}ch`;
 
     const [cmX, cmY] = xyScale();
-    domain[0].textContent = math.complex(-cmX, -cmY).toString();
-    domain[1].textContent = math.complex( cmX,  cmY).toString();
+    domain[0].textContent = `-${cmX} - ${cmY}i`;
+    domain[1].textContent = `${cmX} + ${cmY}i`;
     
     zcoord.textContent = 'Graphing...'
+    disableHover();
     await waitPageUpdate();
+
     setProperty(canvas, "width", document.documentElement.clientWidth);
     setProperty(canvas, "height", document.documentElement.clientHeight);
 
-    canvas.removeEventListener('mousemove', coordinateDisplay);
-    document.body.removeEventListener('mousemove', coordinateDisplay);
-
-    let fstr = input.value;
+    let fstr = funcInput.value;
     try {
         d = math.evaluate(`f(z) = ${fstr}`);
         startWorker(worker, fstr);
@@ -214,7 +184,7 @@ graphButton.addEventListener('click', async () => {
         onComputeError(e as any);
         throw e;
     }
-});
+}
 
 /**
  * @returns a promise that resolves when the DOM updates displaying
@@ -325,11 +295,18 @@ function markDone(t: number) {
 function onComputeError(e: Error | ErrorEvent) {
     let err = e instanceof ErrorEvent ? e.message : e;
 
-    canvas.removeEventListener('mousemove', coordinateDisplay);
-    document.body.removeEventListener('mousemove', coordinateDisplay);
+    disableHover();
     zcoord.classList.add('error');
     zcoord.textContent = String(err);
     reenableHover();
+}
+
+/**
+ * Disable z-coord display hover.
+ */
+function disableHover() {
+    canvas.removeEventListener('mousemove', coordinateDisplay);
+    document.body.removeEventListener('mousemove', coordinateDisplay);
 }
 
 /**

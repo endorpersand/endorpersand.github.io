@@ -1,6 +1,6 @@
 import { MainIn, MainOut, LoaderIn, LoaderOut, CanvasData, PartialEvaluator, InitIn, InitOut } from "../types";
 
-const CHUNK_SIZE = 50;
+const CHUNK_SIZE = 100;
 const N_WORKERS = 4;
 
 let free: Worker[] = [];

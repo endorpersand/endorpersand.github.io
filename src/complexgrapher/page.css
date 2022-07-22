@@ -46,6 +46,17 @@ form {
     color: red;
 }
 
+input[type=number] {
+    width: 5ch;
+}
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0; 
+}
+
 @media (width <= 815px) {
     #wrapper {
         flex-direction: column-reverse;
@@ -61,22 +72,15 @@ form {
         align-self: stretch;
     }
 
-    /* nice to have, 
-        but formatting is weird when width is small
-    */
-    #scaleControls {
-        display: none;
-    }
-
-    #funcControls, #zoomButtonControls {
+    #func-controls, #zoom-button-controls {
         align-self: center;
     }
     
-    #zoomButtonControls {
+    #zoom-button-controls {
         padding-bottom: 8px;
     }
 
-    #funcControls {
+    #func-controls {
         padding-top: 8px;
     }
 
