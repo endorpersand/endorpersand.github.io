@@ -30,12 +30,23 @@ export interface PartialEvaluator {
     inverse: boolean
 }
 
+type Numeric = Complex | number;
+
+interface FunctionEvaluator { 
+    type: "function",
+    f: ComplexFunction
+}
+interface ConstantEvaluator { 
+    type: "constant",
+    f: Numeric
+}
+
 /**
  * A fully evaluated function.
  * This has the sufficient knowledge to compute an output color from an input complex number.
  */
 export interface Evaluator {
-    f: ComplexFunction,
+    evaluator: FunctionEvaluator | ConstantEvaluator,
 
     /**
      * Signifies whether to use the reciprocal optimization: bfunc(1 / fz) = 1 - bfunc(fz)
@@ -46,7 +57,7 @@ export interface Evaluator {
 /**
  * A function that takes a complex number to another complex number
  */
-export type ComplexFunction = (z: Complex) => Complex | number;
+export type ComplexFunction = (z: Complex) => Numeric;
 
 namespace Messages {
     /**

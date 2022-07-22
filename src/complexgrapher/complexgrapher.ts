@@ -136,7 +136,7 @@ canvas.addEventListener('click', e => {
 
 // Function input handlers:
 funcInput.addEventListener('input', () => {
-    funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, '');
+    funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()!]/g, '');
 });
 
 {
@@ -288,7 +288,6 @@ function startWorker(w: Worker, fstr: string) {
  */
 function partialEvaluate(fstr: string): PartialEvaluator {
     let node = math.simplify(fstr);
-    let fnode = math.parse("f(z) = 0") as math.FunctionAssignmentNode;
 
     let inverse = false;
     if (node.type == "OperatorNode" && node.fn == 'divide' && !isNaN(+node.args[0])) { // reciprocal func
@@ -297,8 +296,7 @@ function partialEvaluate(fstr: string): PartialEvaluator {
         inverse = true;
     }
 
-    fnode.expr = node;
-    return { fstr: fnode.toString(), inverse };
+    return { fstr: node.toString(), inverse };
 }
 
 /**

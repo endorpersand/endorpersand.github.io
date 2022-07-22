@@ -1,6 +1,5 @@
-import { create, all } from "mathjs";
-import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn } from "../types";
-const math = create(all);
+import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn, ComplexFunction } from "../types";
+import * as evaluator from "../evaluator";
 
 onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     let data = e.data;
@@ -41,7 +40,7 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
  */
 function buildEvaluator(pev: PartialEvaluator): Evaluator {
     let {fstr, inverse} = pev;
-    return {f: math.evaluate(fstr), inverse}
+    return {evaluator: evaluator.compile(fstr), inverse}
 }
 
 /**
@@ -52,29 +51,31 @@ function buildEvaluator(pev: PartialEvaluator): Evaluator {
  * @returns the computed chunk
  */
 function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBuffer {
-    let {f, inverse} = ev;
+    let {evaluator, inverse} = ev;
     let {width, height} = chunk;
 
     let buf = new ArrayBuffer(4 * width * height);
     let arr32 = new Uint32Array(buf);
-    for (var i = 0; i < width; i++) {
-        for (var j = 0; j < height; j++) {
-            let k = width * j + i;
-            // compute value
-            let fz = forceComplex(f( convPlanes(i, j, cd, chunk) ));
-            // if (typeof fz !== 'number' && fz.type !== 'Complex') throw new TypeError('Input value is not a number');
-            
-            // get color
-            if (!Number.isFinite(fz.re) || !Number.isFinite(fz.im)) {
-                let infColor = +!inverse * 0xFFFFFF;
-                arr32[k] = (0xFF << 24) | infColor;
-                continue;
-            }
 
-            let { r, phi } = fz.toPolar();
-            arr32[k] = polarToColor(r, phi, inverse);
+    if (evaluator.type === "constant") {
+        const fz = Complex(evaluator.f);
+        arr32.fill( polarToColor(fz.abs(), fz.arg(), inverse) );
+    } else {
+        const { f } = evaluator;
+        
+        for (var i = 0; i < width; i++) {
+            for (var j = 0; j < height; j++) {
+                let k = width * j + i;
+                // compute value
+                let fz = Complex(f( convPlanes(i, j, cd, chunk) ));
+
+                let r = fz.abs();
+                let phi = fz.arg();
+                arr32[k] = polarToColor(r, phi, inverse);
+            }
         }
     }
+
     return buf;
 }
 
@@ -105,16 +106,7 @@ function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
         -(y + offy - ry) / ry
     ];
     
-    return math.complex(nx * scaleX, ny * scaleY) as unknown as Complex;
-}
-/**
- * Force the input to be a complex value
- * @param z maybe complex value
- * @returns Complex value
- */
-function forceComplex(z: number | Complex) {
-    // z as any is ok here
-    return math.complex(z as any);
+    return Complex(nx * scaleX, ny * scaleY);
 }
 
 /**
@@ -177,7 +169,7 @@ function bfunc(r: number, inv: boolean) {
 
     let b = 1 / (Math.sqrt(r) + 1);
 
-    return inv ? b : 1 - b;
+    return inv ? 1 - b : b;
 }
 
 function mod(x: number, y: number) {
