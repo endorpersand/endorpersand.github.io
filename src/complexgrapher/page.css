@@ -25,7 +25,7 @@ body {
     grid-area: controls;
 }
 
-#controls:not(:hover):not(.initializing) {
+#controls:not(:hover):not(.initializing):not(.error) {
     opacity: 0.1;
 }
 .smallgap {
@@ -48,7 +48,7 @@ canvas {
 form {
     display: inline;
 }
-.error {
+#controls.error #zcoord {
     color: red;
 }
 
@@ -79,8 +79,8 @@ input[type=number]::-webkit-outer-spin-button {
         height: 100vh;
     }
 
-    #controls:not(:hover):not(.initializing) {
-        opacity: unset;
+    #controls {
+        opacity: unset !important;
     }
 
     #controls {

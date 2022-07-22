@@ -3,6 +3,7 @@ import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, 
 const math = create(all);
 
 const wrapper     = document.querySelector<HTMLDivElement>('div#wrapper')!,
+      controls    = document.querySelector<HTMLDivElement>('div#controls')!,
       funcInput   = document.querySelector<HTMLInputElement>('input#func-input')!,
       graphButton = document.querySelector<HTMLButtonElement>('#graph-button')!,
       zcoord      = document.querySelector<HTMLDivElement>('div#zcoord')!,
@@ -117,7 +118,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     const pos = fromMousePosition(e);
 
     if (typeof pos !== "undefined") {
-        zcoord.classList.remove('error');
+        controls.classList.remove('error');
         zcoord.textContent = 'z = ';
         
         const code = document.createElement("code");
@@ -135,9 +136,9 @@ canvas.addEventListener('click', e => {
 });
 
 // Function input handlers:
-funcInput.addEventListener('input', () => {
-    funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()!]/g, '');
-});
+// funcInput.addEventListener('input', () => {
+//     funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()!]/g, '');
+// });
 
 {
     const [zoomIn, zoomReset, zoomOut] = zoomButtons;
@@ -185,9 +186,10 @@ document.querySelectorAll<HTMLButtonElement>("button.graph-submit").forEach(b =>
 });
 
 async function graph() {
+    if (graphButton.disabled) return;
     if (!canNest) graphButton.disabled = true;
 
-    zcoord.classList.remove('error');
+    controls.classList.remove('error');
     
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
@@ -316,9 +318,8 @@ function onComputeError(e: Error | ErrorEvent) {
     let err = e instanceof ErrorEvent ? e.message : e;
 
     disableHover();
-    zcoord.classList.add('error');
+    controls.classList.add('error');
     zcoord.textContent = String(err);
-    reenableHover();
 }
 
 /**
@@ -333,11 +334,11 @@ function disableHover() {
  * Reenable interactability after an error
  * @param after how many ms before hover and interactibility should reenable
  */
-function reenableHover(after = 500) {
+function reenableHover(after = 1000) {
+    if (!canNest) graphButton.disabled = false;
     setTimeout(() => {
         canvas.addEventListener('mousemove', coordinateDisplay);
         document.body.addEventListener('mousemove', coordinateDisplay);
-        if (!canNest) graphButton.disabled = false;
     }, after);
 }
 
