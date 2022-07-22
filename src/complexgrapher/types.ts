@@ -63,7 +63,7 @@ namespace Messages {
     /**
      * A request to compute the function across an entire canvas
      */
-    export type MainRequest = {
+    export interface MainRequest {
         action: "mainRequest",
         pev: PartialEvaluator,
         cd: CanvasData
@@ -72,7 +72,7 @@ namespace Messages {
     /**
      * Designation that the canvas is fully computed
      */
-    export type GraphDone = {
+    export interface GraphDone {
         action: "done",
         time: number
     };
@@ -80,7 +80,7 @@ namespace Messages {
     /**
      * A request to compute the function across a chunk
      */
-    export type ChunkRequest = {
+    export interface ChunkRequest {
         action: "chunkRequest",
         pev: PartialEvaluator
         cd: CanvasData,
@@ -90,7 +90,7 @@ namespace Messages {
     /**
      * Designation that the chunk is fully computed (with the computed data from the chunk)
      */
-    export type ChunkDone = {
+    export interface ChunkDone {
         action: "chunkDone",
         chunk: ChunkData,
         buf: ArrayBuffer
@@ -99,22 +99,26 @@ namespace Messages {
     /**
      * Call to initialize
      */
-    export type Init = {
+    export interface Init {
         action: "init"
     };
 
     /**
      * Return call to designate initialization completed
      */
-    export type Ready = {
+    export interface Ready {
         action: "ready"
+    }
+
+    export interface Cancel {
+        action: "cancel"
     }
 }
 export type InitIn = Messages.Init;
 export type InitOut = Messages.Ready;
 
-export type MainIn = Messages.MainRequest;
+export type MainIn = Messages.MainRequest | Messages.Cancel;
 export type MainOut = Messages.ChunkDone | Messages.GraphDone;
 
-export type LoaderIn = Messages.ChunkRequest;
+export type LoaderIn = Messages.ChunkRequest | Messages.Cancel;
 export type LoaderOut = Messages.ChunkDone;

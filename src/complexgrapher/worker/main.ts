@@ -46,6 +46,15 @@ onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
             }
         }
         free = [...fit];
+    } else if (data.action === "cancel") {
+        for (let w of labor.keys()) {
+            w.postMessage(data);
+            freeWorker(w);
+        }
+
+        workQueue = empty();
+        currentTask = Symbol("none");
+        return;
     } else {
         let _: never = data;
         throw new Error("Unexpected request into main worker");
@@ -165,7 +174,7 @@ function* spiral(limitX?: number, limitY?: number) {
  */
 function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator<Ticket> {
     let {width, height} = cd;
-    currentTask = Symbol("task");
+    currentTask = Symbol(pev.fstr);
 
     const limitX = Math.ceil(width / 2 / CHUNK_SIZE - 1 / 2);
     const limitY = Math.ceil(height / 2 / CHUNK_SIZE - 1 / 2);
@@ -185,6 +194,8 @@ function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator
         }, currentTask, start];
     }
 }
+
+function* empty() {}
 
 /**
  * Designate a worker as free to work.

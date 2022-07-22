@@ -1,14 +1,20 @@
 import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn, ComplexFunction } from "../types";
 import * as evaluator from "../evaluator";
 
+let running = true;
+
 onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     let data = e.data;
 
     if (data.action === "init") {
         self.postMessage({action: "ready"});
         return;
+    } else if (data.action === "cancel") {
+        running = false;
+        return;
     }
 
+    running = true;
     let {pev, cd} = data;
     let chunk;
 
@@ -65,6 +71,7 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
         
         for (var i = 0; i < width; i++) {
             for (var j = 0; j < height; j++) {
+                if (!running) return buf;
                 let k = width * j + i;
                 // compute value
                 let fz = Complex(f( convPlanes(i, j, cd, chunk) ));

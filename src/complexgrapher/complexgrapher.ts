@@ -34,6 +34,8 @@ updateCanvasDims();
  */
 let scale = 2;
 
+let running = true;
+
 function xyScale() {
     return [(scale * canvas.width / canvas.height), scale] as const;
 }
@@ -271,6 +273,7 @@ async function initWorker(w: Worker) {
 function startWorker(w: Worker, fstr: string) {
     if (!canNest) time = performance.now();
 
+    running = true;
     let msg: MainIn = {
         action: "mainRequest",
         pev: partialEvaluate(fstr), 
@@ -280,6 +283,23 @@ function startWorker(w: Worker, fstr: string) {
         scale
     }};
     w.postMessage(msg);
+}
+
+function cancelWorker() {
+    running = false;
+    worker.postMessage({action: "cancel"});
+}
+
+/**
+ * Update the canvas with the loaded chunk
+ * @param data the data from the worker
+ */
+ function displayChunk(data: LoaderOut) {
+    if (!running) return;
+    let {chunk, buf} = data;
+
+    let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
+    ctx.putImageData(dat, chunk.offx, chunk.offy);
 }
 
 /**
@@ -340,17 +360,6 @@ function reenableHover(after = 1000) {
         canvas.addEventListener('mousemove', coordinateDisplay);
         document.body.addEventListener('mousemove', coordinateDisplay);
     }, after);
-}
-
-/**
- * Update the canvas with the loaded chunk
- * @param data the data from the worker
- */
-function displayChunk(data: LoaderOut) {
-    let {chunk, buf} = data;
-
-    let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
-    ctx.putImageData(dat, chunk.offx, chunk.offy);
 }
 
 function setProperty<P extends string | number | symbol, V>(o: {[I in P]: V}, p: P, v: V) {
