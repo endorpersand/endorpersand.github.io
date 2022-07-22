@@ -14,8 +14,18 @@ const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
 wrapper.appendChild(canvas);
 
-canvas.width = document.documentElement.clientWidth;
-canvas.height = document.documentElement.clientHeight;
+async function updateCanvasDims() {
+    await waitPageUpdate();
+    const { width, height } = canvas.getBoundingClientRect();
+    setProperty(canvas, "width", width);
+    setProperty(canvas, "height", height);
+
+    // update domain display
+    const [cmX, cmY] = xyScale();
+    domain[0].textContent = `-${cmX} - ${cmY}i`;
+    domain[1].textContent = `${cmX} + ${cmY}i`;
+}
+updateCanvasDims();
 
 /**
  * The scale of the graph represents the distance (in complex units) 
@@ -87,26 +97,41 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
 }
 
 /**
+ * Calculate complex coordinates from the current mouse position
+ */
+function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
+    const x = pageX - canvas.offsetLeft;
+    const y = pageY - canvas.offsetTop;
+
+    const { width, height } = canvas.getBoundingClientRect();
+    if ( x < 0 || x >= width  ) return;
+    if ( y < 0 || y >= height ) return;
+
+    return convPlanes(x, y);
+}
+
+/**
  * Event listener that displays the complex coordinate of the mouse's current position.
  */
  function coordinateDisplay(e: MouseEvent) {
-    let cx = e.pageX - canvas.offsetLeft;
-    let cy = e.pageY - canvas.offsetTop;
+    const pos = fromMousePosition(e);
 
-    zcoord.classList.remove('error');
-    zcoord.textContent = 'z = ';
-    
-    const code = document.createElement("code");
-    code.append("" + convPlanes(cx, cy));
-    zcoord.append(code);
+    if (typeof pos !== "undefined") {
+        zcoord.classList.remove('error');
+        zcoord.textContent = 'z = ';
+        
+        const code = document.createElement("code");
+        code.append(pos.toString());
+        zcoord.append(code);
+    }
 };
 
 canvas.addEventListener('click', e => {
-    let cx = e.pageX - canvas.offsetLeft;
-    let cy = e.pageY - canvas.offsetTop;
+    const z = fromMousePosition(e);
 
-    let z = convPlanes(cx, cy);
-    console.log(`z = ${z},\nf(z) = ${d(z)}`);
+    if (typeof z !== "undefined") {
+        console.log(`z = ${z},\nf(z) = ${d(z)}`);
+    }
 });
 
 // Function input handlers:
@@ -166,17 +191,12 @@ async function graph() {
     
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
-
-    const [cmX, cmY] = xyScale();
-    domain[0].textContent = `-${cmX} - ${cmY}i`;
-    domain[1].textContent = `${cmX} + ${cmY}i`;
     
     zcoord.textContent = 'Graphing...'
     disableHover();
-    await waitPageUpdate();
 
-    setProperty(canvas, "width", document.documentElement.clientWidth);
-    setProperty(canvas, "height", document.documentElement.clientHeight);
+    await updateCanvasDims();
+    await waitPageUpdate();
 
     let fstr = funcInput.value;
     try {

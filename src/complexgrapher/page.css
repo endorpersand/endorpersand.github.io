@@ -21,6 +21,8 @@ body {
     background-color: #111111;
     padding: 10px;
     transition: ease-in-out opacity .2s;
+
+    grid-area: controls;
 }
 
 #controls:not(:hover):not(.initializing) {
@@ -37,7 +39,11 @@ canvas {
     position: absolute;
     top: 0;
     left: 0;
+    width: 100vw;
+    height: 100vh;
     z-index: -5;
+
+    grid-area: canvas;
 }
 form {
     display: inline;
@@ -57,17 +63,26 @@ input[type=number]::-webkit-outer-spin-button {
     margin: 0; 
 }
 
-@media (width <= 815px) {
+@media (width <= 700px) {
     #wrapper {
-        flex-direction: column-reverse;
-        align-items: center;
-        padding: 8px;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        grid-template-areas:
+            "canvas  "
+            "controls";
+        grid-auto-columns: minmax(0, 1fr);
+        padding: 0px;
+        gap: 0px;
+
+        justify-items: stretch;
+        align-items: stretch;
+        height: 100vh;
     }
 
-    #zcoord {
-        align-self: center;
+    #controls:not(:hover):not(.initializing) {
+        opacity: unset;
     }
-    
+
     #controls {
         align-self: stretch;
     }
@@ -89,10 +104,21 @@ input[type=number]::-webkit-outer-spin-button {
     }
 
     #zcoord {
+        align-self: center;
         font-size: 16px;
     }
 
     #zcoord * {
         font-size: inherit;
+    }
+
+    canvas {
+        position: static;
+        top: unset;
+        left: unset;
+        width: unset;
+        height: unset;
+        z-index: unset;
+        min-height: 0;
     }
 }
