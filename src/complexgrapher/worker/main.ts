@@ -109,6 +109,54 @@ async function initLoaders() {
     return await Promise.all(promises);
 }
 
+function* spiral(limitX?: number, limitY?: number) {
+    limitX = Math.abs(limitX ?? Infinity);
+    limitY = Math.abs(limitY ?? Infinity);
+
+    yield [0, 0] as const;
+    for (let d = 1; d <= limitX + limitY; d++) {
+        // start at [d, 0], or skip forward in the path if there's a limitX
+        let x = Math.min(d, limitX), y = d - x;
+
+        // always inclusive to exclusive
+        // traverse [ d,  0] => [ 0,  d] || diff: [-1,  1]
+        for (; y < d; x--, y++) {
+            yield [x, y] as const;
+
+            if (y === limitY) {
+                x = -x;
+                break;
+            }
+        }
+        // traverse [ 0,  d] => [-d,  0] || diff: [-1, -1]
+        for (; y > 0; x--, y--) {
+            yield [x, y] as const;
+
+            if (x === -limitX) {
+                y = -y;
+                break;
+            }
+        }
+        // traverse [-d,  0] => [ 0, -d] || diff: [ 1, -1]
+        for (; x < 0; x++, y--) {
+            yield [x, y] as const;
+
+            if (y === -limitY) {
+                x = -x;
+                break;
+            }
+        }
+        // traverse [ 0, -d] => [ d,  0] || diff: [ 1,  1]
+        for (; x < d; x++, y++) {
+            yield [x, y] as const;
+
+            if (x === limitX) {
+                break;
+            }
+        }
+    }
+}
+
 /**
  * Generator that breaks up the canvas into computable chunks, which can be sent to chunkLoaders to compute them
  * @param start Time queue started
@@ -119,19 +167,22 @@ function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator
     let {width, height} = cd;
     currentTask = Symbol("task");
 
-    for (let i = 0; i < width; i += CHUNK_SIZE) {
-        for (let j = 0; j < height; j += CHUNK_SIZE) {
-            let cw = clamp(0, CHUNK_SIZE, width - i);
-            let ch = clamp(0, CHUNK_SIZE, height - j);
+    const limitX = Math.ceil(width / 2 / CHUNK_SIZE - 1 / 2);
+    const limitY = Math.ceil(height / 2 / CHUNK_SIZE - 1 / 2);
 
-            yield [{
-                action: "chunkRequest",
-                pev, cd,
-                chunk: {
-                    width: cw, height: ch, offx: i, offy: j
-                }
-            }, currentTask, start];
-        }
+    for (let [i, j] of spiral(limitX, limitY)) {
+        let x = width / 2 + (i - 1/2) * CHUNK_SIZE;
+        let y = height / 2 + (j - 1/2) * CHUNK_SIZE;
+        let cw = clamp(0, x + CHUNK_SIZE, width) - x;
+        let ch = clamp(0, y + CHUNK_SIZE, height) - y;
+
+        yield [{
+            action: "chunkRequest",
+            pev, cd,
+            chunk: {
+                width: cw, height: ch, offx: x, offy: y
+            }
+        }, currentTask, start];
     }
 }
 
