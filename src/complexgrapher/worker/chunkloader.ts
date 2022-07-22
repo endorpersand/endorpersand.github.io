@@ -87,23 +87,26 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
  * @returns the complex value associated
  */
 function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
-    //converts xy pixel plane to complex plane
+    const { width, height, scale } = cd;
+    const { offx, offy } = chunk;
+    const scaleX = scale * width / height;
+    const scaleY = scale;
 
-    // let cmx =  (row - rx) / (rx / 2) / scale,
-    //     cmy = -(col - ry) / (ry / 2) / scale;
+    // distance of each radius
+    let [rx, ry] = [
+        (width  - 1) / 2,
+        (height - 1) / 2
+    ];
 
-    // row - rx: distance from center, in canvas pixels
-    // / (rx / 2): normalizes that so the edge is 2
-    // / scale: scale mult.
-
-    let {width, height, zoom} = cd;
-    let {offx, offy} = chunk;
-    let [rx, ry] = [(width - 1) / 2, (height - 1) / 2];
-    let cmx =  (x + offx - rx) / (rx / 2) / zoom,
-        cmy = -(y + offy - ry) / (ry / 2) / zoom;
-    return math.complex(cmx, cmy) as unknown as Complex;
+    // normalized distance from center (This means the center is at 0, the edges are at ±1).
+    // the center is also (rx, ry)
+    let [nx, ny] = [
+         (x + offx - rx) / rx, 
+        -(y + offy - ry) / ry
+    ];
+    
+    return math.complex(nx * scaleX, ny * scaleY) as unknown as Complex;
 }
-
 /**
  * Force the input to be a complex value
  * @param z maybe complex value

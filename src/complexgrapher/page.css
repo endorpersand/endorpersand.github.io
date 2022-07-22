@@ -1,5 +1,6 @@
 body {
     margin: 0px;
+    position: relative;
 }
 
 #wrapper {
@@ -16,8 +17,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 5px;
+
+    background-color: #111111;
+    padding: 10px;
+    transition: ease-in-out opacity .2s;
 }
 
+#controls:not(:hover) {
+    opacity: 0.1;
+}
 .smallgap {
     display: flex;
     flex-direction: column;
@@ -26,6 +34,10 @@ body {
 
 canvas {
     cursor: crosshair;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -5;
 }
 form {
     display: inline;

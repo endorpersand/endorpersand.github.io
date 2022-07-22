@@ -19,42 +19,18 @@ const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
 wrapper.appendChild(canvas);
 
-/**
- * The default domain of the image at zoom 1
- */
-const defaultDomain: [Complex, Complex] = [
-    math.complex('-2-2i'), 
-    math.complex('2+2i'),
-] as any;
+canvas.width = document.documentElement.clientWidth;
+canvas.height = document.documentElement.clientHeight;
 
 /**
- * The default radius.
+ * The scale of the graph represents the distance (in complex units) 
+ * from the center of the screen to the top.
  */
-const radiusThreshold = 250;
-/**
- * The radius the calculator will default to for the image. 
- * 
- * Typically 250 (so 501 x 501), but if window is small enough, this falls back to the window's width.
- */
-let defaultRadius = computeDefRadius();
-function computeDefRadius() {
-    let padding = parseInt(getComputedStyle(wrapper).padding);
-    return Math.min(
-        radiusThreshold, 
-        (document.documentElement.clientWidth - 1) / 2 - padding // size of the window / 2, minus padding
-    );
+let scale = 2;
+
+function xyScale() {
+    return [(scale * canvas.width / canvas.height), scale] as const;
 }
-
-scaleInput.value = "" + defaultRadius;
-
-/**
- * The zoom of the image (which affects the domain, but not the dimensions of the image)
- * 
- * Increase: zoom in
- * 
- * Decrease: zoom out
- */
-let zoom = 1;
 
 /**
  * Function that takes the input complex value to the output one
@@ -128,6 +104,7 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     zcoord.append(code);
 };
 canvas.addEventListener('mousemove', coordinateDisplay);
+document.body.addEventListener('mousemove', coordinateDisplay);
 canvas.addEventListener('click', e => {
     let cx = e.pageX - canvas.offsetLeft;
     let cy = e.pageY - canvas.offsetTop;
@@ -148,19 +125,19 @@ funcForm.addEventListener('submit', e => {
 
 // zoom in
 zoomButtons[0].addEventListener('click', () => {
-    zoom *= 2;
+    scale /= 2;
     graphButton.click();
 });
 // reset zoom
 zoomButtons[1].addEventListener('click', () => {
-    if (zoom !== 1) {
-        zoom = 1;
+    if (scale !== 2) {
+        scale = 2;
         graphButton.click();
     }
 });
 // zoom out
 zoomButtons[2].addEventListener('click', () => {
-    zoom /= 2;
+    scale *= 2;
     graphButton.click();
 });
 
@@ -176,22 +153,22 @@ zoomInput.addEventListener('input', () => {
 });
 zoomForm.addEventListener('submit', e => {
     e.preventDefault();
-    if (zoom !== +zoomInput.value) {
-    zoom = +zoomInput.value || 0;
-    graphButton.click();
-    }
+    // if (zoom !== +zoomInput.value) {
+        // zoom = +zoomInput.value || 0;
+        graphButton.click();
+    // }
 });
 
 // scale handler:
-scaleInput.addEventListener('input', () => {
-    if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
-});
+// scaleInput.addEventListener('input', () => {
+//     if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
+//     warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
+// });
 scaleForm.addEventListener('submit', e => {
     e.preventDefault();
     let size = +scaleInput.value * 2 + 1;
     if (canvas.width !== size) {
-    canvas.width = canvas.height = size;
+    // canvas.width = canvas.height = size;
     graphButton.click();
     }
 });
@@ -200,26 +177,34 @@ let resizeCheck: NodeJS.Timer | undefined;
 window.addEventListener("resize", e => {
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
 
-    defaultRadius = computeDefRadius();
-    scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
+    // defaultRadius = computeDefRadius();
+    // scaleInput.value = "" + defaultRadius;
+    // warning.style.display = +scaleInput.value > radiusThreshold ? 'inline' : 'none';
 
     // if resize is done then perform recompute
-    resizeCheck = setTimeout(() => graphButton.click(), 50);
+    resizeCheck = setTimeout(() => graphButton.click(), 200);
 });
 
 graphButton.addEventListener('click', async () => {
     if (!canNest) graphButton.disabled = true;
 
     zcoord.classList.remove('error');
-    zoomInput.value = zoom.toString();
+    // zoomInput.value = zoom.toString();
 
     let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) canvas.width = canvas.height = size;
-    [domain[0].textContent, domain[1].textContent] = defaultDomain.map(x => x.div(zoom).toString());
+    // if (canvas.width !== size) canvas.width = canvas.height = size;
+
+    const [cmX, cmY] = xyScale();
+    domain[0].textContent = math.complex(-cmX, -cmY).toString();
+    domain[1].textContent = math.complex( cmX,  cmY).toString();
+    
     zcoord.textContent = 'Graphing...'
     await waitPageUpdate();
+    setProperty(canvas, "width", document.documentElement.clientWidth);
+    setProperty(canvas, "height", document.documentElement.clientHeight);
+
     canvas.removeEventListener('mousemove', coordinateDisplay);
+    document.body.removeEventListener('mousemove', coordinateDisplay);
 
     let fstr = input.value;
     try {
@@ -249,19 +234,23 @@ async function waitPageUpdate() {
  * @returns Complex value
  */
 function convPlanes(x: number, y: number) {
-    //converts xy pixel plane to complex plane
+    const { width, height } = canvas;
+    const scaleX = scale * width / height;
+    const scaleY = scale;
 
-    // let cmx =  (row - rx) / (rx / 2) / scale,
-    //     cmy = -(col - ry) / (ry / 2) / scale;
+    // distance of each radius
+    let [rx, ry] = [
+        (width  - 1) / 2,
+        (height - 1) / 2
+    ];
 
-    // row - rx: distance from center, in canvas pixels
-    // / (rx / 2): normalizes that so the edge is 2
-    // / scale: scale mult.
-
-    let [rx, ry] = [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
-    let cmx =  (x - rx) / (rx / 2) / zoom,
-        cmy = -(y - ry) / (ry / 2) / zoom;
-    return math.complex(cmx, cmy) as unknown as Complex;
+    // normalized distance from center (This means the center is at 0, the edges are at ±1).
+    // the center is also (rx, ry)
+    let [nx, ny] = [
+         (x - rx) / rx, 
+        -(y - ry) / ry
+    ];
+    return math.complex(nx * scaleX, ny * scaleY) as unknown as Complex;
 }
 
 /**
@@ -294,7 +283,7 @@ function startWorker(w: Worker, fstr: string) {
         cd: {
         width: canvas.width,
         height: canvas.height,
-        zoom
+        scale
     }};
     w.postMessage(msg);
 }
@@ -337,6 +326,7 @@ function onComputeError(e: Error | ErrorEvent) {
     let err = e instanceof ErrorEvent ? e.message : e;
 
     canvas.removeEventListener('mousemove', coordinateDisplay);
+    document.body.removeEventListener('mousemove', coordinateDisplay);
     zcoord.classList.add('error');
     zcoord.textContent = String(err);
     reenableHover();
@@ -349,6 +339,7 @@ function onComputeError(e: Error | ErrorEvent) {
 function reenableHover(after = 500) {
     setTimeout(() => {
         canvas.addEventListener('mousemove', coordinateDisplay);
+        document.body.addEventListener('mousemove', coordinateDisplay);
         if (!canNest) graphButton.disabled = false;
     }, after);
 }
@@ -362,4 +353,8 @@ function displayChunk(data: LoaderOut) {
 
     let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
     ctx.putImageData(dat, chunk.offx, chunk.offy);
+}
+
+function setProperty<P extends string | number | symbol, V>(o: {[I in P]: V}, p: P, v: V) {
+    if (o[p] !== v) o[p] = v;
 }

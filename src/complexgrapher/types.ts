@@ -7,7 +7,7 @@ export { Complex };
 export interface CanvasData {
     width: number,
     height: number,
-    zoom: number,
+    scale: number,
 }
 
 /**
