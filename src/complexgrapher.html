@@ -9,9 +9,9 @@
     <body>
         <div id="wrapper">
             <div id="controls" class="initializing">
-                <div class="smallgap">
-                    <div id='zcoord'>Loading page...</div>
-                    <div id="func-controls">
+                <div class="flimsy-box">
+                    <div id='zcoord' class="numeric-value">Loading page...</div>
+                    <div id="func-controls" class="subcontrols">
                         <span>f(z) = </span>
                         <form class="graph-submit">
                             <input id="func-input" value='z'>
@@ -19,19 +19,21 @@
                         <button id='graph-button' class='graph-submit' disabled>Graph!</button>
                     </div>
                 </div>
-                <div id="zoom-button-controls">
-                    <button class='zoom graph-submit'>Zoom in</button>
-                    <button class='zoom'>Reset zoom</button>
-                    <button class='zoom graph-submit'>Zoom out</button>
-                </div>
-                <div>
-                    <div>
-                        Zoom: 
-                        <form id="zoom-form" class="graph-submit">
-                            <input id="zoom-input" type="number" min="0" value="1" step="any">
-                        </form>x
+                <div class="flimsy-box">
+                    <div id="zoom-controls">
+                        <div id="zoom-input-controls" class="subcontrols">
+                            Zoom: 
+                            <form id="zoom-form" class="graph-submit">
+                                <input id="zoom-input" type="number" min="0" value="1" step="any">
+                            </form>x
+                        </div>
+                        <div id="zoom-button-controls" class="subcontrols">
+                            <button class='zoom graph-submit'>Zoom in</button>
+                            <button class='zoom graph-submit'>Reset zoom</button>
+                            <button class='zoom graph-submit'>Zoom out</button>
+                        </div>
                     </div>
-                    <div id="center-controls">
+                    <div id="center-controls" class="subcontrols">
                         Center: 
                         <form class="graph-submit">
                             <input class="center-input" type="number" value="0" step="any"> +
@@ -41,12 +43,11 @@
                         </form>
                         <button id="recenter-button" class="centered graph-submit">Recenter</button>
                     </div>
-                    <div>
+                    <div id="domain-info">
                         Domain: <code class='domain'>-2 - 2i</code> to <code class='domain'>2 + 2i</code>
                     </div>
                 </div>
                 <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>
-                <div id='warning' style='display: none'>(⚠️ Larger images may take much longer to load.)</div>
             </div>
             <!-- <canvas></canvas> -->
         </div>

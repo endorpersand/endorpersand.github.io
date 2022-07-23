@@ -13,10 +13,9 @@ body {
 }
 
 #controls {
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 10px;
 
     background-color: #111111;
     padding: 10px;
@@ -28,10 +27,10 @@ body {
 #controls:not(:hover):not(.initializing):not(.error) {
     opacity: 0.1;
 }
-.smallgap {
+.flimsy-box {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 5px;
 }
 
 canvas {
@@ -41,7 +40,7 @@ canvas {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -5;
+    z-index: -1;
 
     grid-area: canvas;
 }
@@ -85,16 +84,18 @@ input[type=number]::-webkit-outer-spin-button {
 
     #controls {
         opacity: unset !important;
-    }
-
-    #controls {
         align-self: stretch;
     }
 
-    #func-controls, #zoom-button-controls {
+    .subcontrols {
         align-self: center;
     }
     
+    #zoom-controls {
+        display: flex;
+        flex-direction: column;
+    }
+
     #zoom-button-controls {
         padding-bottom: 8px;
     }
@@ -107,12 +108,12 @@ input[type=number]::-webkit-outer-spin-button {
         font-size: 18px;
     }
 
-    #zcoord {
+    .numeric-value {
         align-self: center;
         font-size: 16px;
     }
 
-    #zcoord * {
+    .numeric-value * {
         font-size: inherit;
     }
 

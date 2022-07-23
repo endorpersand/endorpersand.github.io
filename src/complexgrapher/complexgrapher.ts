@@ -57,6 +57,23 @@ function setCenter(c: Complex) {
  */
 let scale = 2;
 
+function setScale(n: number) {
+    scale = n;
+
+    zoomInput.value = `${2 / scale}`;
+    zoomInput.style.width = `${zoomInput.value.length}ch`;
+
+    zoomButtons[1].disabled = scale == 2;
+}
+
+{
+    const [zoomIn, zoomReset, zoomOut] = zoomButtons;
+
+    zoomIn.addEventListener('click',    () => setScale(scale / 2));
+    zoomReset.addEventListener('click', () => setScale(2));
+    zoomOut.addEventListener('click',   () => setScale(scale * 2));
+}
+
 let running = true;
 
 function xyScale() {
@@ -226,25 +243,6 @@ canvas.addEventListener('click', e => {
 //     funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()!]/g, '');
 // });
 
-{
-    const [zoomIn, zoomReset, zoomOut] = zoomButtons;
-
-    zoomIn.addEventListener('click', () => {
-        scale /= 2;
-    });
-
-    zoomReset.addEventListener('click', () => {
-        if (scale !== 2) {
-            scale = 2;
-            graph();
-        }
-    });
-
-    zoomOut.addEventListener('click', () => {
-        scale *= 2;
-    });
-}
-
 let resizeCheck: NodeJS.Timer | undefined;
 window.addEventListener("resize", e => {
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
@@ -253,9 +251,7 @@ window.addEventListener("resize", e => {
 });
 
 document.querySelector<HTMLFormElement>("form#zoom-form")!.addEventListener("submit", () => {
-    if (zoomInput.checkValidity()) {
-        scale = 2 / +zoomInput.value;
-    }
+    if (zoomInput.checkValidity()) setScale(2 / +zoomInput.value);
 });
 
 // For things that unconditionally graph after being pressed:
@@ -276,9 +272,6 @@ async function graph() {
     if (!canNest) graphButton.disabled = true;
 
     controls.classList.remove('error');
-    
-    zoomInput.value = `${2 / scale}`;
-    zoomInput.style.width = `${zoomInput.value.length}ch`;
     
     zcoord.textContent = 'Graphing...'
     disableHover();
@@ -445,7 +438,7 @@ function onComputeError(e: Error | ErrorEvent) {
  */
 function disableHover() {
     canvas.removeEventListener('mousemove', coordinateDisplay);
-    document.body.removeEventListener('mousemove', coordinateDisplay);
+    controls.removeEventListener('mousemove', coordinateDisplay);
 }
 
 /**
@@ -456,7 +449,7 @@ function reenableHover(after = 1000) {
     if (!canNest) graphButton.disabled = false;
     setTimeout(() => {
         canvas.addEventListener('mousemove', coordinateDisplay);
-        document.body.addEventListener('mousemove', coordinateDisplay);
+        controls.addEventListener('mousemove', coordinateDisplay);
     }, after);
 }
 
