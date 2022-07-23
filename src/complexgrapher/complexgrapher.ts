@@ -12,6 +12,7 @@ const wrapper        = document.querySelector<HTMLDivElement>('div#wrapper')!,
       zoomInput      = document.querySelector<HTMLInputElement>('input#zoom-input')!,
       centerInputs   = document.querySelectorAll<HTMLInputElement>("input.center-input"),
       recenterButton = document.querySelector<HTMLButtonElement>("button#recenter-button")!,
+      homeButton     = document.querySelector<HTMLButtonElement>("button#home-button")!,
       domain         = document.querySelectorAll<HTMLElement>('.domain');
 
 const canvas = document.createElement("canvas");
@@ -38,6 +39,7 @@ function setCenter(c: Complex) {
     centerInputs[0].value = `${c.re}`;
     centerInputs[1].value = `${c.im}`;
     recenterButton.classList.toggle("hidden", c.equals(0, 0));
+    homeButton.classList.toggle("hidden", c.equals(0, 0) && scale === 2);
 }
 {
     document.querySelectorAll<HTMLFormElement>("#center-controls form").forEach(f => {
@@ -58,7 +60,7 @@ function setCenter(c: Complex) {
  */
 let scale = 2;
 
-function setScale(n: number) {
+function setScale(n: number, render = true) {
     n = Math.max(n, 0);
     // scaleDiff represents how much the scale changed.
     // if it halved, it zoomed in. if it doubled, it zoomed out.
@@ -67,45 +69,49 @@ function setScale(n: number) {
     scale = n;
     
     // dirty zoom
-    const {width, height} = canvas;
-    const [radX, radY] = [(width - 1) / 2, (height - 1) / 2];
-    const [centerX, centerY] = [radX, radY];
-
-    if (scaleDiff < 1) {
-        const [sx, sy] = [
-            centerX - radX * scaleDiff, 
-            centerY - radY * scaleDiff,
-        ];
-        ctx.drawImage(
-            canvas, 
-
-            sx, sy,
-            width - 2 * sx, height - 2 * sy,
-
-            0, 0,
-            width, height,
-        );
-    } else if (scaleDiff > 1) {
-        const [dx, dy] = [
-            centerX - radX / scaleDiff, 
-            centerY - radY / scaleDiff,
-        ];
-        ctx.drawImage(
-            canvas, 
-
-            0, 0,
-            width, height,
-
-            dx, dy,
-            width - 2 * dx, height - 2 * dy,
-        );
+    if (render) {
+        const {width, height} = canvas;
+        const [radX, radY] = [(width - 1) / 2, (height - 1) / 2];
+        const [centerX, centerY] = [radX, radY];
+    
+        if (scaleDiff < 1) {
+            const [sx, sy] = [
+                centerX - radX * scaleDiff, 
+                centerY - radY * scaleDiff,
+            ];
+            ctx.drawImage(
+                canvas, 
+    
+                sx, sy,
+                width - 2 * sx, height - 2 * sy,
+    
+                0, 0,
+                width, height,
+            );
+        } else if (scaleDiff > 1) {
+            const [dx, dy] = [
+                centerX - radX / scaleDiff, 
+                centerY - radY / scaleDiff,
+            ];
+            ctx.drawImage(
+                canvas, 
+    
+                0, 0,
+                width, height,
+    
+                dx, dy,
+                width - 2 * dx, height - 2 * dy,
+            );
+        }
     }
 
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
 
-    zoomButtons[1].disabled = scale == 2;
+    zoomButtons[1].disabled = scale === 2;
+    homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
 }
+
 function addZoom(deltaY: number) {
     // negative = zoom out
     // positive = zoom in
@@ -121,6 +127,11 @@ function addZoom(deltaY: number) {
     zoomReset.addEventListener('click', () => setScale(2));
     zoomOut.addEventListener('click',   () => setScale(scale * 2));
 }
+
+homeButton.addEventListener("click", () => {
+    setCenter(Complex.ZERO);
+    setScale(2, false);
+});
 
 let running = true;
 
