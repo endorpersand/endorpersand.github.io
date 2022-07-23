@@ -1,5 +1,6 @@
 import { create, all } from "mathjs";
 import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
+import * as evaluator from "./evaluator";
 const math = create(all);
 
 const wrapper        = document.querySelector<HTMLDivElement>('div#wrapper')!,
@@ -30,6 +31,83 @@ async function updateCanvasDims() {
     updateDomain();
 }
 updateCanvasDims();
+
+const bufCanvas = document.createElement("canvas");
+const bctx = bufCanvas.getContext('2d', {alpha: false})!;
+const bufProps = {
+    refs: 0,
+    mat: math.identity(3) as math.Matrix,
+};
+
+function copyToBuffer() {
+    if (!bufProps.refs) {
+        bufCanvas.width = canvas.width;
+        bufCanvas.height = canvas.height;
+        bctx.globalCompositeOperation = "copy";
+        bctx.imageSmoothingEnabled = false;
+        bctx.drawImage(canvas, 0, 0);
+
+        bufProps.refs++;
+        bufProps.mat = math.identity(3) as any;
+    }
+}
+function drawBuffer() {
+    if (bufProps.refs) {
+        const { mat } = bufProps;
+
+        ctx.setTransform(
+            mat.get([0, 0]),
+            mat.get([1, 0]),
+            mat.get([0, 1]),
+            mat.get([1, 1]),
+            mat.get([0, 2]),
+            mat.get([1, 2]),
+        )
+        ctx.drawImage(bufCanvas, 0, 0);
+        ctx.resetTransform();
+    }
+}
+function translateBuffer(dx: number, dy: number) {
+    bufProps.mat = math.multiply(
+        math.matrix([
+            [1, 0, dx],
+            [0, 1, dy],
+            [0, 0,  1],
+        ]),
+        bufProps.mat
+    )
+}
+function scaleBufferAround(scale: number, center?: [number, number]) {
+    const [dx, dy] = center ?? [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
+
+    bufProps.mat = math.chain(
+        math.matrix([
+            [1, 0, dx],
+            [0, 1, dy],
+            [0, 0,  1],
+        ]),
+    ).multiply(
+        math.matrix([
+            [1 / scale,         0, 0],
+            [        0, 1 / scale, 0],
+            [        0,         0, 1],
+        ]),
+    ).multiply(
+        math.matrix([
+            [1, 0, -dx],
+            [0, 1, -dy],
+            [0, 0,   1],
+        ]),
+    ).multiply(
+        bufProps.mat
+    ).done();
+}
+function releaseBuffer() {
+    bufProps.refs = Math.max(bufProps.refs - 1, 0);
+}
+function clearBuffer() {
+    bufProps.refs = 0;
+}
 
 let center = Complex.ZERO;
 
@@ -71,7 +149,12 @@ function setScale(n: number, render = true) {
     scale = n;
     
     // dirty zoom
-    if (render) renderDirtyZoom(scaleRatio);
+    if (render) {
+        copyToBuffer();
+        scaleBufferAround(scaleRatio);
+        drawBuffer();
+        releaseBuffer();
+    }
 
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
@@ -82,69 +165,21 @@ function setScale(n: number, render = true) {
     updateDomain();
 }
 
-/**
- * Create a rough zoom to display before regraphing.
- * @param scaleRatio Ratio of new scale to old scale
- *    < 1 is zoom in
- *    > 1 is zoom out
- * @param zoomCenter Center to zoom around
- */
-function renderDirtyZoom(scaleRatio: number, zoomCenter?: [x: number, y: number]) {
-    const {width, height} = canvas;
-    const [zcX, zcY] = zoomCenter ?? [(width - 1) / 2, (height - 1) / 2];
-
-    if (scaleRatio < 1) { // ZOOM IN
-        // The top left position of the source.
-        
-        // The source canvas' dims are scaled down by scaleRatio.
-        // All distances are scaled by scaleRatio.
-        const [sx, sy] = [
-            zcX - zcX * scaleRatio, 
-            zcY - zcY * scaleRatio,
-        ];
-
-        ctx.drawImage(
-            canvas, 
-
-            sx, sy,
-            width * scaleRatio, height * scaleRatio,
-
-            0, 0,
-            width, height,
-        );
-    } else if (scaleRatio > 1) { // ZOOM OUT
-        // The top left position of the destination.
-        const [dx, dy] = [
-            zcX - zcX / scaleRatio, 
-            zcY - zcY / scaleRatio,
-        ];
-
-        ctx.drawImage(
-            canvas, 
-
-            0, 0,
-            width, height,
-
-            dx, dy,
-            width / scaleRatio, height / scaleRatio,
-        );
-    }
-}
-
 function addZoom(mouseX: number, mouseY: number, deltaY: number) {
     // negative = zoom out
     // positive = zoom in
 
     const factor = 2 ** (deltaY * 0.005);
-    renderDirtyZoom(factor, [mouseX, mouseY]);
 
     const mousePos = convPlanes(mouseX, mouseY);
     // keep the mousePos stable, but the distance from the original center needs to scale
     const disp = mousePos.sub(center);
     
     setCenter(mousePos.sub(disp.mul(factor)));
-    return setScale(scale * factor, false);
-
+    setScale(scale * factor, false);
+    
+    scaleBufferAround(factor, [mouseX, mouseY]);
+    drawBuffer();
 }
 
 {
@@ -255,19 +290,13 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     let hold = false;
     let initX = 0, initY = 0;
     let lastX = 0, lastY = 0;
-    const holdCanvas = document.createElement("canvas");
-    const hctx = holdCanvas.getContext("2d", {alpha: false})!;
 
     canvas.addEventListener('mousedown', e => {
         hold = true;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
 
-        holdCanvas.width = canvas.width;
-        holdCanvas.height = canvas.height;
-        hctx.globalCompositeOperation = "copy";
-        hctx.drawImage(canvas, 0, 0);
-
+        copyToBuffer();
     });
 
     document.addEventListener('mouseup', e => {
@@ -279,6 +308,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
                 e.clientX - initX,
                 e.clientY - initY
             ]
+
             if (dx !== 0 || dy !== 0) graph();
         }
     });
@@ -286,12 +316,13 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     document.addEventListener('mousemove', e => {
         if (hold) {
             cancelWorker();
-            ctx.drawImage(holdCanvas, e.clientX - initX, e.clientY - initY);
-            
             const [dx, dy] = [
                 e.clientX - lastX,
                 e.clientY - lastY
             ]
+
+            translateBuffer(dx, dy);
+            drawBuffer();
             setCenter(center.sub(convDisplace(dx, dy)));
 
             lastX = e.clientX;
@@ -302,25 +333,39 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
 {
     let timeout: NodeJS.Timeout;
+    let started = false;
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
         cancelWorker();
         clearTimeout(timeout);
 
+        if (!started) {
+            started = true;
+            // wheel start
+
+            copyToBuffer();
+        }
+        
+
+        // wheel move
         if (e.ctrlKey) {
             addZoom(e.clientX, e.clientY, e.deltaY);
         } else {
             const dx = e.deltaX * .5;
             const dy = e.deltaY * .5;
-            ctx.drawImage(canvas, dx, dy);
+
+            translateBuffer(dx, dy);
+            drawBuffer();
             setCenter(center.sub(convDisplace(dx, dy)));
         }
         
         coordinateDisplay(e);
 
         timeout = setTimeout(() => {
+            // wheel end
             graph();
+            started = false;
         }, 500);
     }, false);
 }
@@ -380,10 +425,15 @@ async function graph() {
 
     await updateCanvasDims();
     await waitPageUpdate();
-
+    
+    clearBuffer();
+    cancelWorker();
     let fstr = funcInput.value;
     try {
-        d = math.evaluate(`f(z) = ${fstr}`);
+        const eva = evaluator.compile(fstr);
+        if (eva.type === "function") d = eva.f;
+        else d = () => eva.f;
+
         startWorker(worker, fstr);
     } catch (e) {
         onComputeError(e as any);
@@ -542,8 +592,8 @@ function onComputeError(e: Error | ErrorEvent) {
 function clearStatusAfter(after = 1000) {
     if (!canNest) graphButton.disabled = false;
     setTimeout(() => {
-        if (graphStatus.classList.contains("add")) {
-            graphStatus.classList.remove("add");
+        if (graphStatus.classList.contains("done")) {
+            graphStatus.classList.remove("done");
             graphStatus.classList.add("hidden");
         }
     }, after);
