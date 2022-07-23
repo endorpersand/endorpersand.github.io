@@ -61,49 +61,14 @@ function setCenter(c: Complex) {
 let scale = 2;
 
 function setScale(n: number, render = true) {
+    cancelWorker();
     n = Math.max(n, 0);
-    // scaleDiff represents how much the scale changed.
-    // if it halved, it zoomed in. if it doubled, it zoomed out.
-    const scaleDiff = n / scale;
+    const scaleRatio = n / scale;
 
     scale = n;
     
     // dirty zoom
-    if (render) {
-        const {width, height} = canvas;
-        const [radX, radY] = [(width - 1) / 2, (height - 1) / 2];
-        const [centerX, centerY] = [radX, radY];
-    
-        if (scaleDiff < 1) {
-            const [sx, sy] = [
-                centerX - radX * scaleDiff, 
-                centerY - radY * scaleDiff,
-            ];
-            ctx.drawImage(
-                canvas, 
-    
-                sx, sy,
-                width - 2 * sx, height - 2 * sy,
-    
-                0, 0,
-                width, height,
-            );
-        } else if (scaleDiff > 1) {
-            const [dx, dy] = [
-                centerX - radX / scaleDiff, 
-                centerY - radY / scaleDiff,
-            ];
-            ctx.drawImage(
-                canvas, 
-    
-                0, 0,
-                width, height,
-    
-                dx, dy,
-                width - 2 * dx, height - 2 * dy,
-            );
-        }
-    }
+    if (render) renderDirtyZoom(scaleRatio);
 
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
@@ -112,11 +77,68 @@ function setScale(n: number, render = true) {
     homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
 }
 
-function addZoom(deltaY: number) {
+/**
+ * Create a rough zoom to display before regraphing.
+ * @param scaleRatio Ratio of new scale to old scale
+ *    < 1 is zoom in
+ *    > 1 is zoom out
+ * @param zoomCenter Center to zoom around
+ */
+function renderDirtyZoom(scaleRatio: number, zoomCenter?: [x: number, y: number]) {
+    const {width, height} = canvas;
+    const [zcX, zcY] = zoomCenter ?? [(width - 1) / 2, (height - 1) / 2];
+
+    if (scaleRatio < 1) { // ZOOM IN
+        // The top left position of the source.
+        
+        // The source canvas' dims are scaled down by scaleRatio.
+        // All distances are scaled by scaleRatio.
+        const [sx, sy] = [
+            zcX - zcX * scaleRatio, 
+            zcY - zcY * scaleRatio,
+        ];
+
+        ctx.drawImage(
+            canvas, 
+
+            sx, sy,
+            width * scaleRatio, height * scaleRatio,
+
+            0, 0,
+            width, height,
+        );
+    } else if (scaleRatio > 1) { // ZOOM OUT
+        // The top left position of the destination.
+        const [dx, dy] = [
+            zcX - zcX / scaleRatio, 
+            zcY - zcY / scaleRatio,
+        ];
+
+        ctx.drawImage(
+            canvas, 
+
+            0, 0,
+            width, height,
+
+            dx, dy,
+            width / scaleRatio, height / scaleRatio,
+        );
+    }
+}
+
+function addZoom(mouseX: number, mouseY: number, deltaY: number) {
     // negative = zoom out
     // positive = zoom in
 
-    return setScale(scale * 2 ** (deltaY * 0.005));
+    const factor = 2 ** (deltaY * 0.005);
+    renderDirtyZoom(factor, [mouseX, mouseY]);
+
+    const mousePos = convPlanes(mouseX, mouseY);
+    // keep the mousePos stable, but the distance from the original center needs to scale
+    const disp = mousePos.sub(center);
+    
+    setCenter(mousePos.sub(disp.mul(factor)));
+    return setScale(scale * factor, false);
 
 }
 
@@ -284,7 +306,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
         clearTimeout(timeout);
 
         if (e.ctrlKey) {
-            addZoom(e.deltaY);
+            addZoom(e.clientX, e.clientY, e.deltaY);
         }
         
         timeout = setTimeout(() => {
