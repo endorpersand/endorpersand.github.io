@@ -8,9 +8,8 @@
     </head>
     <body>
         <div id="wrapper">
-            <div id="controls" class="initializing">
+            <div id="controls" class="overlay initializing">
                 <div class="flimsy-box">
-                    <div id='zcoord' class="numeric-value">Loading page...</div>
                     <div id="func-controls" class="subcontrols">
                         <span>f(z) = </span>
                         <form class="graph-submit">
@@ -29,7 +28,7 @@
                         </div>
                         <div id="zoom-button-controls" class="subcontrols">
                             <button class='zoom graph-submit'>Zoom in</button>
-                            <button class='zoom graph-submit'>Reset zoom</button>
+                            <button class='zoom graph-submit' disabled>Reset zoom</button>
                             <button class='zoom graph-submit'>Zoom out</button>
                         </div>
                     </div>
@@ -41,13 +40,20 @@
                         <form class="graph-submit">
                             <input class="center-input" type="number" value="0" step="any">i
                         </form>
-                        <button id="recenter-button" class="centered graph-submit">Recenter</button>
+                        <button id="recenter-button" class="hidden graph-submit">Recenter</button>
                     </div>
                     <div id="domain-info">
-                        Domain: <code class='domain'>-2 - 2i</code> to <code class='domain'>2 + 2i</code>
+                        Domain: <code class='domain numeric-value'>-2 - 2i</code> to <code class='domain numeric-value'>2 + 2i</code>
                     </div>
                 </div>
                 <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>
+            </div>
+            <div id="wgs">
+                <div id="z-wrapper" class="numeric-value overlay">
+                    <div>z = <code></code>,</div>
+                    <div>f(z) = <code></code></div>
+                </div>
+                <div id='graph-status' class="overlay">Loading page...</div>
             </div>
             <!-- <canvas></canvas> -->
         </div>

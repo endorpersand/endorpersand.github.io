@@ -10,23 +10,49 @@ body {
     align-items: flex-start;
     gap: 8px;
     padding: 16px;
+    
+}
+.overlay {
+    background-color: #1c2527;
+    z-index: 3;
+}
+#wgs {
+    z-index: 3;
+    width: 33vw;
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+#wgs > div {
+    padding: 8px;
+}
+#graph-status {
+    align-self: flex-end;
 }
 
 #controls {
     display: flex;
     flex-direction: column;
     gap: 10px;
-
-    background-color: #111111;
+    max-width: 33vw;
     padding: 10px;
-    transition: ease-in-out opacity .2s;
-
+    
     grid-area: controls;
+    
+    background-color: #1c2527;
+    transition: ease-in-out opacity .2s;
 }
-
-#controls:not(:hover):not(.initializing):not(.error) {
+#controls:not(.initializing):not(:hover):not(.error) {
     opacity: 0.1;
 }
+#graph-status.error {
+    color: red;
+}
+#graph-status.hidden.error {
+    display: unset;
+}
+
 .flimsy-box {
     display: flex;
     flex-direction: column;
@@ -40,18 +66,14 @@ canvas {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1;
 
     grid-area: canvas;
 }
 form {
     display: inline;
 }
-#controls.error #zcoord {
-    color: red;
-}
 
-#recenter-button.centered {
+.hidden {
     display: none;
 }
 
@@ -84,6 +106,7 @@ input[type=number]::-webkit-outer-spin-button {
 
     #controls {
         opacity: unset !important;
+        max-width: unset;
         align-self: stretch;
     }
 
@@ -102,6 +125,18 @@ input[type=number]::-webkit-outer-spin-button {
 
     #func-controls {
         padding-top: 8px;
+    }
+
+    #wgs {
+        width: unset;
+    }
+
+    #graph-status {
+        align-self: center;
+    }
+    #graph-status.hidden {
+        visibility: hidden;
+        display: unset;
     }
 
     * {
@@ -125,5 +160,11 @@ input[type=number]::-webkit-outer-spin-button {
         height: unset;
         z-index: unset;
         min-height: 0;
+    }
+}
+
+@media (hover: none) {
+    #z-wrapper {
+        display: none;
     }
 }

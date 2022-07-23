@@ -6,7 +6,8 @@ const wrapper        = document.querySelector<HTMLDivElement>('div#wrapper')!,
       controls       = document.querySelector<HTMLDivElement>('div#controls')!,
       funcInput      = document.querySelector<HTMLInputElement>('input#func-input')!,
       graphButton    = document.querySelector<HTMLButtonElement>('#graph-button')!,
-      zcoord         = document.querySelector<HTMLDivElement>('div#zcoord')!,
+      graphStatus    = document.querySelector<HTMLDivElement>('div#graph-status')!,
+      zWrapperItems  = document.querySelectorAll<HTMLElement>('div#z-wrapper code')!,
       zoomButtons    = document.querySelectorAll<HTMLButtonElement>('button.zoom'),
       zoomInput      = document.querySelector<HTMLInputElement>('input#zoom-input')!,
       centerInputs   = document.querySelectorAll<HTMLInputElement>("input.center-input"),
@@ -36,7 +37,7 @@ function setCenter(c: Complex) {
 
     centerInputs[0].value = `${c.re}`;
     centerInputs[1].value = `${c.im}`;
-    recenterButton.classList.toggle("centered", c.equals(0, 0));
+    recenterButton.classList.toggle("hidden", c.equals(0, 0));
 }
 {
     document.querySelectorAll<HTMLFormElement>("#center-controls form").forEach(f => {
@@ -96,19 +97,16 @@ function updateDomain() {
 }
 
 /**
- * Function that takes the input complex value to the output one
- * This is only used for console.log
+ * Function that takes the input complex value to the output one.
+ * This is used in the z-coord display.
  * @param z input
  * @returns output
  */
-let d: ComplexFunction = (z => z);
+let d: ComplexFunction | undefined = (z => z);
 
 let worker: Worker;
 let canNest: boolean;
 let time: number; // only used in fallback
-
-// On WebKit (iOS), nested Workers are not supported. So test if they are supported,
-// and if not, use the fallback that doesn't use nested Workers.
 
 /**
  * On WebKit (iOS), nested Workers are not supported. So this worker tests if they are supported.
@@ -117,7 +115,7 @@ let time: number; // only used in fallback
 let webkitTest = new Worker(new URL("./worker/webkitTest", import.meta.url), {type: "module"});
 webkitTest.postMessage(undefined);
 webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
-    zcoord.textContent = "Initializing workers...";
+    graphStatus.textContent = "Initializing workers...";
     await waitPageUpdate();
     canNest = e.data;
 
@@ -168,8 +166,8 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     return convPlanes(x, y);
 }
 
-let hold = false;
 {
+    let hold = false;
     let initX = 0, initY = 0;
     let lastX = 0, lastY = 0;
 
@@ -216,27 +214,18 @@ let hold = false;
  * Event listener that displays the complex coordinate of the mouse's current position.
  */
 async function coordinateDisplay(e: MouseEvent) {
-    if (!hold) {
-        const pos = fromMousePosition(e);
-    
-        if (typeof pos !== "undefined") {
-            controls.classList.remove('error');
-            zcoord.textContent = 'z = ';
-            
-            const code = document.createElement("code");
-            code.append(pos.toString());
-            zcoord.append(code);
-        }
+    const pos = fromMousePosition(e);
+
+    if (typeof pos !== "undefined") {
+        const [zElem, fzElem] = zWrapperItems;
+        
+        zElem.textContent  = `${pos}`;
+        fzElem.textContent = `${d?.(pos) ?? "?"}`;
     }
 };
-
-canvas.addEventListener('click', e => {
-    const z = fromMousePosition(e);
-
-    if (typeof z !== "undefined") {
-        console.log(`z = ${z},\nf(z) = ${d(z)}`);
-    }
-});
+canvas.addEventListener('mousemove', coordinateDisplay);
+controls.addEventListener('mousemove', coordinateDisplay);
+document.addEventListener("click", coordinateDisplay);
 
 // Function input handlers:
 // funcInput.addEventListener('input', () => {
@@ -271,10 +260,8 @@ async function graph() {
     if (graphButton.disabled) return;
     if (!canNest) graphButton.disabled = true;
 
-    controls.classList.remove('error');
-    
-    zcoord.textContent = 'Graphing...'
-    disableHover();
+    graphStatus.classList.remove("hidden", "error");
+    graphStatus.textContent = 'Graphing...'
 
     await updateCanvasDims();
     await waitPageUpdate();
@@ -417,8 +404,8 @@ function partialEvaluate(fstr: string): PartialEvaluator {
  * @param t time (in ms) it took for the operation to complete
  */
 function markDone(t: number) {
-    zcoord.textContent = `Done in ${t}ms.`;
-    reenableHover();
+    graphStatus.textContent = `Done in ${t}ms.`;
+    clearStatusAfter();
 }
 
 /**
@@ -428,29 +415,17 @@ function markDone(t: number) {
 function onComputeError(e: Error | ErrorEvent) {
     let err = e instanceof ErrorEvent ? e.message : e;
 
-    disableHover();
-    controls.classList.add('error');
-    zcoord.textContent = String(err);
+    graphStatus.classList.add('error');
+    graphStatus.textContent = String(err);
 }
 
 /**
- * Disable z-coord display hover.
+ * Reset the status after a while.
+ * @param after how many ms before status should be cleared.
  */
-function disableHover() {
-    canvas.removeEventListener('mousemove', coordinateDisplay);
-    controls.removeEventListener('mousemove', coordinateDisplay);
-}
-
-/**
- * Reenable interactability after an error
- * @param after how many ms before hover and interactibility should reenable
- */
-function reenableHover(after = 1000) {
+function clearStatusAfter(after = 1000) {
     if (!canNest) graphButton.disabled = false;
-    setTimeout(() => {
-        canvas.addEventListener('mousemove', coordinateDisplay);
-        controls.addEventListener('mousemove', coordinateDisplay);
-    }, after);
+    setTimeout(() => graphStatus.classList.add("hidden"), after);
 }
 
 function setProperty<P extends string | number | symbol, V>(o: {[I in P]: V}, p: P, v: V) {
