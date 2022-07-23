@@ -25,13 +25,24 @@
                     <button class='zoom graph-submit'>Zoom out</button>
                 </div>
                 <div>
-                    <span>Current zoom: 
+                    <div>
+                        Zoom: 
                         <form id="zoom-form" class="graph-submit">
                             <input id="zoom-input" type="number" min="0" value="1" step="any">
                         </form>x
-                    </span>
+                    </div>
+                    <div id="center-controls">
+                        Center: 
+                        <form class="graph-submit">
+                            <input class="center-input" type="number" value="0" step="any"> +
+                        </form>
+                        <form class="graph-submit">
+                            <input class="center-input" type="number" value="0" step="any">i
+                        </form>
+                        <button id="recenter-button" class="centered graph-submit">Recenter</button>
+                    </div>
                     <div>
-                        Current domain: <code class='domain'>-2 - 2i</code> to <code class='domain'>2 + 2i</code>
+                        Domain: <code class='domain'>-2 - 2i</code> to <code class='domain'>2 + 2i</code>
                     </div>
                 </div>
                 <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>

@@ -2,17 +2,21 @@ import { create, all } from "mathjs";
 import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 const math = create(all);
 
-const wrapper     = document.querySelector<HTMLDivElement>('div#wrapper')!,
-      controls    = document.querySelector<HTMLDivElement>('div#controls')!,
-      funcInput   = document.querySelector<HTMLInputElement>('input#func-input')!,
-      graphButton = document.querySelector<HTMLButtonElement>('#graph-button')!,
-      zcoord      = document.querySelector<HTMLDivElement>('div#zcoord')!,
-      zoomButtons = document.querySelectorAll<HTMLButtonElement>('button.zoom'),
-      zoomInput   = document.querySelector<HTMLInputElement>('input#zoom-input')!,
-      domain      = document.querySelectorAll<HTMLElement>('.domain');
+const wrapper        = document.querySelector<HTMLDivElement>('div#wrapper')!,
+      controls       = document.querySelector<HTMLDivElement>('div#controls')!,
+      funcInput      = document.querySelector<HTMLInputElement>('input#func-input')!,
+      graphButton    = document.querySelector<HTMLButtonElement>('#graph-button')!,
+      zcoord         = document.querySelector<HTMLDivElement>('div#zcoord')!,
+      zoomButtons    = document.querySelectorAll<HTMLButtonElement>('button.zoom'),
+      zoomInput      = document.querySelector<HTMLInputElement>('input#zoom-input')!,
+      centerInputs   = document.querySelectorAll<HTMLInputElement>("input.center-input"),
+      recenterButton = document.querySelector<HTMLButtonElement>("button#recenter-button")!,
+      domain         = document.querySelectorAll<HTMLElement>('.domain');
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
+ctx.globalCompositeOperation = "copy";
+
 wrapper.appendChild(canvas);
 
 async function updateCanvasDims() {
@@ -21,12 +25,31 @@ async function updateCanvasDims() {
     setProperty(canvas, "width", width);
     setProperty(canvas, "height", height);
 
-    // update domain display
-    const [cmX, cmY] = xyScale();
-    domain[0].textContent = `-${cmX} - ${cmY}i`;
-    domain[1].textContent = `${cmX} + ${cmY}i`;
+    updateDomain();
 }
 updateCanvasDims();
+
+let center = Complex.ZERO;
+
+function setCenter(c: Complex) {
+    center = c;
+
+    centerInputs[0].value = `${c.re}`;
+    centerInputs[1].value = `${c.im}`;
+    recenterButton.classList.toggle("centered", c.equals(0, 0));
+}
+{
+    document.querySelectorAll<HTMLFormElement>("#center-controls form").forEach(f => {
+        f.addEventListener("submit", e => {
+            const re = +centerInputs[0].value;
+            const im = +centerInputs[1].value;
+            setCenter(Complex(re, im));
+        });
+    });
+    recenterButton.addEventListener("click", e => {
+        setCenter(Complex.ZERO);
+    });
+}
 
 /**
  * The scale of the graph represents the distance (in complex units) 
@@ -37,7 +60,22 @@ let scale = 2;
 let running = true;
 
 function xyScale() {
-    return [(scale * canvas.width / canvas.height), scale] as const;
+    return [
+        scale * canvas.width / canvas.height,
+        scale,
+    ] as const;
+}
+function updateDomain() {
+    const [scaleX, scaleY] = xyScale();
+
+    const range = Complex(scaleX, scaleY);
+
+    const cmL = center.sub(range);
+    const cmR = center.add(range);
+
+    // update domain display
+    domain[0].textContent = `${cmL}`;
+    domain[1].textContent = `${cmR}`;
 }
 
 /**
@@ -113,19 +151,65 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     return convPlanes(x, y);
 }
 
+let hold = false;
+{
+    let initX = 0, initY = 0;
+    let lastX = 0, lastY = 0;
+
+    canvas.addEventListener('mousedown', e => {
+        hold = true;
+        lastX = initX = e.clientX;
+        lastY = initY = e.clientY;
+    });
+
+    document.addEventListener('mouseup', e => {
+        if (hold) {
+            hold = false;
+        
+            // if any displacement occurred, then redraw
+            const [dx, dy] = [
+                e.clientX - initX,
+                e.clientY - initY
+            ]
+            if (dx !== 0 || dy !== 0) graph();
+        }
+    });
+
+    document.addEventListener('mousemove', e => {
+        if (hold) {
+            cancelWorker();
+            const [dx, dy] = [
+                e.clientX - lastX,
+                e.clientY - lastY
+            ]
+
+            ctx.globalCompositeOperation = "copy";
+            
+            ctx.drawImage(canvas, dx, dy);
+            setCenter(center.sub(convDisplace(dx, dy)));
+
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            updateDomain();
+        }
+    });
+}
 /**
  * Event listener that displays the complex coordinate of the mouse's current position.
  */
- function coordinateDisplay(e: MouseEvent) {
-    const pos = fromMousePosition(e);
-
-    if (typeof pos !== "undefined") {
-        controls.classList.remove('error');
-        zcoord.textContent = 'z = ';
-        
-        const code = document.createElement("code");
-        code.append(pos.toString());
-        zcoord.append(code);
+async function coordinateDisplay(e: MouseEvent) {
+    if (!hold) {
+        const pos = fromMousePosition(e);
+    
+        if (typeof pos !== "undefined") {
+            controls.classList.remove('error');
+            zcoord.textContent = 'z = ';
+            
+            const code = document.createElement("code");
+            code.append(pos.toString());
+            zcoord.append(code);
+        }
     }
 };
 
@@ -230,23 +314,35 @@ async function waitPageUpdate() {
  * @returns Complex value
  */
 function convPlanes(x: number, y: number) {
+    // center point:
+    const [canvasCenterX, canvasCenterY] = [
+        (canvas.width  - 1) / 2,
+        (canvas.height - 1) / 2
+    ];
+
+    return center.add(convDisplace(
+        x - canvasCenterX,
+        y - canvasCenterY
+    ));
+}
+
+/**
+ * Scale a change in displacement in canvas
+ * @param dx pixels moved in the x-direction
+ * @param dy pixels moved in the y-direction
+ * @returns complex displacement
+ */
+function convDisplace(dx: number, dy: number) {
     const { width, height } = canvas;
-    const scaleX = scale * width / height;
-    const scaleY = scale;
+    const [scaleX, scaleY] = xyScale();
 
-    // distance of each radius
-    let [rx, ry] = [
-        (width  - 1) / 2,
-        (height - 1) / 2
+    // 1 unit of scale
+    const [unitX, unitY] = [
+         (width  - 1) / 2,
+        -(height - 1) / 2
     ];
 
-    // normalized distance from center (This means the center is at 0, the edges are at ±1).
-    // the center is also (rx, ry)
-    let [nx, ny] = [
-         (x - rx) / rx, 
-        -(y - ry) / ry
-    ];
-    return math.complex(nx * scaleX, ny * scaleY) as unknown as Complex;
+    return Complex(dx * scaleX / unitX, dy * scaleY / unitY);
 }
 
 /**
@@ -278,10 +374,12 @@ function startWorker(w: Worker, fstr: string) {
         action: "mainRequest",
         pev: partialEvaluate(fstr), 
         cd: {
-        width: canvas.width,
-        height: canvas.height,
-        scale
-    }};
+            width: canvas.width,
+            height: canvas.height,
+            center: [center.re, center.im],
+            scale
+        }
+    };
     w.postMessage(msg);
 }
 

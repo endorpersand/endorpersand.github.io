@@ -95,7 +95,7 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
  * @returns the complex value associated
  */
 function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
-    const { width, height, scale } = cd;
+    const { width, height, scale, center: [cx, cy] } = cd;
     const { offx, offy } = chunk;
     const scaleX = scale * width / height;
     const scaleY = scale;
@@ -113,7 +113,7 @@ function convPlanes(x: number, y: number, cd: CanvasData, chunk: ChunkData) {
         -(y + offy - ry) / ry
     ];
     
-    return Complex(nx * scaleX, ny * scaleY);
+    return Complex(cx + nx * scaleX, cy + ny * scaleY);
 }
 
 /**

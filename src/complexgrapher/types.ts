@@ -7,6 +7,8 @@ export { Complex };
 export interface CanvasData {
     width: number,
     height: number,
+
+    center: [number, number],
     scale: number,
 }
 
@@ -82,7 +84,7 @@ namespace Messages {
      */
     export interface ChunkRequest {
         action: "chunkRequest",
-        pev: PartialEvaluator
+        pev: PartialEvaluator,
         cd: CanvasData,
         chunk: ChunkData,
     };

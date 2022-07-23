@@ -52,6 +52,10 @@ form {
     color: red;
 }
 
+#recenter-button.centered {
+    display: none;
+}
+
 input[type=number] {
     width: 5ch;
 }
