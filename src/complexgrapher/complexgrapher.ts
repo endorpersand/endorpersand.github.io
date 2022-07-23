@@ -16,7 +16,6 @@ const wrapper        = document.querySelector<HTMLDivElement>('div#wrapper')!,
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext('2d', {alpha: false})!;
-ctx.globalCompositeOperation = "copy";
 
 wrapper.appendChild(canvas);
 
@@ -25,6 +24,7 @@ async function updateCanvasDims() {
     const { width, height } = canvas.getBoundingClientRect();
     setProperty(canvas, "width", width);
     setProperty(canvas, "height", height);
+    ctx.globalCompositeOperation = "copy";
 
     updateDomain();
 }
@@ -59,12 +59,59 @@ function setCenter(c: Complex) {
 let scale = 2;
 
 function setScale(n: number) {
+    n = Math.max(n, 0);
+    // scaleDiff represents how much the scale changed.
+    // if it halved, it zoomed in. if it doubled, it zoomed out.
+    const scaleDiff = n / scale;
+
     scale = n;
+    
+    // dirty zoom
+    const {width, height} = canvas;
+    const [radX, radY] = [(width - 1) / 2, (height - 1) / 2];
+    const [centerX, centerY] = [radX, radY];
+
+    if (scaleDiff < 1) {
+        const [sx, sy] = [
+            centerX - radX * scaleDiff, 
+            centerY - radY * scaleDiff,
+        ];
+        ctx.drawImage(
+            canvas, 
+
+            sx, sy,
+            width - 2 * sx, height - 2 * sy,
+
+            0, 0,
+            width, height,
+        );
+    } else if (scaleDiff > 1) {
+        const [dx, dy] = [
+            centerX - radX / scaleDiff, 
+            centerY - radY / scaleDiff,
+        ];
+        ctx.drawImage(
+            canvas, 
+
+            0, 0,
+            width, height,
+
+            dx, dy,
+            width - 2 * dx, height - 2 * dy,
+        );
+    }
 
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
 
     zoomButtons[1].disabled = scale == 2;
+}
+function addZoom(deltaY: number) {
+    // negative = zoom out
+    // positive = zoom in
+
+    return setScale(scale * 2 ** (deltaY * 0.005));
+
 }
 
 {
@@ -210,6 +257,25 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
         }
     });
 }
+
+{
+    let timeout: NodeJS.Timeout;
+
+    canvas.addEventListener("wheel", e => {
+        e.preventDefault();
+        cancelWorker();
+        clearTimeout(timeout);
+
+        if (e.ctrlKey) {
+            addZoom(e.deltaY);
+        }
+        
+        timeout = setTimeout(() => {
+            graph();
+        }, 500);
+    }, false);
+}
+
 /**
  * Event listener that displays the complex coordinate of the mouse's current position.
  */
