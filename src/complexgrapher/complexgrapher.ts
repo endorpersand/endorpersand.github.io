@@ -40,7 +40,10 @@ function setCenter(c: Complex) {
     centerInputs[1].value = `${c.im}`;
     recenterButton.classList.toggle("hidden", c.equals(0, 0));
     homeButton.classList.toggle("hidden", c.equals(0, 0) && scale === 2);
+    
+    updateDomain();
 }
+
 {
     document.querySelectorAll<HTMLFormElement>("#center-controls form").forEach(f => {
         f.addEventListener("submit", e => {
@@ -75,6 +78,8 @@ function setScale(n: number, render = true) {
 
     zoomButtons[1].disabled = scale === 2;
     homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
+    
+    updateDomain();
 }
 
 /**
@@ -291,8 +296,6 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
             lastX = e.clientX;
             lastY = e.clientY;
-
-            updateDomain();
         }
     });
 }
@@ -307,8 +310,15 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
         if (e.ctrlKey) {
             addZoom(e.clientX, e.clientY, e.deltaY);
+        } else {
+            const dx = e.deltaX * .5;
+            const dy = e.deltaY * .5;
+            ctx.drawImage(canvas, dx, dy);
+            setCenter(center.sub(convDisplace(dx, dy)));
         }
         
+        coordinateDisplay(e);
+
         timeout = setTimeout(() => {
             graph();
         }, 500);
@@ -318,8 +328,8 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 /**
  * Event listener that displays the complex coordinate of the mouse's current position.
  */
-async function coordinateDisplay(e: MouseEvent) {
-    const pos = fromMousePosition(e);
+async function coordinateDisplay(...args: Parameters<typeof fromMousePosition>) {
+    const pos = fromMousePosition(...args);
 
     if (typeof pos !== "undefined") {
         const [zElem, fzElem] = zWrapperItems;
@@ -365,7 +375,7 @@ async function graph() {
     if (graphButton.disabled) return;
     if (!canNest) graphButton.disabled = true;
 
-    graphStatus.classList.remove("hidden", "error");
+    graphStatus.classList.remove("hidden", "error", "done");
     graphStatus.textContent = 'Graphing...'
 
     await updateCanvasDims();
@@ -510,6 +520,7 @@ function partialEvaluate(fstr: string): PartialEvaluator {
  */
 function markDone(t: number) {
     graphStatus.textContent = `Done in ${t}ms.`;
+    graphStatus.classList.add("done");
     clearStatusAfter();
 }
 
@@ -530,7 +541,12 @@ function onComputeError(e: Error | ErrorEvent) {
  */
 function clearStatusAfter(after = 1000) {
     if (!canNest) graphButton.disabled = false;
-    setTimeout(() => graphStatus.classList.add("hidden"), after);
+    setTimeout(() => {
+        if (graphStatus.classList.contains("add")) {
+            graphStatus.classList.remove("add");
+            graphStatus.classList.add("hidden");
+        }
+    }, after);
 }
 
 function setProperty<P extends string | number | symbol, V>(o: {[I in P]: V}, p: P, v: V) {
