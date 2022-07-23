@@ -217,11 +217,19 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     let hold = false;
     let initX = 0, initY = 0;
     let lastX = 0, lastY = 0;
+    const holdCanvas = document.createElement("canvas");
+    const hctx = holdCanvas.getContext("2d", {alpha: false})!;
 
     canvas.addEventListener('mousedown', e => {
         hold = true;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
+
+        holdCanvas.width = canvas.width;
+        holdCanvas.height = canvas.height;
+        hctx.globalCompositeOperation = "copy";
+        hctx.drawImage(canvas, 0, 0);
+
     });
 
     document.addEventListener('mouseup', e => {
@@ -240,14 +248,12 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     document.addEventListener('mousemove', e => {
         if (hold) {
             cancelWorker();
+            ctx.drawImage(holdCanvas, e.clientX - initX, e.clientY - initY);
+            
             const [dx, dy] = [
                 e.clientX - lastX,
                 e.clientY - lastY
             ]
-
-            ctx.globalCompositeOperation = "copy";
-            
-            ctx.drawImage(canvas, dx, dy);
             setCenter(center.sub(convDisplace(dx, dy)));
 
             lastX = e.clientX;
