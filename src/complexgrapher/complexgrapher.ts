@@ -136,13 +136,19 @@ function setCenter(c: Complex) {
 }
 
 /**
+ * Identifier designating the current graph.
+ * This is a cyclic value, ranging the entire 32-bit range.
+ */
+let graphID = 0;
+
+/**
  * The scale of the graph represents the distance (in complex units) 
  * from the center of the screen to the top.
  */
 let scale = 2;
 
 function setScale(n: number, render = true) {
-    cancelWorker();
+    abortGraph();
     n = Math.max(n, 0);
     const scaleRatio = n / scale;
 
@@ -248,6 +254,7 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     if (canNest) {
         worker.onmessage = function (e: MessageEvent<MainOut>) {
             let msg: MainOut = e.data;
+            if (msg.graphID !== graphID) return;
         
             if (msg.action === "chunkDone") {
                 displayChunk(msg);
@@ -259,6 +266,8 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
         }
     } else {
         worker.onmessage = function (e: MessageEvent<LoaderOut>) {
+            if (e.data.graphID !== graphID) return;
+            
             displayChunk(e.data);
             markDone(Math.trunc(performance.now() - time));
         }
@@ -315,7 +324,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
     document.addEventListener('mousemove', e => {
         if (hold) {
-            cancelWorker();
+            abortGraph();
             const [dx, dy] = [
                 e.clientX - lastX,
                 e.clientY - lastY
@@ -337,7 +346,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
-        cancelWorker();
+        abortGraph();
         clearTimeout(timeout);
 
         if (!started) {
@@ -427,7 +436,7 @@ async function graph() {
     await waitPageUpdate();
     
     clearBuffer();
-    cancelWorker();
+    abortGraph();
     let fstr = funcInput.value;
     try {
         const eva = evaluator.compile(fstr);
@@ -515,6 +524,9 @@ function startWorker(w: Worker, fstr: string) {
     if (!canNest) time = performance.now();
 
     running = true;
+    graphID++;
+    graphID |= 0;
+    
     let msg: MainIn = {
         action: "mainRequest",
         pev: partialEvaluate(fstr), 
@@ -522,15 +534,16 @@ function startWorker(w: Worker, fstr: string) {
             width: canvas.width,
             height: canvas.height,
             center: [center.re, center.im],
-            scale
-        }
+            scale,
+        },
+        graphID
     };
     w.postMessage(msg);
 }
 
-function cancelWorker() {
-    running = false;
-    worker.postMessage({action: "cancel"});
+function abortGraph() {
+    graphID++;
+    graphID |= 0;
 }
 
 /**

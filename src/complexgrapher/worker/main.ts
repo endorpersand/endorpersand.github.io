@@ -5,22 +5,14 @@ const N_WORKERS = 4;
 
 let free: Worker[] = [];
 
-type Ticket = [LoaderIn, Symbol, number];
-
-/**
- * Map that links a worker to the task they've been assigned
- */
-let labor: Map<Worker, [Symbol, number]> = new Map();
+type LaborData = [time: number];
+type Ticket = [LoaderIn, LaborData];
+let labor: Map<Worker, LaborData> = new Map();
 
 /**
  * The queue to pull work from
  */
 let workQueue: Generator<Ticket>;
-
-/**
- * The current task to be working on
- */
-let currentTask: Symbol;
 
 onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
     let data = e.data;
@@ -30,10 +22,10 @@ onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
         self.postMessage({action: "ready"});
     } else if (data.action === "mainRequest") {
         let start = this.performance.now();
-        let {pev, cd} = data;
+        let { pev, cd, graphID } = data;
 
         // on a request, start up the queue and assign work to all currently free workers
-        workQueue = queue(start, pev, cd);
+        workQueue = queue(start, pev, cd, graphID);
     
         let fit = free[Symbol.iterator]();
         for (let w of fit) {
@@ -46,15 +38,6 @@ onmessage = async function (e: MessageEvent<InitIn | MainIn>) {
             }
         }
         free = [...fit];
-    } else if (data.action === "cancel") {
-        for (let w of labor.keys()) {
-            w.postMessage(data);
-            freeWorker(w);
-        }
-
-        workQueue = empty();
-        currentTask = Symbol("none");
-        return;
     } else {
         let _: never = data;
         throw new Error("Unexpected request into main worker");
@@ -86,11 +69,8 @@ async function initLoaders() {
                 if (typeof ticket === "undefined") return; // worker wasn't working on a ticket
 
                 // If the current task is the currentTask, post up "loadChunk"
-                let [sym, start] = ticket;
-                if (currentTask == sym) {
-                    self.postMessage(out, [out.buf] as any);
-                }
-        
+                self.postMessage(out, [out.buf] as any);
+                
                 // If there's any more work left to do, take it.
                 // Otherwise, free the worker and post up "done"
                 let t = workQueue.next();
@@ -100,10 +80,15 @@ async function initLoaders() {
                 } else {
                     // no more work to do, free the worker
                     freeWorker(w);
-        
+                    
                     // if all chunks finished, send done
+                    let [start] = ticket;
                     if (typeof start !== "undefined" && labor.size == 0) {
-                        let done: MainOut = { action: "done", time: Math.trunc(performance.now() - start) };
+                        let done: MainOut = { 
+                            action: "done", 
+                            time: Math.trunc(performance.now() - start),
+                            graphID: out.graphID
+                        };
                         self.postMessage(done);
                     }
                 }
@@ -172,9 +157,8 @@ function* spiral(limitX?: number, limitY?: number) {
  * @param pev Partial evaluator that needs to be evaluated
  * @param cd The dimension data of the canvas to chunk
  */
-function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator<Ticket> {
+function* queue(start: number, pev: PartialEvaluator, cd: CanvasData, graphID: number): Generator<Ticket> {
     let {width, height} = cd;
-    currentTask = Symbol(pev.fstr);
 
     const limitX = Math.ceil(width / 2 / CHUNK_SIZE - 1 / 2);
     const limitY = Math.ceil(height / 2 / CHUNK_SIZE - 1 / 2);
@@ -185,13 +169,17 @@ function* queue(start: number, pev: PartialEvaluator, cd: CanvasData): Generator
         let cw = clamp(0, x + CHUNK_SIZE, width) - x;
         let ch = clamp(0, y + CHUNK_SIZE, height) - y;
 
-        yield [{
-            action: "chunkRequest",
-            pev, cd,
-            chunk: {
-                width: cw, height: ch, offx: x, offy: y
-            }
-        }, currentTask, start];
+        yield [
+            {
+                action: "chunkRequest",
+                pev, cd,
+                chunk: {
+                    width: cw, height: ch, offx: x, offy: y
+                },
+                graphID,
+            }, 
+            [start]
+        ];
     }
 }
 
@@ -211,9 +199,9 @@ function freeWorker(w: Worker) {
  * @param w Worker to designate.
  * @param param1 Ticket to work on.
  */
-function assignWorkToWorker(w: Worker, [job, sym, start]: Ticket) {
+function assignWorkToWorker(w: Worker, [job, data]: Ticket) {
     w.postMessage(job);
-    labor.set(w, [sym, start]);
+    labor.set(w, data);
 }
 
 function clamp(v: number, min: number, max: number) {

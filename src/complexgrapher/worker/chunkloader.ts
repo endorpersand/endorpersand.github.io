@@ -9,13 +9,10 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     if (data.action === "init") {
         self.postMessage({action: "ready"});
         return;
-    } else if (data.action === "cancel") {
-        running = false;
-        return;
     }
 
     running = true;
-    let {pev, cd} = data;
+    let { pev, cd, graphID } = data;
     let chunk;
 
     if (data.action === "chunkRequest") {
@@ -35,7 +32,7 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     let ev = buildEvaluator(pev);
     let buf = computeBuffer(ev, cd, chunk);
 
-    let msg: LoaderOut = {action: "chunkDone", buf, chunk};
+    let msg: LoaderOut = { action: "chunkDone", buf, chunk, graphID };
     postMessage(msg, [buf] as any);
 }
 

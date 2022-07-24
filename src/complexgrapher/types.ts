@@ -68,7 +68,8 @@ namespace Messages {
     export interface MainRequest {
         action: "mainRequest",
         pev: PartialEvaluator,
-        cd: CanvasData
+        cd: CanvasData,
+        graphID: number
     };
     
     /**
@@ -76,7 +77,8 @@ namespace Messages {
      */
     export interface GraphDone {
         action: "done",
-        time: number
+        time: number,
+        graphID: number
     };
 
     /**
@@ -87,6 +89,7 @@ namespace Messages {
         pev: PartialEvaluator,
         cd: CanvasData,
         chunk: ChunkData,
+        graphID: number
     };
 
     /**
@@ -95,7 +98,8 @@ namespace Messages {
     export interface ChunkDone {
         action: "chunkDone",
         chunk: ChunkData,
-        buf: ArrayBuffer
+        buf: ArrayBuffer,
+        graphID: number
     };
 
     /**
@@ -112,15 +116,12 @@ namespace Messages {
         action: "ready"
     }
 
-    export interface Cancel {
-        action: "cancel"
-    }
 }
 export type InitIn = Messages.Init;
 export type InitOut = Messages.Ready;
 
-export type MainIn = Messages.MainRequest | Messages.Cancel;
+export type MainIn = Messages.MainRequest;
 export type MainOut = Messages.ChunkDone | Messages.GraphDone;
 
-export type LoaderIn = Messages.ChunkRequest | Messages.Cancel;
+export type LoaderIn = Messages.ChunkRequest;
 export type LoaderOut = Messages.ChunkDone;
