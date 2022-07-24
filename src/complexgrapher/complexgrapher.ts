@@ -24,8 +24,8 @@ wrapper.appendChild(canvas);
 async function updateCanvasDims() {
     await waitPageUpdate();
     const { width, height } = canvas.getBoundingClientRect();
-    setProperty(canvas, "width", width);
-    setProperty(canvas, "height", height);
+    setProperty(canvas, "width",  Math.trunc(width));
+    setProperty(canvas, "height", Math.trunc(height));
     ctx.globalCompositeOperation = "copy";
 
     updateDomain();
@@ -442,7 +442,6 @@ document.querySelectorAll<HTMLButtonElement>("button.graph-submit").forEach(b =>
 
 async function graph() {
     if (graphButton.disabled) return;
-    if (!canNest) graphButton.disabled = true;
 
     graphStatus.classList.remove("hidden", "error", "done");
     graphStatus.textContent = 'Graphing...'
@@ -618,7 +617,6 @@ function onComputeError(e: Error | ErrorEvent) {
  * @param after how many ms before status should be cleared.
  */
 function clearStatusAfter(after = 1000) {
-    if (!canNest) graphButton.disabled = false;
     setTimeout(() => {
         if (graphStatus.classList.contains("done")) {
             graphStatus.classList.remove("done");
