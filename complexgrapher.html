@@ -8,41 +8,53 @@
     </head>
     <body>
         <div id="wrapper">
-            <div id="controls">
-                <div class="smallgap">
-                    <div id="zcoord">Loading page...</div>
-                    <div id="funcControls">
+            <div id="controls" class="overlay initializing">
+                <div class="flimsy-box">
+                    <div id="func-controls" class="subcontrols">
                         <span>f(z) = </span>
-                        <form id="funcForm">
-                            <input value="z">
+                        <form class="graph-submit">
+                            <input id="func-input" value="z">
                         </form>
-                        <button id="graphButton" disabled="">Graph!</button>
+                        <button id="graph-button" class="graph-submit" disabled="">Graph!</button>
                     </div>
                 </div>
-                <div id="zoomButtonControls">
-                    <button class="zoom">Zoom in</button>
-                    <button class="zoom">Reset zoom</button>
-                    <button class="zoom">Zoom out</button>
-                </div>
-                <div>
-                    <span>Current zoom: 
-                        <form id="zoomForm">
-                            <input value="1" size="4">
-                        </form>x
-                    </span>
-                    <div id="scaleControls">
-                        <span>Current radius: </span>
-                        <form id="scaleForm">
-                            <input type="number" value="250" size="4" required="">
-                        </form>
-                        <span>px</span>
+                <div class="flimsy-box">
+                    <div id="zoom-controls">
+                        <div id="zoom-input-controls" class="subcontrols">
+                            Zoom: 
+                            <form id="zoom-form" class="graph-submit">
+                                <input id="zoom-input" type="number" min="0" value="1" step="any">
+                            </form>x
+                        </div>
+                        <div id="zoom-button-controls" class="subcontrols">
+                            <button class="zoom graph-submit">Zoom in</button>
+                            <button class="zoom graph-submit" disabled="">Reset zoom</button>
+                            <button class="zoom graph-submit">Zoom out</button>
+                        </div>
                     </div>
-                    <div>
-                        Current domain: <code class="domain">-2 - 2i</code> to <code class="domain">2 + 2i</code>
+                    <div id="center-controls" class="subcontrols">
+                        Center: 
+                        <form class="graph-submit">
+                            <input class="center-input" type="number" value="0" step="any"> +
+                        </form>
+                        <form class="graph-submit">
+                            <input class="center-input" type="number" value="0" step="any">i
+                        </form>
+                        <button id="recenter-button" class="hidden graph-submit">Recenter</button>
+                        <button id="home-button" class="hidden graph-submit">Home</button>
+                    </div>
+                    <div id="domain-info">
+                        Domain: <code class="domain numeric-value">-2 - 2i</code> to <code class="domain numeric-value">2 + 2i</code>
                     </div>
                 </div>
                 <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>
-                <div id="warning" style="display: none">(⚠️ Larger images may take much longer to load.)</div>
+            </div>
+            <div id="wgs">
+                <div id="z-wrapper" class="numeric-value overlay">
+                    <div>z = <code></code>,</div>
+                    <div>f(z) = <code></code></div>
+                </div>
+                <div id="graph-status" class="overlay">Loading page...</div>
             </div>
             <!-- <canvas></canvas> -->
         </div>

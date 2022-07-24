@@ -142,572 +142,414 @@
       this[globalName] = mainExports;
     }
   }
-})({"h4oLY":[function(require,module,exports) {
-"use strict";
-var global = arguments[3];
-var HMR_HOST = null;
-var HMR_PORT = null;
-var HMR_SECURE = false;
-var HMR_ENV_HASH = "d6ea1d42532a7575";
-module.bundle.HMR_BUNDLE_ID = "ac32d50f39fee83e";
-/* global HMR_HOST, HMR_PORT, HMR_ENV_HASH, HMR_SECURE, chrome, browser, globalThis, __parcel__import__, __parcel__importScripts__, ServiceWorkerGlobalScope */ /*::
-import type {
-  HMRAsset,
-  HMRMessage,
-} from '@parcel/reporter-dev-server/src/HMRServer.js';
-interface ParcelRequire {
-  (string): mixed;
-  cache: {|[string]: ParcelModule|};
-  hotData: mixed;
-  Module: any;
-  parent: ?ParcelRequire;
-  isParcelRequire: true;
-  modules: {|[string]: [Function, {|[string]: string|}]|};
-  HMR_BUNDLE_ID: string;
-  root: ParcelRequire;
-}
-interface ParcelModule {
-  hot: {|
-    data: mixed,
-    accept(cb: (Function) => void): void,
-    dispose(cb: (mixed) => void): void,
-    // accept(deps: Array<string> | string, cb: (Function) => void): void,
-    // decline(): void,
-    _acceptCallbacks: Array<(Function) => void>,
-    _disposeCallbacks: Array<(mixed) => void>,
-  |};
-}
-interface ExtensionContext {
-  runtime: {|
-    reload(): void,
-    getURL(url: string): string;
-    getManifest(): {manifest_version: number, ...};
-  |};
-}
-declare var module: {bundle: ParcelRequire, ...};
-declare var HMR_HOST: string;
-declare var HMR_PORT: string;
-declare var HMR_ENV_HASH: string;
-declare var HMR_SECURE: boolean;
-declare var chrome: ExtensionContext;
-declare var browser: ExtensionContext;
-declare var __parcel__import__: (string) => Promise<void>;
-declare var __parcel__importScripts__: (string) => Promise<void>;
-declare var globalThis: typeof self;
-declare var ServiceWorkerGlobalScope: Object;
-*/ var OVERLAY_ID = "__parcel__error__overlay__";
-var OldModule = module.bundle.Module;
-function Module(moduleName) {
-    OldModule.call(this, moduleName);
-    this.hot = {
-        data: module.bundle.hotData,
-        _acceptCallbacks: [],
-        _disposeCallbacks: [],
-        accept: function(fn) {
-            this._acceptCallbacks.push(fn || function() {});
-        },
-        dispose: function(fn) {
-            this._disposeCallbacks.push(fn);
-        }
-    };
-    module.bundle.hotData = undefined;
-}
-module.bundle.Module = Module;
-var checkedAssets, acceptedAssets, assetsToAccept /*: Array<[ParcelRequire, string]> */ ;
-function getHostname() {
-    return HMR_HOST || (location.protocol.indexOf("http") === 0 ? location.hostname : "localhost");
-}
-function getPort() {
-    return HMR_PORT || location.port;
-} // eslint-disable-next-line no-redeclare
-var parent = module.bundle.parent;
-if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== "undefined") {
-    var hostname = getHostname();
-    var port = getPort();
-    var protocol = HMR_SECURE || location.protocol == "https:" && !/localhost|127.0.0.1|0.0.0.0/.test(hostname) ? "wss" : "ws";
-    var ws = new WebSocket(protocol + "://" + hostname + (port ? ":" + port : "") + "/"); // Web extension context
-    var extCtx = typeof chrome === "undefined" ? typeof browser === "undefined" ? null : browser : chrome; // Safari doesn't support sourceURL in error stacks.
-    // eval may also be disabled via CSP, so do a quick check.
-    var supportsSourceURL = false;
-    try {
-        (0, eval)('throw new Error("test"); //# sourceURL=test.js');
-    } catch (err) {
-        supportsSourceURL = err.stack.includes("test.js");
-    } // $FlowFixMe
-    ws.onmessage = async function(event) {
-        checkedAssets = {} /*: {|[string]: boolean|} */ ;
-        acceptedAssets = {} /*: {|[string]: boolean|} */ ;
-        assetsToAccept = [];
-        var data = JSON.parse(event.data);
-        if (data.type === "update") {
-            // Remove error overlay if there is one
-            if (typeof document !== "undefined") removeErrorOverlay();
-            let assets = data.assets.filter((asset)=>asset.envHash === HMR_ENV_HASH); // Handle HMR Update
-            let handled = assets.every((asset)=>{
-                return asset.type === "css" || asset.type === "js" && hmrAcceptCheck(module.bundle.root, asset.id, asset.depsByBundle);
-            });
-            if (handled) {
-                console.clear(); // Dispatch custom event so other runtimes (e.g React Refresh) are aware.
-                if (typeof window !== "undefined" && typeof CustomEvent !== "undefined") window.dispatchEvent(new CustomEvent("parcelhmraccept"));
-                await hmrApplyUpdates(assets);
-                for(var i = 0; i < assetsToAccept.length; i++){
-                    var id = assetsToAccept[i][1];
-                    if (!acceptedAssets[id]) hmrAcceptRun(assetsToAccept[i][0], id);
-                }
-            } else fullReload();
-        }
-        if (data.type === "error") {
-            // Log parcel errors to console
-            for (let ansiDiagnostic of data.diagnostics.ansi){
-                let stack = ansiDiagnostic.codeframe ? ansiDiagnostic.codeframe : ansiDiagnostic.stack;
-                console.error("\uD83D\uDEA8 [parcel]: " + ansiDiagnostic.message + "\n" + stack + "\n\n" + ansiDiagnostic.hints.join("\n"));
-            }
-            if (typeof document !== "undefined") {
-                // Render the fancy html overlay
-                removeErrorOverlay();
-                var overlay = createErrorOverlay(data.diagnostics.html); // $FlowFixMe
-                document.body.appendChild(overlay);
-            }
-        }
-    };
-    ws.onerror = function(e) {
-        console.error(e.message);
-    };
-    ws.onclose = function() {
-        console.warn("[parcel] \uD83D\uDEA8 Connection to the HMR server was lost");
-    };
-}
-function removeErrorOverlay() {
-    var overlay = document.getElementById(OVERLAY_ID);
-    if (overlay) {
-        overlay.remove();
-        console.log("[parcel] \u2728 Error resolved");
-    }
-}
-function createErrorOverlay(diagnostics) {
-    var overlay = document.createElement("div");
-    overlay.id = OVERLAY_ID;
-    let errorHTML = '<div style="background: black; opacity: 0.85; font-size: 16px; color: white; position: fixed; height: 100%; width: 100%; top: 0px; left: 0px; padding: 30px; font-family: Menlo, Consolas, monospace; z-index: 9999;">';
-    for (let diagnostic of diagnostics){
-        let stack = diagnostic.frames.length ? diagnostic.frames.reduce((p, frame)=>{
-            return `${p}
-<a href="/__parcel_launch_editor?file=${encodeURIComponent(frame.location)}" style="text-decoration: underline; color: #888" onclick="fetch(this.href); return false">${frame.location}</a>
-${frame.code}`;
-        }, "") : diagnostic.stack;
-        errorHTML += `
-      <div>
-        <div style="font-size: 18px; font-weight: bold; margin-top: 20px;">
-          🚨 ${diagnostic.message}
-        </div>
-        <pre>${stack}</pre>
-        <div>
-          ${diagnostic.hints.map((hint)=>"<div>\uD83D\uDCA1 " + hint + "</div>").join("")}
-        </div>
-        ${diagnostic.documentation ? `<div>📝 <a style="color: violet" href="${diagnostic.documentation}" target="_blank">Learn more</a></div>` : ""}
-      </div>
-    `;
-    }
-    errorHTML += "</div>";
-    overlay.innerHTML = errorHTML;
-    return overlay;
-}
-function fullReload() {
-    if ("reload" in location) location.reload();
-    else if (extCtx && extCtx.runtime && extCtx.runtime.reload) extCtx.runtime.reload();
-}
-function getParents(bundle, id) /*: Array<[ParcelRequire, string]> */ {
-    var modules = bundle.modules;
-    if (!modules) return [];
-    var parents = [];
-    var k, d, dep;
-    for(k in modules)for(d in modules[k][1]){
-        dep = modules[k][1][d];
-        if (dep === id || Array.isArray(dep) && dep[dep.length - 1] === id) parents.push([
-            bundle,
-            k
-        ]);
-    }
-    if (bundle.parent) parents = parents.concat(getParents(bundle.parent, id));
-    return parents;
-}
-function updateLink(link) {
-    var newLink = link.cloneNode();
-    newLink.onload = function() {
-        if (link.parentNode !== null) // $FlowFixMe
-        link.parentNode.removeChild(link);
-    };
-    newLink.setAttribute("href", link.getAttribute("href").split("?")[0] + "?" + Date.now()); // $FlowFixMe
-    link.parentNode.insertBefore(newLink, link.nextSibling);
-}
-var cssTimeout = null;
-function reloadCSS() {
-    if (cssTimeout) return;
-    cssTimeout = setTimeout(function() {
-        var links = document.querySelectorAll('link[rel="stylesheet"]');
-        for(var i = 0; i < links.length; i++){
-            // $FlowFixMe[incompatible-type]
-            var href = links[i].getAttribute("href");
-            var hostname = getHostname();
-            var servedFromHMRServer = hostname === "localhost" ? new RegExp("^(https?:\\/\\/(0.0.0.0|127.0.0.1)|localhost):" + getPort()).test(href) : href.indexOf(hostname + ":" + getPort());
-            var absolute = /^https?:\/\//i.test(href) && href.indexOf(location.origin) !== 0 && !servedFromHMRServer;
-            if (!absolute) updateLink(links[i]);
-        }
-        cssTimeout = null;
-    }, 50);
-}
-function hmrDownload(asset) {
-    if (asset.type === "js") {
-        if (typeof document !== "undefined") {
-            let script = document.createElement("script");
-            script.src = asset.url + "?t=" + Date.now();
-            if (asset.outputFormat === "esmodule") script.type = "module";
-            return new Promise((resolve, reject)=>{
-                var _document$head;
-                script.onload = ()=>resolve(script);
-                script.onerror = reject;
-                (_document$head = document.head) === null || _document$head === void 0 || _document$head.appendChild(script);
-            });
-        } else if (typeof importScripts === "function") {
-            // Worker scripts
-            if (asset.outputFormat === "esmodule") return import(asset.url + "?t=" + Date.now());
-            else return new Promise((resolve, reject)=>{
-                try {
-                    importScripts(asset.url + "?t=" + Date.now());
-                    resolve();
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        }
-    }
-}
-async function hmrApplyUpdates(assets) {
-    global.parcelHotUpdate = Object.create(null);
-    let scriptsToRemove;
-    try {
-        // If sourceURL comments aren't supported in eval, we need to load
-        // the update from the dev server over HTTP so that stack traces
-        // are correct in errors/logs. This is much slower than eval, so
-        // we only do it if needed (currently just Safari).
-        // https://bugs.webkit.org/show_bug.cgi?id=137297
-        // This path is also taken if a CSP disallows eval.
-        if (!supportsSourceURL) {
-            let promises = assets.map((asset)=>{
-                var _hmrDownload;
-                return (_hmrDownload = hmrDownload(asset)) === null || _hmrDownload === void 0 ? void 0 : _hmrDownload.catch((err)=>{
-                    // Web extension bugfix for Chromium
-                    // https://bugs.chromium.org/p/chromium/issues/detail?id=1255412#c12
-                    if (extCtx && extCtx.runtime && extCtx.runtime.getManifest().manifest_version == 3) {
-                        if (typeof ServiceWorkerGlobalScope != "undefined" && global instanceof ServiceWorkerGlobalScope) {
-                            extCtx.runtime.reload();
-                            return;
-                        }
-                        asset.url = extCtx.runtime.getURL("/__parcel_hmr_proxy__?url=" + encodeURIComponent(asset.url + "?t=" + Date.now()));
-                        return hmrDownload(asset);
-                    }
-                    throw err;
-                });
-            });
-            scriptsToRemove = await Promise.all(promises);
-        }
-        assets.forEach(function(asset) {
-            hmrApply(module.bundle.root, asset);
-        });
-    } finally{
-        delete global.parcelHotUpdate;
-        if (scriptsToRemove) scriptsToRemove.forEach((script)=>{
-            if (script) {
-                var _document$head2;
-                (_document$head2 = document.head) === null || _document$head2 === void 0 || _document$head2.removeChild(script);
-            }
-        });
-    }
-}
-function hmrApply(bundle, asset) {
-    var modules = bundle.modules;
-    if (!modules) return;
-    if (asset.type === "css") reloadCSS();
-    else if (asset.type === "js") {
-        let deps = asset.depsByBundle[bundle.HMR_BUNDLE_ID];
-        if (deps) {
-            if (modules[asset.id]) {
-                // Remove dependencies that are removed and will become orphaned.
-                // This is necessary so that if the asset is added back again, the cache is gone, and we prevent a full page reload.
-                let oldDeps = modules[asset.id][1];
-                for(let dep in oldDeps)if (!deps[dep] || deps[dep] !== oldDeps[dep]) {
-                    let id = oldDeps[dep];
-                    let parents = getParents(module.bundle.root, id);
-                    if (parents.length === 1) hmrDelete(module.bundle.root, id);
-                }
-            }
-            if (supportsSourceURL) // Global eval. We would use `new Function` here but browser
-            // support for source maps is better with eval.
-            (0, eval)(asset.output);
-             // $FlowFixMe
-            let fn = global.parcelHotUpdate[asset.id];
-            modules[asset.id] = [
-                fn,
-                deps
-            ];
-        } else if (bundle.parent) hmrApply(bundle.parent, asset);
-    }
-}
-function hmrDelete(bundle, id1) {
-    let modules = bundle.modules;
-    if (!modules) return;
-    if (modules[id1]) {
-        // Collect dependencies that will become orphaned when this module is deleted.
-        let deps = modules[id1][1];
-        let orphans = [];
-        for(let dep in deps){
-            let parents = getParents(module.bundle.root, deps[dep]);
-            if (parents.length === 1) orphans.push(deps[dep]);
-        } // Delete the module. This must be done before deleting dependencies in case of circular dependencies.
-        delete modules[id1];
-        delete bundle.cache[id1]; // Now delete the orphans.
-        orphans.forEach((id)=>{
-            hmrDelete(module.bundle.root, id);
-        });
-    } else if (bundle.parent) hmrDelete(bundle.parent, id1);
-}
-function hmrAcceptCheck(bundle, id, depsByBundle) {
-    if (hmrAcceptCheckOne(bundle, id, depsByBundle)) return true;
-     // Traverse parents breadth first. All possible ancestries must accept the HMR update, or we'll reload.
-    let parents = getParents(module.bundle.root, id);
-    let accepted = false;
-    while(parents.length > 0){
-        let v = parents.shift();
-        let a = hmrAcceptCheckOne(v[0], v[1], null);
-        if (a) // If this parent accepts, stop traversing upward, but still consider siblings.
-        accepted = true;
-        else {
-            // Otherwise, queue the parents in the next level upward.
-            let p = getParents(module.bundle.root, v[1]);
-            if (p.length === 0) {
-                // If there are no parents, then we've reached an entry without accepting. Reload.
-                accepted = false;
-                break;
-            }
-            parents.push(...p);
-        }
-    }
-    return accepted;
-}
-function hmrAcceptCheckOne(bundle, id, depsByBundle) {
-    var modules = bundle.modules;
-    if (!modules) return;
-    if (depsByBundle && !depsByBundle[bundle.HMR_BUNDLE_ID]) {
-        // If we reached the root bundle without finding where the asset should go,
-        // there's nothing to do. Mark as "accepted" so we don't reload the page.
-        if (!bundle.parent) return true;
-        return hmrAcceptCheck(bundle.parent, id, depsByBundle);
-    }
-    if (checkedAssets[id]) return true;
-    checkedAssets[id] = true;
-    var cached = bundle.cache[id];
-    assetsToAccept.push([
-        bundle,
-        id
-    ]);
-    if (!cached || cached.hot && cached.hot._acceptCallbacks.length) return true;
-}
-function hmrAcceptRun(bundle, id) {
-    var cached = bundle.cache[id];
-    bundle.hotData = {};
-    if (cached && cached.hot) cached.hot.data = bundle.hotData;
-    if (cached && cached.hot && cached.hot._disposeCallbacks.length) cached.hot._disposeCallbacks.forEach(function(cb) {
-        cb(bundle.hotData);
-    });
-    delete bundle.cache[id];
-    bundle(id);
-    cached = bundle.cache[id];
-    if (cached && cached.hot && cached.hot._acceptCallbacks.length) cached.hot._acceptCallbacks.forEach(function(cb) {
-        var assetsToAlsoAccept = cb(function() {
-            return getParents(module.bundle.root, id);
-        });
-        if (assetsToAlsoAccept && assetsToAccept.length) // $FlowFixMe[method-unbinding]
-        assetsToAccept.push.apply(assetsToAccept, assetsToAlsoAccept);
-    });
-    acceptedAssets[id] = true;
-}
-
-},{}],"iXZ3z":[function(require,module,exports) {
+})({"iXZ3z":[function(require,module,exports) {
 var _mathjs = require("mathjs");
+var _types = require("./types");
+var _evaluator = require("./evaluator");
 const math = (0, _mathjs.create)((0, _mathjs.all));
-const wrapper = document.querySelector("#wrapper"), funcForm = document.querySelector("#funcForm"), input = funcForm.querySelector("input"), graphButton = document.querySelector("#graphButton"), zcoord = document.querySelector("#zcoord"), zoomButtons = document.querySelectorAll("button.zoom"), zoomForm = document.querySelector("#zoomForm"), zoomInput = zoomForm.querySelector("input"), scaleForm = document.querySelector("#scaleForm"), scaleInput = scaleForm.querySelector("input"), warning = document.querySelector("#warning"), domain = document.querySelectorAll(".domain");
+const wrapper = document.querySelector("div#wrapper"), controls = document.querySelector("div#controls"), funcInput = document.querySelector("input#func-input"), graphButton = document.querySelector("#graph-button"), graphStatus = document.querySelector("div#graph-status"), zWrapperItems = document.querySelectorAll("div#z-wrapper code"), zoomButtons = document.querySelectorAll("button.zoom"), zoomInput = document.querySelector("input#zoom-input"), centerInputs = document.querySelectorAll("input.center-input"), recenterButton = document.querySelector("button#recenter-button"), homeButton = document.querySelector("button#home-button"), domain = document.querySelectorAll(".domain");
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d", {
     alpha: false
 });
 wrapper.appendChild(canvas);
-/**
- * The default domain of the image at zoom 1
- */ const defaultDomain = [
-    math.complex("-2-2i"),
-    math.complex("2+2i"), 
-];
-/**
- * The default radius.
- */ const radiusThreshold = 250;
-/**
- * The radius the calculator will default to for the image. 
- * 
- * Typically 250 (so 501 x 501), but if window is small enough, this falls back to the window's width.
- */ let defaultRadius = computeDefRadius();
-function computeDefRadius() {
-    let padding = parseInt(getComputedStyle(wrapper).padding);
-    return Math.min(radiusThreshold, (document.documentElement.clientWidth - 1) / 2 - padding // size of the window / 2, minus padding
-    );
+async function updateCanvasDims() {
+    await waitPageUpdate();
+    const { width , height  } = canvas.getBoundingClientRect();
+    setProperty(canvas, "width", Math.trunc(width));
+    setProperty(canvas, "height", Math.trunc(height));
+    ctx.globalCompositeOperation = "copy";
+    updateDomain();
 }
-scaleInput.value = "" + defaultRadius;
+updateCanvasDims();
+const bufCanvas = document.createElement("canvas");
+const bctx = bufCanvas.getContext("2d", {
+    alpha: false
+});
+const bufProps = {
+    refs: 0,
+    mat: math.identity(3)
+};
+function copyToBuffer() {
+    if (!bufProps.refs) {
+        bufCanvas.width = canvas.width;
+        bufCanvas.height = canvas.height;
+        bctx.globalCompositeOperation = "copy";
+        bctx.imageSmoothingEnabled = false;
+        bctx.drawImage(canvas, 0, 0);
+        bufProps.refs++;
+        bufProps.mat = math.identity(3);
+    }
+}
+function drawBuffer() {
+    if (bufProps.refs) {
+        const { mat  } = bufProps;
+        ctx.setTransform(mat.get([
+            0,
+            0
+        ]), mat.get([
+            1,
+            0
+        ]), mat.get([
+            0,
+            1
+        ]), mat.get([
+            1,
+            1
+        ]), mat.get([
+            0,
+            2
+        ]), mat.get([
+            1,
+            2
+        ]));
+        ctx.drawImage(bufCanvas, 0, 0);
+        ctx.resetTransform();
+    }
+}
+function translateBuffer(dx, dy) {
+    bufProps.mat = math.multiply(math.matrix([
+        [
+            1,
+            0,
+            dx
+        ],
+        [
+            0,
+            1,
+            dy
+        ],
+        [
+            0,
+            0,
+            1
+        ], 
+    ]), bufProps.mat);
+}
+function scaleBufferAround(scale1, center1) {
+    const [dx, dy] = center1 ?? [
+        (canvas.width - 1) / 2,
+        (canvas.height - 1) / 2
+    ];
+    bufProps.mat = math.chain(math.matrix([
+        [
+            1,
+            0,
+            dx
+        ],
+        [
+            0,
+            1,
+            dy
+        ],
+        [
+            0,
+            0,
+            1
+        ], 
+    ])).multiply(math.matrix([
+        [
+            1 / scale1,
+            0,
+            0
+        ],
+        [
+            0,
+            1 / scale1,
+            0
+        ],
+        [
+            0,
+            0,
+            1
+        ], 
+    ])).multiply(math.matrix([
+        [
+            1,
+            0,
+            -dx
+        ],
+        [
+            0,
+            1,
+            -dy
+        ],
+        [
+            0,
+            0,
+            1
+        ], 
+    ])).multiply(bufProps.mat).done();
+}
+function releaseBuffer() {
+    bufProps.refs = Math.max(bufProps.refs - 1, 0);
+}
+function clearBuffer() {
+    bufProps.refs = 0;
+}
+let center = (0, _types.Complex).ZERO;
+function setCenter(c) {
+    center = c;
+    centerInputs[0].value = `${c.re}`;
+    centerInputs[1].value = `${c.im}`;
+    recenterButton.classList.toggle("hidden", c.equals(0, 0));
+    homeButton.classList.toggle("hidden", c.equals(0, 0) && scale === 2);
+    updateDomain();
+}
+document.querySelectorAll("#center-controls form").forEach((f)=>{
+    f.addEventListener("submit", (e)=>{
+        const re = +centerInputs[0].value;
+        const im = +centerInputs[1].value;
+        setCenter((0, _types.Complex)(re, im));
+    });
+});
+recenterButton.addEventListener("click", (e)=>{
+    setCenter((0, _types.Complex).ZERO);
+});
 /**
- * The zoom of the image (which affects the domain, but not the dimensions of the image)
- * 
- * Increase: zoom in
- * 
- * Decrease: zoom out
- */ let zoom = 1;
+ * Identifier designating the current graph.
+ * This is a cyclic value, ranging the entire 32-bit range.
+ */ let graphID = 0;
 /**
- * Function that takes the input complex value to the output one
- * This is only used for console.log
+ * The scale of the graph represents the distance (in complex units) 
+ * from the center of the screen to the top.
+ */ let scale = 2;
+function setScale(n, render = true) {
+    abortGraph();
+    n = Math.max(n, 0);
+    const scaleRatio = n / scale;
+    scale = n;
+    // dirty zoom
+    if (render) {
+        copyToBuffer();
+        scaleBufferAround(scaleRatio);
+        drawBuffer();
+        releaseBuffer();
+    }
+    zoomInput.value = `${2 / scale}`;
+    zoomInput.style.width = `${zoomInput.value.length}ch`;
+    zoomButtons[1].disabled = scale === 2;
+    homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
+    updateDomain();
+}
+function addZoom(mouseX, mouseY, deltaY) {
+    // negative = zoom out
+    // positive = zoom in
+    const factor = 2 ** (deltaY * 0.005);
+    const mousePos = convPlanes(mouseX, mouseY);
+    // keep the mousePos stable, but the distance from the original center needs to scale
+    const disp = mousePos.sub(center);
+    setCenter(mousePos.sub(disp.mul(factor)));
+    setScale(scale * factor, false);
+    scaleBufferAround(factor, [
+        mouseX,
+        mouseY
+    ]);
+    drawBuffer();
+}
+{
+    const [zoomIn, zoomReset, zoomOut] = zoomButtons;
+    zoomIn.addEventListener("click", ()=>setScale(scale / 2));
+    zoomReset.addEventListener("click", ()=>setScale(2));
+    zoomOut.addEventListener("click", ()=>setScale(scale * 2));
+}homeButton.addEventListener("click", ()=>{
+    const { width , height  } = canvas;
+    const [scaleX, scaleY] = xyScale();
+    // 1 unit of scale
+    const [unitX, unitY] = [
+        (width - 1) / 2,
+        -(height - 1) / 2
+    ];
+    const [dx, dy] = [
+        center.re * unitX / scaleX,
+        center.im * unitY / scaleY
+    ];
+    copyToBuffer();
+    translateBuffer(dx, dy);
+    drawBuffer();
+    releaseBuffer();
+    setCenter((0, _types.Complex).ZERO);
+    setScale(2);
+});
+function xyScale() {
+    return [
+        scale * canvas.width / canvas.height,
+        scale, 
+    ];
+}
+function updateDomain() {
+    const [scaleX, scaleY] = xyScale();
+    const range = (0, _types.Complex)(scaleX, scaleY);
+    const cmL = center.sub(range);
+    const cmR = center.add(range);
+    // update domain display
+    domain[0].textContent = `${cmL}`;
+    domain[1].textContent = `${cmR}`;
+}
+/**
+ * Function that takes the input complex value to the output one.
+ * This is used in the z-coord display.
  * @param z input
  * @returns output
  */ let d = (z)=>z;
 let worker;
 let canNest;
-let time; // only used in fallback
-// On WebKit (iOS), nested Workers are not supported. So test if they are supported,
-// and if not, use the fallback that doesn't use nested Workers.
 /**
  * On WebKit (iOS), nested Workers are not supported. So this worker tests if they are supported.
  * The result is then used to determine whether or not to use the full main worker or a fallback.
  */ let webkitTest = new Worker(require("45db8707b388c948"));
 webkitTest.postMessage(undefined);
 webkitTest.onmessage = async function(e1) {
-    zcoord.textContent = "Initializing workers...";
+    graphStatus.textContent = "Initializing workers...";
     await waitPageUpdate();
     canNest = e1.data;
     worker = canNest ? new Worker(require("4e4d4c47c4f40590")) : new Worker(require("86d16f4b6fb500f0"));
     await initWorker(worker);
-    if (canNest) worker.onmessage = function(e) {
+    worker.onmessage = function(e) {
         let msg = e.data;
+        if (msg.graphID !== graphID) return;
         if (msg.action === "chunkDone") displayChunk(msg);
         else if (msg.action === "done") markDone(msg.time);
         else {
             let _ = msg;
         }
     };
-    else worker.onmessage = function(e) {
-        displayChunk(e.data);
-        markDone(Math.trunc(performance.now() - time));
-    };
     worker.onerror = onComputeError;
     graphButton.disabled = false;
-    graphButton.click();
     webkitTest.terminate();
+    document.querySelectorAll(".initializing").forEach((e)=>e.classList.remove("initializing"));
+    graph(); // Don't need to await it. We just want it to happen eventually.
 };
 /**
+ * Calculate complex coordinates from the current mouse position
+ */ function fromMousePosition({ pageX , pageY  }) {
+    const x = pageX - canvas.offsetLeft;
+    const y = pageY - canvas.offsetTop;
+    const { width , height  } = canvas.getBoundingClientRect();
+    if (x < 0 || x >= width) return;
+    if (y < 0 || y >= height) return;
+    return convPlanes(x, y);
+}
+{
+    let hold = false;
+    let initX = 0, initY = 0;
+    let lastX = 0, lastY = 0;
+    canvas.addEventListener("mousedown", (e)=>{
+        hold = true;
+        lastX = initX = e.clientX;
+        lastY = initY = e.clientY;
+        copyToBuffer();
+    });
+    document.addEventListener("mouseup", (e)=>{
+        if (hold) {
+            hold = false;
+            // if any displacement occurred, then redraw
+            const [dx, dy] = [
+                e.clientX - initX,
+                e.clientY - initY
+            ];
+            if (dx !== 0 || dy !== 0) graph();
+        }
+    });
+    document.addEventListener("mousemove", (e)=>{
+        if (hold) {
+            abortGraph();
+            const [dx, dy] = [
+                e.clientX - lastX,
+                e.clientY - lastY
+            ];
+            translateBuffer(dx, dy);
+            drawBuffer();
+            setCenter(center.sub(convDisplace(dx, dy)));
+            lastX = e.clientX;
+            lastY = e.clientY;
+        }
+    });
+}{
+    let timeout;
+    let started = false;
+    canvas.addEventListener("wheel", (e)=>{
+        e.preventDefault();
+        abortGraph();
+        clearTimeout(timeout);
+        if (!started) {
+            started = true;
+            // wheel start
+            copyToBuffer();
+        }
+        // wheel move
+        if (e.ctrlKey) addZoom(e.clientX, e.clientY, e.deltaY);
+        else {
+            const dx = e.deltaX * .5;
+            const dy = e.deltaY * .5;
+            translateBuffer(dx, dy);
+            drawBuffer();
+            setCenter(center.sub(convDisplace(dx, dy)));
+        }
+        coordinateDisplay(e);
+        timeout = setTimeout(()=>{
+            // wheel end
+            graph();
+            started = false;
+        }, 500);
+    }, false);
+}/**
  * Event listener that displays the complex coordinate of the mouse's current position.
- */ function coordinateDisplay(e) {
-    let cx = e.pageX - canvas.offsetLeft;
-    let cy = e.pageY - canvas.offsetTop;
-    zcoord.classList.remove("error");
-    zcoord.textContent = "z = ";
-    const code = document.createElement("code");
-    code.append("" + convPlanes(cx, cy));
-    zcoord.append(code);
+ */ async function coordinateDisplay(...args) {
+    const pos = fromMousePosition(...args);
+    if (typeof pos !== "undefined") {
+        const [zElem, fzElem] = zWrapperItems;
+        zElem.textContent = `${pos}`;
+        fzElem.textContent = `${d?.(pos) ?? "?"}`;
+    }
 }
 canvas.addEventListener("mousemove", coordinateDisplay);
-canvas.addEventListener("click", (e)=>{
-    let cx = e.pageX - canvas.offsetLeft;
-    let cy = e.pageY - canvas.offsetTop;
-    let z = convPlanes(cx, cy);
-    console.log(`z = ${z},\nf(z) = ${d(z)}`);
-});
+controls.addEventListener("mousemove", coordinateDisplay);
+document.addEventListener("click", coordinateDisplay);
 // Function input handlers:
-input.addEventListener("input", ()=>{
-    input.value = input.value.replace(/[^a-zA-Z0-9+\-*/^., ()]/g, "");
-});
-funcForm.addEventListener("submit", (e)=>{
-    e.preventDefault();
-    graphButton.click();
-});
-// zoom in
-zoomButtons[0].addEventListener("click", ()=>{
-    zoom *= 2;
-    graphButton.click();
-});
-// reset zoom
-zoomButtons[1].addEventListener("click", ()=>{
-    if (zoom !== 1) {
-        zoom = 1;
-        graphButton.click();
-    }
-});
-// zoom out
-zoomButtons[2].addEventListener("click", ()=>{
-    zoom /= 2;
-    graphButton.click();
-});
-// arbitrary zoom
-zoomInput.addEventListener("input", ()=>{
-    zoomInput.value = zoomInput.value.replace(/[^0-9.]/g, "");
-    if (isNaN(+scaleInput.value)) zoomInput.value = "1";
-    if ([
-        ...zoomInput.value
-    ].filter((x)=>x === ".").length > 1) {
-        var ziArray = zoomInput.value.split(".");
-        zoomInput.value = ziArray[0] + "." + ziArray.slice(1).join("");
-    }
-});
-zoomForm.addEventListener("submit", (e)=>{
-    e.preventDefault();
-    if (zoom !== +zoomInput.value) {
-        zoom = +zoomInput.value || 0;
-        graphButton.click();
-    }
-});
-// scale handler:
-scaleInput.addEventListener("input", ()=>{
-    if (isNaN(+scaleInput.value)) scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? "inline" : "none";
-});
-scaleForm.addEventListener("submit", (e)=>{
-    e.preventDefault();
-    let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) {
-        canvas.width = canvas.height = size;
-        graphButton.click();
-    }
-});
+// funcInput.addEventListener('input', () => {
+//     funcInput.value = funcInput.value.replace(/[^a-zA-Z0-9+\-*/^., ()!]/g, '');
+// });
 let resizeCheck;
 window.addEventListener("resize", (e)=>{
     if (typeof resizeCheck !== "undefined") clearTimeout(resizeCheck);
-    defaultRadius = computeDefRadius();
-    scaleInput.value = "" + defaultRadius;
-    warning.style.display = +scaleInput.value > radiusThreshold ? "inline" : "none";
     // if resize is done then perform recompute
-    resizeCheck = setTimeout(()=>graphButton.click(), 50);
+    resizeCheck = setTimeout(async ()=>await graph(), 200);
 });
-graphButton.addEventListener("click", async ()=>{
-    if (!canNest) graphButton.disabled = true;
-    zcoord.classList.remove("error");
-    zoomInput.value = zoom.toString();
-    let size = +scaleInput.value * 2 + 1;
-    if (canvas.width !== size) canvas.width = canvas.height = size;
-    [domain[0].textContent, domain[1].textContent] = defaultDomain.map((x)=>x.div(zoom).toString());
-    zcoord.textContent = "Graphing...";
+document.querySelector("form#zoom-form").addEventListener("submit", ()=>{
+    if (zoomInput.checkValidity()) setScale(2 / +zoomInput.value);
+});
+// For things that unconditionally graph after being pressed:
+document.querySelectorAll("form.graph-submit").forEach((f)=>{
+    f.addEventListener("submit", (e)=>{
+        e.preventDefault();
+        graph();
+    });
+});
+document.querySelectorAll("button.graph-submit").forEach((b)=>{
+    b.addEventListener("click", ()=>{
+        graph();
+    });
+});
+async function graph() {
+    if (graphButton.disabled) return;
+    graphStatus.classList.remove("hidden", "error", "done");
+    graphStatus.textContent = "Graphing...";
+    await updateCanvasDims();
     await waitPageUpdate();
-    canvas.removeEventListener("mousemove", coordinateDisplay);
-    let fstr = input.value;
+    clearBuffer();
+    abortGraph();
+    let fstr = funcInput.value;
     try {
-        d = math.evaluate(`f(z) = ${fstr}`);
+        const eva = _evaluator.compile(fstr);
+        if (eva.type === "function") d = eva.f;
+        else d = ()=>eva.f;
         startWorker(worker, fstr);
     } catch (e) {
         onComputeError(e);
         throw e;
     }
-});
+}
 /**
  * @returns a promise that resolves when the DOM updates displaying
  */ async function waitPageUpdate() {
@@ -723,18 +565,27 @@ graphButton.addEventListener("click", async ()=>{
  * @param y y coord
  * @returns Complex value
  */ function convPlanes(x, y) {
-    //converts xy pixel plane to complex plane
-    // let cmx =  (row - rx) / (rx / 2) / scale,
-    //     cmy = -(col - ry) / (ry / 2) / scale;
-    // row - rx: distance from center, in canvas pixels
-    // / (rx / 2): normalizes that so the edge is 2
-    // / scale: scale mult.
-    let [rx, ry] = [
+    // center point:
+    const [canvasCenterX, canvasCenterY] = [
         (canvas.width - 1) / 2,
         (canvas.height - 1) / 2
     ];
-    let cmx = (x - rx) / (rx / 2) / zoom, cmy = -(y - ry) / (ry / 2) / zoom;
-    return math.complex(cmx, cmy);
+    return center.add(convDisplace(x - canvasCenterX, y - canvasCenterY));
+}
+/**
+ * Scale a change in displacement in canvas
+ * @param dx pixels moved in the x-direction
+ * @param dy pixels moved in the y-direction
+ * @returns complex displacement
+ */ function convDisplace(dx, dy) {
+    const { width , height  } = canvas;
+    const [scaleX, scaleY] = xyScale();
+    // 1 unit of scale
+    const [unitX, unitY] = [
+        (width - 1) / 2,
+        -(height - 1) / 2
+    ];
+    return (0, _types.Complex)(dx * scaleX / unitX, dy * scaleY / unitY);
 }
 /**
  * Call an "init" action on a worker to prepare it for work.
@@ -756,63 +607,27 @@ graphButton.addEventListener("click", async ()=>{
  * @param w the worker to instruct.
  * @param fstr the function input
  */ function startWorker(w, fstr) {
-    if (!canNest) time = performance.now();
+    graphID++;
+    graphID |= 0;
     let msg = {
         action: "mainRequest",
         pev: partialEvaluate(fstr),
         cd: {
             width: canvas.width,
             height: canvas.height,
-            zoom
-        }
+            center: [
+                center.re,
+                center.im
+            ],
+            scale
+        },
+        graphID
     };
     w.postMessage(msg);
 }
-/**
- * Take a string and evaluate it for speed. Simplify the string and also apply the reciprocal optimization.
- * This partial evaluation can then be fully evaluated in the workers.
- * @param fstr string to partially evaluate
- * @returns partially evaluated string
- */ function partialEvaluate(fstr) {
-    let node = math.simplify(fstr);
-    let fnode = math.parse("f(z) = 0");
-    let inverse = false;
-    if (node.type == "OperatorNode" && node.fn == "divide" && !isNaN(+node.args[0])) {
-        node.args.reverse();
-        node = math.simplify(node);
-        inverse = true;
-    }
-    fnode.expr = node;
-    return {
-        fstr: fnode.toString(),
-        inverse
-    };
-}
-/**
- * Display a done message with how long it took to complete
- * @param t time (in ms) it took for the operation to complete
- */ function markDone(t) {
-    zcoord.textContent = `Done in ${t}ms.`;
-    reenableHover();
-}
-/**
- * Handle errors in computation
- * @param e the error
- */ function onComputeError(e) {
-    let err = e instanceof ErrorEvent ? e.message : e;
-    canvas.removeEventListener("mousemove", coordinateDisplay);
-    zcoord.classList.add("error");
-    zcoord.textContent = String(err);
-    reenableHover();
-}
-/**
- * Reenable interactability after an error
- * @param after how many ms before hover and interactibility should reenable
- */ function reenableHover(after = 500) {
-    setTimeout(()=>{
-        canvas.addEventListener("mousemove", coordinateDisplay);
-        if (!canNest) graphButton.disabled = false;
-    }, after);
+function abortGraph() {
+    graphID++;
+    graphID |= 0;
 }
 /**
  * Update the canvas with the loaded chunk
@@ -822,8 +637,57 @@ graphButton.addEventListener("click", async ()=>{
     let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
     ctx.putImageData(dat, chunk.offx, chunk.offy);
 }
+/**
+ * Take a string and evaluate it for speed. Simplify the string and also apply the reciprocal optimization.
+ * This partial evaluation can then be fully evaluated in the workers.
+ * @param fstr string to partially evaluate
+ * @returns partially evaluated string
+ */ function partialEvaluate(fstr) {
+    let node = math.simplify(fstr);
+    let inverse = false;
+    if (node.type == "OperatorNode" && node.fn == "divide" && !isNaN(+node.args[0])) {
+        node.args.reverse();
+        node = math.simplify(node);
+        inverse = true;
+    }
+    return {
+        fstr: node.toString(),
+        inverse
+    };
+}
+/**
+ * Display a done message with how long it took to complete
+ * @param t time (in ms) it took for the operation to complete
+ */ async function markDone(t) {
+    graphStatus.textContent = `Done in ${t}ms.`;
+    graphStatus.classList.add("done");
+    await waitPageUpdate();
+    clearStatusAfter();
+}
+/**
+ * Handle errors in computation
+ * @param e the error
+ */ function onComputeError(e) {
+    let err = e instanceof ErrorEvent ? e.message : e;
+    graphStatus.classList.add("error");
+    graphStatus.textContent = String(err);
+}
+/**
+ * Reset the status after a while.
+ * @param after how many ms before status should be cleared.
+ */ function clearStatusAfter(after = 1000) {
+    setTimeout(()=>{
+        if (graphStatus.classList.contains("done")) {
+            graphStatus.classList.remove("done");
+            graphStatus.classList.add("hidden");
+        }
+    }, after);
+}
+function setProperty(o, p, v) {
+    if (o[p] !== v) o[p] = v;
+}
 
-},{"mathjs":"dfqcH","45db8707b388c948":"5jXDr","4e4d4c47c4f40590":"4FxmW","86d16f4b6fb500f0":"aZIDP"}],"dfqcH":[function(require,module,exports) {
+},{"mathjs":"dfqcH","./types":"3KtCW","./evaluator":"xQ2Cc","45db8707b388c948":"kfAty","4e4d4c47c4f40590":"93Mr8","86d16f4b6fb500f0":"6SEbi"}],"dfqcH":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _mainAnyJs = require("./entry/mainAny.js");
@@ -71573,10 +71437,164 @@ function importFactory(typed, load, math, importedFactories) {
     return mathImport;
 }
 
-},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"5jXDr":[function(require,module,exports) {
+},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"3KtCW":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "Complex", ()=>(0, _complexJs.Complex));
+var _complexJs = require("complex.js");
+
+},{"complex.js":"c3NNR","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"xQ2Cc":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "compile", ()=>compile);
+var _mathjs = require("mathjs");
+var _types = require("./types");
+const math = (0, _mathjs.create)((0, _mathjs.all));
+const constants = {
+    "pi": (0, _types.Complex).PI,
+    "e": (0, _types.Complex).E,
+    "i": (0, _types.Complex).I,
+    "inf": (0, _types.Complex).INFINITY,
+    "infinity": (0, _types.Complex).INFINITY,
+    "epsilon": (0, _types.Complex).EPSILON,
+    "nan": (0, _types.Complex).NAN
+};
+function isComplexMethod(n) {
+    return n in (0, _types.Complex).I;
+}
+function getFrom(o, k) {
+    if (k in o) return o[k];
+}
+function lookup(n) {
+    let { name  } = n;
+    name = name.toLowerCase();
+    if (name === "z") return {
+        type: "z"
+    };
+    if (isComplexMethod(name)) return {
+        type: "method",
+        name
+    };
+    if (name in constants) return {
+        type: "constant",
+        value: constants[name]
+    };
+    // if (name in functions) return {
+    //     type: "function",
+    //     f: functions[name]
+    // }
+    throw new Error(`Unrecognized symbol [${name}]`);
+}
+const operatorMapping = {
+    "add": (a)=>a.add.bind(a),
+    "unaryPlus": (a)=>()=>a,
+    "subtract": (a)=>a.sub.bind(a),
+    "unaryMinus": (a)=>a.neg.bind(a),
+    "multiply": (a)=>a.mul.bind(a),
+    "divide": (a)=>a.div.bind(a),
+    "pow": (a)=>a.pow.bind(a),
+    "factorial": (a)=>()=>math.gamma(a.add(1))
+};
+function unwrap(val, z) {
+    if (val.type === "constant") return val.value;
+    if (val.type === "function") return val.f(z);
+    if (val.type === "z") return z;
+    let _ = val;
+    throw new Error(`Unrecognized fold result ${val.type}`);
+}
+function makeFunction(f, args, allowFunctions) {
+    // can only accept z OR number | Complex
+    // functions should not be allowed.
+    let fargs = args.map((node)=>fold(node));
+    // if all constants, this can be computed as a constant
+    if (fargs.every((a)=>a.type === "constant")) {
+        const [self, ...rest] = fargs.map((c)=>c.value);
+        const cself = (0, _types.Complex)(self);
+        const met = f(cself);
+        if (typeof met === "number") return {
+            type: "constant",
+            value: met
+        };
+        return {
+            type: "constant",
+            value: met.bind(cself)(...rest)
+        };
+    }
+    const [self, ...rest] = fargs;
+    if (allowFunctions) return {
+        type: "function",
+        f: (z)=>{
+            let a = (0, _types.Complex)(unwrap(self, z));
+            let b = rest.map((arg)=>unwrap(arg, z));
+            const met = f(a);
+            if (typeof met === "number" /* re, im */ ) return met;
+            return met.bind(a)(...b);
+        }
+    };
+}
+function fold(n, allowFunctions = true) {
+    switch(n.type){
+        case "ConstantNode":
+            return {
+                type: "constant",
+                value: n.value
+            };
+        case "FunctionNode":
+            {
+                const lk = lookup(n.fn);
+                if (lk.type === "method") {
+                    const f = makeFunction((a)=>a[lk.name], n.args, allowFunctions);
+                    if (typeof f === "undefined") throw new Error(`Unexpected function [${lk.name}]`);
+                    return f;
+                } else if (lk.type === "constant") throw new Error(`Expected function, got constant [${n.fn.name} = ${lk.value}]`);
+                else if (lk.type === "z") throw new Error(`Expected function, got [z]`);
+                let _ = lk;
+                throw new Error(`Expected function, got [${lk.type}]`);
+            }
+        case "OperatorNode":
+            {
+                const op = getFrom(operatorMapping, n.fn);
+                const f = op ? makeFunction(op, n.args, allowFunctions) : undefined;
+                if (typeof f === "undefined") throw new Error(`Unexpected operator [${n.op}]`);
+                return f;
+            }
+        case "ParenthesisNode":
+            return fold(n.content);
+        case "SymbolNode":
+            {
+                const lk = lookup(n);
+                if (lk.type === "method") throw new Error(`Unexpected function [${n.name}]`);
+                return lk;
+            }
+        default:
+            throw new Error(`Cannot parse [${n.type}] into complex function`);
+    }
+}
+function compile(fstr) {
+    const fr = fold(math.parse(fstr));
+    switch(fr.type){
+        case "constant":
+            return {
+                type: "constant",
+                f: fr.value
+            };
+        case "function":
+            return fr;
+        case "z":
+            return {
+                type: "function",
+                f: (z)=>z
+            };
+        default:
+            let _ = fr;
+            throw new Error(`Invalid fold result type ${fr.type}`);
+    }
+}
+
+},{"mathjs":"dfqcH","./types":"3KtCW","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"kfAty":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "webkitTest.7cba1080.js" + "?" + Date.now();
+let url = bundleURL.getBundleURL("eMBKF") + "webkitTest.7cba1080.js";
 module.exports = workerURL(url, bundleURL.getOrigin(url), false);
 
 },{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"cGRWL":[function(require,module,exports) {
@@ -71630,18 +71648,18 @@ exports.getBundleURL = getBundleURLCached;
 exports.getBaseURL = getBaseURL;
 exports.getOrigin = getOrigin;
 
-},{}],"4FxmW":[function(require,module,exports) {
+},{}],"93Mr8":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js" + "?" + Date.now();
+let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js";
 module.exports = workerURL(url, bundleURL.getOrigin(url), false);
 
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"aZIDP":[function(require,module,exports) {
+},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"6SEbi":[function(require,module,exports) {
 let workerURL = require("./helpers/get-worker-url");
 let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "chunkloader.966fd52a.js" + "?" + Date.now();
+let url = bundleURL.getBundleURL("eMBKF") + "chunkloader.966fd52a.js";
 module.exports = workerURL(url, bundleURL.getOrigin(url), false);
 
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}]},["h4oLY","iXZ3z"], "iXZ3z", "parcelRequire94c2")
+},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}]},["iXZ3z"], "iXZ3z", "parcelRequire94c2")
 
 //# sourceMappingURL=complexgrapher.39fee83e.js.map

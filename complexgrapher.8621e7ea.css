@@ -1,5 +1,6 @@
 body {
   margin: 0;
+  position: relative;
 }
 
 #wrapper {
@@ -11,67 +12,159 @@ body {
   display: flex;
 }
 
-#controls {
-  box-sizing: border-box;
+.overlay {
+  z-index: 3;
+  background-color: #1c2527;
+}
+
+#wgs {
+  z-index: 3;
+  width: 33vw;
   flex-direction: column;
   gap: 5px;
   display: flex;
 }
 
-.smallgap {
+#wgs > div {
+  padding: 8px;
+}
+
+#graph-status {
+  align-self: flex-end;
+}
+
+#controls {
+  max-width: 33vw;
+  background-color: #1c2527;
   flex-direction: column;
-  gap: 3px;
+  grid-area: controls;
+  gap: 10px;
+  padding: 10px;
+  transition: opacity .2s ease-in-out;
+  display: flex;
+}
+
+#controls:not(.initializing):not(:hover):not(.error) {
+  opacity: .1;
+}
+
+#graph-status.error {
+  color: red;
+}
+
+#graph-status.hidden.error {
+  display: unset;
+}
+
+.flimsy-box {
+  flex-direction: column;
+  gap: 5px;
   display: flex;
 }
 
 canvas {
   cursor: crosshair;
+  width: 100vw;
+  height: 100vh;
+  grid-area: canvas;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 form {
   display: inline;
 }
 
-.error {
-  color: red;
+.hidden {
+  display: none;
 }
 
-@media (max-width: 815px) {
+input[type="number"] {
+  width: 5ch;
+}
+
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
   #wrapper {
-    flex-direction: column-reverse;
-    padding: 8px;
+    height: 100vh;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "canvas"
+                         "controls";
+    grid-auto-columns: minmax(0, 1fr);
+    place-items: stretch stretch;
+    gap: 0;
+    padding: 0;
+    display: grid;
   }
 
   #controls {
+    max-width: unset;
     align-self: stretch;
+    opacity: unset !important;
   }
 
-  #scaleControls {
-    display: none;
-  }
-
-  #funcControls, #zoomButtonControls {
+  .subcontrols {
     align-self: center;
   }
 
-  #zoomButtonControls {
+  #zoom-controls {
+    flex-direction: column;
+    display: flex;
+  }
+
+  #zoom-button-controls {
     padding-bottom: 8px;
   }
 
-  #funcControls {
+  #func-controls {
     padding-top: 8px;
+  }
+
+  #wgs {
+    width: unset;
+  }
+
+  #graph-status {
+    align-self: center;
+  }
+
+  #graph-status.hidden {
+    visibility: hidden;
+    display: unset;
   }
 
   * {
     font-size: 18px;
   }
 
-  #zcoord {
+  .numeric-value {
+    align-self: center;
     font-size: 16px;
   }
 
-  #zcoord * {
+  .numeric-value * {
     font-size: inherit;
+  }
+
+  canvas {
+    top: unset;
+    left: unset;
+    width: unset;
+    height: unset;
+    z-index: unset;
+    min-height: 0;
+    position: static;
+  }
+}
+
+@media (hover: none) {
+  #z-wrapper {
+    display: none;
   }
 }
 
