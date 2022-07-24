@@ -247,7 +247,6 @@ let d: ComplexFunction | undefined = (z => z);
 
 let worker: Worker;
 let canNest: boolean;
-let time: number; // only used in fallback
 
 /**
  * On WebKit (iOS), nested Workers are not supported. So this worker tests if they are supported.
@@ -266,25 +265,16 @@ webkitTest.onmessage = async function (e: MessageEvent<boolean>) {
     
     await initWorker(worker);
 
-    if (canNest) {
-        worker.onmessage = function (e: MessageEvent<MainOut>) {
-            let msg: MainOut = e.data;
-            if (msg.graphID !== graphID) return;
-        
-            if (msg.action === "chunkDone") {
-                displayChunk(msg);
-            } else if (msg.action === "done") {
-                markDone(msg.time);
-            } else {
-                let _: never = msg;
-            }
-        }
-    } else {
-        worker.onmessage = function (e: MessageEvent<LoaderOut>) {
-            if (e.data.graphID !== graphID) return;
-            
-            displayChunk(e.data);
-            markDone(Math.trunc(performance.now() - time));
+    worker.onmessage = function (e: MessageEvent<MainOut>) {
+        let msg: MainOut = e.data;
+        if (msg.graphID !== graphID) return;
+    
+        if (msg.action === "chunkDone") {
+            displayChunk(msg);
+        } else if (msg.action === "done") {
+            markDone(msg.time);
+        } else {
+            let _: never = msg;
         }
     }
     
@@ -535,8 +525,6 @@ async function initWorker(w: Worker) {
  * @param fstr the function input
  */
 function startWorker(w: Worker, fstr: string) {
-    if (!canNest) time = performance.now();
-
     running = true;
     graphID++;
     graphID |= 0;

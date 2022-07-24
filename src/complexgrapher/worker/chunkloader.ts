@@ -1,4 +1,4 @@
-import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn, ComplexFunction } from "../types";
+import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn, ComplexFunction, MainOut } from "../types";
 import * as evaluator from "../evaluator";
 
 const resolution = 1;
@@ -12,27 +12,35 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     }
 
     let { pev, cd, graphID } = data;
-    let chunk;
+    let ev = buildEvaluator(pev);
 
     if (data.action === "chunkRequest") {
-        chunk = data.chunk;
+        let chunk = data.chunk;
+
+        let buf = computeBuffer(ev, cd, chunk);
+        let msg: LoaderOut = { action: "chunkDone", buf, chunk, graphID };
+        postMessage(msg, [buf] as any);
     } else if (data.action === "mainRequest") {
-        chunk = {
-            width: cd.width, 
-            height: cd.height, 
-            offx: 0, 
-            offy: 0
-        };
+        const start = performance.now();
+
+        // TODO, use like actual methods here.
+        for (let i = 0; i < cd.width; i += 100) {
+            for (let j = 0; j < cd.height; j += 100) {
+                let chunk = { width: 100, height: 100, offx: i, offy: j };
+                let buf = computeBuffer(ev, cd, chunk);
+
+                let msg: LoaderOut = { action: "chunkDone", buf, chunk, graphID };
+                postMessage(msg, [buf] as any);
+                console.log(msg);
+            }
+        }
+
+        let msg: MainOut = {action: "done", time: Math.trunc(performance.now() - start), graphID};
+        postMessage(msg);
     } else {
         let _: never = data;
         throw new Error("Unrecognized request into chunkLoader");
     }
-
-    let ev = buildEvaluator(pev);
-    let buf = computeBuffer(ev, cd, chunk);
-
-    let msg: LoaderOut = { action: "chunkDone", buf, chunk, graphID };
-    postMessage(msg, [buf] as any);
 }
 
 /**
