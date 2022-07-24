@@ -197,8 +197,23 @@ function addZoom(mouseX: number, mouseY: number, deltaY: number) {
 }
 
 homeButton.addEventListener("click", () => {
+    const { width, height } = canvas;
+    const [scaleX, scaleY] = xyScale();
+
+    // 1 unit of scale
+    const [unitX, unitY] = [
+         (width  - 1) / 2,
+        -(height - 1) / 2
+    ];
+
+    const [dx, dy] = [center.re * unitX / scaleX, center.im * unitY / scaleY];
+    copyToBuffer();
+    translateBuffer(dx, dy);
+    drawBuffer();
+    releaseBuffer();
+    
     setCenter(Complex.ZERO);
-    setScale(2, false);
+    setScale(2);
 });
 
 let running = true;
