@@ -216,8 +216,6 @@ homeButton.addEventListener("click", () => {
     setScale(2);
 });
 
-let running = true;
-
 function xyScale() {
     return [
         scale * canvas.width / canvas.height,
@@ -525,7 +523,6 @@ async function initWorker(w: Worker) {
  * @param fstr the function input
  */
 function startWorker(w: Worker, fstr: string) {
-    running = true;
     graphID++;
     graphID |= 0;
     
@@ -553,7 +550,6 @@ function abortGraph() {
  * @param data the data from the worker
  */
  function displayChunk(data: LoaderOut) {
-    if (!running) return;
     let {chunk, buf} = data;
 
     let dat = new ImageData(new Uint8ClampedArray(buf), chunk.width, chunk.height);
@@ -583,9 +579,11 @@ function partialEvaluate(fstr: string): PartialEvaluator {
  * Display a done message with how long it took to complete
  * @param t time (in ms) it took for the operation to complete
  */
-function markDone(t: number) {
+async function markDone(t: number) {
     graphStatus.textContent = `Done in ${t}ms.`;
     graphStatus.classList.add("done");
+    
+    await waitPageUpdate();
     clearStatusAfter();
 }
 
