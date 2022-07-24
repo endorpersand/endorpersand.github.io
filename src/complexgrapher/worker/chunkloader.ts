@@ -1,7 +1,7 @@
 import { Complex, CanvasData, ChunkData, PartialEvaluator, Evaluator, LoaderIn, LoaderOut, MainIn, InitIn, ComplexFunction } from "../types";
 import * as evaluator from "../evaluator";
 
-let running = true;
+const resolution = 1;
 
 onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
     let data = e.data;
@@ -11,7 +11,6 @@ onmessage = function (e: MessageEvent<InitIn | MainIn | LoaderIn>) {
         return;
     }
 
-    running = true;
     let { pev, cd, graphID } = data;
     let chunk;
 
@@ -66,16 +65,20 @@ function computeBuffer(ev: Evaluator, cd: CanvasData, chunk: ChunkData): ArrayBu
     } else {
         const { f } = evaluator;
         
-        for (var i = 0; i < width; i++) {
-            for (var j = 0; j < height; j++) {
-                if (!running) return buf;
-                let k = width * j + i;
+        for (var j = 0; j < height; j += resolution) {
+            const row = Uint32Array.from({length: width}, (_, i) => {
                 // compute value
-                let fz = Complex(f( convPlanes(i, j, cd, chunk) ));
-
+                let fz: Complex = Complex(f( convPlanes(Math.floor(i / resolution) * resolution, j, cd, chunk) ));
+    
                 let r = fz.abs();
                 let phi = fz.arg();
-                arr32[k] = polarToColor(r, phi, inverse);
+
+                return polarToColor(r, phi, inverse);
+            });
+            
+            for (let k = 0; k < resolution && (j + k) < height; k++) {
+                const offset = (j + k) * width;
+                arr32.set(row, offset);
             }
         }
     }
