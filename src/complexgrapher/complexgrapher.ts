@@ -47,9 +47,9 @@ function copyToBuffer() {
         bctx.imageSmoothingEnabled = false;
         bctx.drawImage(canvas, 0, 0);
 
-        bufProps.refs++;
         bufProps.mat = math.identity(3) as any;
     }
+    bufProps.refs++;
 }
 function drawBuffer() {
     if (bufProps.refs) {
@@ -104,9 +104,6 @@ function scaleBufferAround(scale: number, center?: [number, number]) {
 }
 function releaseBuffer() {
     bufProps.refs = Math.max(bufProps.refs - 1, 0);
-}
-function clearBuffer() {
-    bufProps.refs = 0;
 }
 
 let center = Complex.ZERO;
@@ -321,6 +318,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
                 e.clientY - initY
             ]
 
+            releaseBuffer();
             if (dx !== 0 || dy !== 0) graph();
         }
     });
@@ -377,6 +375,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
         timeout = setTimeout(() => {
             // wheel end
             graph();
+            releaseBuffer();
             started = false;
         }, 500);
     }, false);
@@ -437,8 +436,6 @@ async function graph() {
     await updateCanvasDims();
     await waitPageUpdate();
     
-    clearBuffer();
-    abortGraph();
     let fstr = funcInput.value;
     try {
         const eva = evaluator.compile(fstr);
