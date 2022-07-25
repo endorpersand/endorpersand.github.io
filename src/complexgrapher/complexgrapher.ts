@@ -1,4 +1,4 @@
-import { create, all } from "mathjs";
+import { create, all, number } from "mathjs";
 import { Complex, ComplexFunction, InitIn, InitOut, LoaderOut, MainIn, MainOut, PartialEvaluator } from "./types";
 import * as evaluator from "./evaluator";
 const math = create(all);
@@ -165,8 +165,8 @@ function setCenter(c: Complex, bufSettings?: { updateBuffer: boolean }) {
 
     centerInputs[0].value = `${c.re}`;
     centerInputs[1].value = `${c.im}`;
-    recenterButton.classList.toggle("hidden", c.equals(0, 0));
-    homeButton.classList.toggle("hidden", c.equals(0, 0) && scale === 2);
+    setHiddenState(recenterButton, c.equals(0, 0));
+    setHiddenState(homeButton, c.equals(0, 0) && scale === 2);
     
     updateDomain();
 }
@@ -210,8 +210,8 @@ function setScale(n: number, bufSettings?: { updateBuffer: boolean }) {
     zoomInput.style.width = `${zoomInput.value.length}ch`;
 
     zoomButtons[1].disabled = scale === 2;
-    homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
     
+    setHiddenState(homeButton, center.equals(0, 0) && scale === 2);
     updateDomain();
 }
 
@@ -256,6 +256,9 @@ function xyScale() {
     ] as const;
 }
 function updateDomain() {
+    const limitDomain = !!+getComputedStyle(document.documentElement)
+        .getPropertyValue("--limit-domain");
+    
     const [scaleX, scaleY] = xyScale();
 
     const range = Complex(scaleX, scaleY);
@@ -263,9 +266,32 @@ function updateDomain() {
     const cmL = center.sub(range);
     const cmR = center.add(range);
 
-    // update domain display
-    domain[0].textContent = `${cmL}`;
-    domain[1].textContent = `${cmR}`;
+    if (!limitDomain) {
+        domain[0].textContent = `${cmL}`;
+        domain[1].textContent = `${cmR}`;
+    } else {
+        let { re: lre, im: lim } = cmL;
+        let { re: rre, im: rim } = cmR;
+        
+        const lsign = Math.sign(lim) === -1 ? "-" : "+";
+        const rsign = Math.sign(lim) === -1 ? "-" : "+";
+
+        const lreStr = reduceNumber(lre);
+        const rreStr = reduceNumber(rre);
+        const limStr = reduceNumber(Math.abs(lim));
+        const rimStr = reduceNumber(Math.abs(rim));
+
+        domain[0].textContent = `${lreStr} ${lsign} ${limStr}i`;
+        domain[1].textContent = `${rreStr} ${rsign} ${rimStr}i`;
+    }
+}
+
+function reduceNumber(n: number) {
+    const s1 = n.toPrecision();
+    const s2 = n.toPrecision(5);
+
+    if (s1.length <= s2.length) return s1;
+    return s2;
 }
 
 /**
@@ -332,46 +358,88 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 }
 
 {
-    let hold = false;
-    let initX = 0, initY = 0;
-    let lastX = 0, lastY = 0;
+    let holds = new Map<number, {
+        initX: number,
+        initY: number,
+        lastX: number,
+        lastY: number
+    }>();
+    
+    canvas.addEventListener('pointerdown', e => {
+        console.log("pointerdown", e.pointerId);
 
-    canvas.addEventListener('mousedown', e => {
-        hold = true;
+        let initX, initY, lastX, lastY;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
+        holds.set(e.pointerId, {initX, initY, lastX, lastY});
 
         Buffer.prepare();
     });
 
-    document.addEventListener('mouseup', e => {
-        if (hold) {
-            hold = false;
-        
+    function pointerup(e: PointerEvent) {
+        const pos = holds.get(e.pointerId);
+
+        if (holds.delete(e.pointerId)) {
+            Buffer.release();
+        }
+
+        if (holds.size === 0 && pos) {
             // if any displacement occurred, then redraw
             const [dx, dy] = [
-                e.clientX - initX,
-                e.clientY - initY
+                e.clientX - pos.initX,
+                e.clientY - pos.initY
             ]
-
-            Buffer.release();
+    
             if (dx !== 0 || dy !== 0) graph();
         }
-    });
+    }
 
-    document.addEventListener('mousemove', e => {
-        if (hold) {
-            const [dx, dy] = [
-                e.clientX - lastX,
-                e.clientY - lastY
-            ]
+    document.addEventListener('pointerup', pointerup);
+    document.addEventListener('pointercancel', pointerup);
 
-            const dz = Convert.toComplexDisplace(dx, dy);
-            setCenter(center.sub(dz));
-            Buffer.draw();
+    function distance(pts: (readonly [x: number, y: number])[]): [center: readonly [x: number, y: number], dist: number] {
+        const length = pts.length;
+        const [scx, scy] = pts.reduce(([ax, ay], [cx, cy]) => [ax + cx, ay + cy] as const);
+        
+        const center = [scx / length, scy / length] as const;
+        const [cx, cy] = center;
 
-            lastX = e.clientX;
-            lastY = e.clientY;
+        const distances = pts.map(([x, y]) => Math.hypot(x - cx, y - cy));
+        const totalDistance = distances.reduce((acc, cv) => acc + cv);
+
+        return [center, totalDistance];
+    }
+
+    document.addEventListener('pointermove', e => {
+        console.log("pointermove", e.pointerId);
+        
+        const pos = holds.get(e.pointerId);
+        if (pos) {
+            if (holds.size === 1) {
+                const [dx, dy] = [
+                    e.clientX - pos.lastX,
+                    e.clientY - pos.lastY
+                ]
+    
+                const dz = Convert.toComplexDisplace(dx, dy);
+                setCenter(center.sub(dz));
+                Buffer.draw();
+    
+                pos.lastX = e.clientX;
+                pos.lastY = e.clientY;
+            } else {
+                let positions = Array.from(holds.values(), ({lastX, lastY}) => [lastX, lastY] as const);
+                const [_, d1] = distance(positions);
+
+                pos.lastX = e.clientX;
+                pos.lastY = e.clientY;
+
+                positions = Array.from(holds.values(), ({lastX, lastY}) => [lastX, lastY] as const);
+                const [c, d2] = distance(positions);
+
+                addZoom(...c, d1 - d2);
+                Buffer.draw();
+            }
         }
     });
 }
@@ -682,4 +750,9 @@ function clearStatusAfter(after = 1000) {
 
 function setProperty<P extends string | number | symbol, V>(o: {[I in P]: V}, p: P, v: V) {
     if (o[p] !== v) o[p] = v;
+}
+
+function setHiddenState(b: HTMLElement, status: boolean) {
+    b.classList.toggle("hidden", status);
+    if (b instanceof HTMLButtonElement) b.disabled = status;
 }

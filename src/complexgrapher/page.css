@@ -1,6 +1,7 @@
 body {
     margin: 0px;
     position: relative;
+    touch-action: none;
 }
 
 #wrapper {
@@ -134,13 +135,28 @@ input[type=number]::-webkit-outer-spin-button {
     #graph-status {
         align-self: center;
     }
+
+    #center-controls {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+        justify-content: center;
+    }
+    #center-form-controls {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    #center-controls .hidden {
+        display: unset;
+    }
     #graph-status.hidden {
         visibility: hidden;
         display: unset;
     }
 
     * {
-        font-size: 18px;
+        font-size: 17px;
     }
 
     .numeric-value {
@@ -160,6 +176,19 @@ input[type=number]::-webkit-outer-spin-button {
         height: unset;
         z-index: unset;
         min-height: 0;
+    }
+
+    @media (hover: none) {
+        :root {
+            --limit-domain: 1;
+        }
+
+        #domain-info {
+            vertical-align: middle;
+            text-align: center;
+            line-height: 1.1;
+            height: 2.2em
+        }
     }
 }
 
