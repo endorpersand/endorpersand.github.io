@@ -34,81 +34,133 @@ updateCanvasDims();
 
 const bufCanvas = document.createElement("canvas");
 const bctx = bufCanvas.getContext('2d', {alpha: false})!;
-const bufProps = {
-    refs: 0,
-    mat: math.identity(3) as math.Matrix,
-};
 
-function copyToBuffer() {
-    if (!bufProps.refs) {
-        bufCanvas.width = canvas.width;
-        bufCanvas.height = canvas.height;
-        bctx.globalCompositeOperation = "copy";
-        bctx.imageSmoothingEnabled = false;
-        bctx.drawImage(canvas, 0, 0);
+namespace Buffer {
+    const bufProps = {
+        refs: 0,
+        mat: math.identity(3) as math.Matrix,
+    };
 
-        bufProps.mat = math.identity(3) as any;
+    /**
+     * Obtain a reference to the buffer.
+     * If this is the first reference, then the canvas is also copied into the buffer.
+     */
+    export function prepare() {
+        if (!bufProps.refs) {
+            bufCanvas.width = canvas.width;
+            bufCanvas.height = canvas.height;
+            bctx.globalCompositeOperation = "copy";
+            bctx.imageSmoothingEnabled = false;
+            bctx.drawImage(canvas, 0, 0);
+
+            bufProps.mat = math.identity(3) as any;
+        }
+        bufProps.refs++;
     }
-    bufProps.refs++;
-}
-function drawBuffer() {
-    if (bufProps.refs) {
-        const { mat } = bufProps;
 
-        ctx.setTransform(
-            mat.get([0, 0]),
-            mat.get([1, 0]),
-            mat.get([0, 1]),
-            mat.get([1, 1]),
-            mat.get([0, 2]),
-            mat.get([1, 2]),
-        )
-        ctx.drawImage(bufCanvas, 0, 0);
-        ctx.resetTransform();
+    /**
+     * Let go of the reference to the buffer.
+     */
+    export function release() {
+        bufProps.refs = Math.max(bufProps.refs - 1, 0);
     }
-}
-function translateBuffer(dx: number, dy: number) {
-    bufProps.mat = math.multiply(
-        math.matrix([
-            [1, 0, dx],
-            [0, 1, dy],
-            [0, 0,  1],
-        ]),
-        bufProps.mat
-    )
-}
-function scaleBufferAround(scale: number, center?: [number, number]) {
-    const [dx, dy] = center ?? [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
 
-    bufProps.mat = math.chain(
-        math.matrix([
-            [1, 0, dx],
-            [0, 1, dy],
-            [0, 0,  1],
-        ]),
-    ).multiply(
-        math.matrix([
-            [1 / scale,         0, 0],
-            [        0, 1 / scale, 0],
-            [        0,         0, 1],
-        ]),
-    ).multiply(
-        math.matrix([
-            [1, 0, -dx],
-            [0, 1, -dy],
-            [0, 0,   1],
-        ]),
-    ).multiply(
-        bufProps.mat
-    ).done();
-}
-function releaseBuffer() {
-    bufProps.refs = Math.max(bufProps.refs - 1, 0);
+    /**
+     * Obtain a reference to the buffer, do something with it, then release the reference.
+     * @param f Actions to do. 
+     * This callback includes an `owner` parameter that specifies 
+     * if this was the first reference to the buffer.
+     * @param drawIfOwner If the borrower is actually the owner, should the buffer be drawn?
+     */
+    export function borrow(f: (owner: boolean) => any, drawIfOwner: boolean = true) {
+        const owner = bufProps.refs === 0;
+
+        prepare();
+        f(owner);
+        if (drawIfOwner && owner) draw();
+        release();
+    }
+
+    /**
+     * Draw the buffer onto the main canvas.
+     */
+    export function draw() {
+        if (bufProps.refs) {
+            const { mat } = bufProps;
+
+            abortGraph();
+            ctx.setTransform(
+                mat.get([0, 0]),
+                mat.get([1, 0]),
+                mat.get([0, 1]),
+                mat.get([1, 1]),
+                mat.get([0, 2]),
+                mat.get([1, 2]),
+            )
+            ctx.drawImage(bufCanvas, 0, 0);
+            ctx.resetTransform();
+        }
+    }
+
+    /**
+     * Add a translation to the buffer.
+     * @param dx 
+     * @param dy 
+     */
+    export function translate(dx: number, dy: number) {
+        bufProps.mat = math.multiply(
+            math.matrix([
+                [1, 0, dx],
+                [0, 1, dy],
+                [0, 0,  1],
+            ]),
+            bufProps.mat
+        );
+    }
+
+    /**
+     * Add a scale to the buffer.
+     * @param scale 
+     * @param center Center to scale around
+     */
+    export function scaleAround(scale: number, center?: [number, number]) {
+        const [dx, dy] = center ?? [(canvas.width - 1) / 2, (canvas.height - 1) / 2];
+
+        bufProps.mat = math.chain(
+            math.matrix([
+                [1, 0, dx],
+                [0, 1, dy],
+                [0, 0,  1],
+            ]),
+        ).multiply(
+            math.matrix([
+                [1 / scale,         0, 0],
+                [        0, 1 / scale, 0],
+                [        0,         0, 1],
+            ]),
+        ).multiply(
+            math.matrix([
+                [1, 0, -dx],
+                [0, 1, -dy],
+                [0, 0,   1],
+            ]),
+        ).multiply(
+            bufProps.mat
+        ).done();
+    }
 }
 
 let center = Complex.ZERO;
 
-function setCenter(c: Complex) {
+function setCenter(c: Complex, bufSettings?: { updateBuffer: boolean }) {
+    if (bufSettings?.updateBuffer ?? true) Buffer.borrow(() => {
+        // If the center moves from (a + bi) to (0, 0), the image shifted right.
+        // So, actually you need to translate the buffer (a + bi).
+
+        const dz = center.sub(c);
+        const displace = Convert.toCanvasDisplace(dz);
+        Buffer.translate(...displace);
+    });
     center = c;
 
     centerInputs[0].value = `${c.re}`;
@@ -124,7 +176,9 @@ function setCenter(c: Complex) {
         f.addEventListener("submit", e => {
             const re = +centerInputs[0].value;
             const im = +centerInputs[1].value;
-            setCenter(Complex(re, im));
+            const z = Complex(re, im);
+
+            setCenter(z);
         });
     });
     recenterButton.addEventListener("click", e => {
@@ -144,20 +198,13 @@ let graphID = 0;
  */
 let scale = 2;
 
-function setScale(n: number, render = true) {
-    abortGraph();
+function setScale(n: number, bufSettings?: { updateBuffer: boolean }) {
     n = Math.max(n, 0);
-    const scaleRatio = n / scale;
-
+    if (bufSettings?.updateBuffer ?? true) Buffer.borrow(() => {
+        const scaleRatio = n / scale;
+        Buffer.scaleAround(scaleRatio);
+    });
     scale = n;
-    
-    // dirty zoom
-    if (render) {
-        copyToBuffer();
-        scaleBufferAround(scaleRatio);
-        drawBuffer();
-        releaseBuffer();
-    }
 
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
@@ -174,15 +221,17 @@ function addZoom(mouseX: number, mouseY: number, deltaY: number) {
 
     const factor = 2 ** (deltaY * 0.005);
 
-    const mousePos = convPlanes(mouseX, mouseY);
-    // keep the mousePos stable, but the distance from the original center needs to scale
+    const mousePos = Convert.toComplex(mouseX, mouseY);
+    
+    // in the scaling, the mousePos stays in the same position, 
+    // but the distance from the center scales
     const disp = mousePos.sub(center);
     
-    setCenter(mousePos.sub(disp.mul(factor)));
-    setScale(scale * factor, false);
+    Buffer.borrow(() => {
+        setCenter(mousePos.sub(disp.mul(factor)));
+        setScale(scale * factor);
+    });
     
-    scaleBufferAround(factor, [mouseX, mouseY]);
-    drawBuffer();
 }
 
 {
@@ -194,23 +243,10 @@ function addZoom(mouseX: number, mouseY: number, deltaY: number) {
 }
 
 homeButton.addEventListener("click", () => {
-    const { width, height } = canvas;
-    const [scaleX, scaleY] = xyScale();
-
-    // 1 unit of scale
-    const [unitX, unitY] = [
-         (width  - 1) / 2,
-        -(height - 1) / 2
-    ];
-
-    const [dx, dy] = [center.re * unitX / scaleX, center.im * unitY / scaleY];
-    copyToBuffer();
-    translateBuffer(dx, dy);
-    drawBuffer();
-    releaseBuffer();
-    
-    setCenter(Complex.ZERO);
-    setScale(2);
+    Buffer.borrow(() => {
+        setCenter(Complex.ZERO);
+        setScale(2);
+    });
 });
 
 function xyScale() {
@@ -292,7 +328,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     if ( x < 0 || x >= width  ) return;
     if ( y < 0 || y >= height ) return;
 
-    return convPlanes(x, y);
+    return Convert.toComplex(x, y);
 }
 
 {
@@ -305,7 +341,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
 
-        copyToBuffer();
+        Buffer.prepare();
     });
 
     document.addEventListener('mouseup', e => {
@@ -318,22 +354,21 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
                 e.clientY - initY
             ]
 
-            releaseBuffer();
+            Buffer.release();
             if (dx !== 0 || dy !== 0) graph();
         }
     });
 
     document.addEventListener('mousemove', e => {
         if (hold) {
-            abortGraph();
             const [dx, dy] = [
                 e.clientX - lastX,
                 e.clientY - lastY
             ]
 
-            translateBuffer(dx, dy);
-            drawBuffer();
-            setCenter(center.sub(convDisplace(dx, dy)));
+            const dz = Convert.toComplexDisplace(dx, dy);
+            setCenter(center.sub(dz));
+            Buffer.draw();
 
             lastX = e.clientX;
             lastY = e.clientY;
@@ -347,27 +382,27 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
-        abortGraph();
         clearTimeout(timeout);
 
         if (!started) {
             started = true;
             // wheel start
 
-            copyToBuffer();
+            Buffer.prepare();
         }
         
 
         // wheel move
         if (e.ctrlKey) {
             addZoom(e.clientX, e.clientY, e.deltaY);
+            Buffer.draw();
         } else {
             const dx = e.deltaX * .5;
             const dy = e.deltaY * .5;
 
-            translateBuffer(dx, dy);
-            drawBuffer();
-            setCenter(center.sub(convDisplace(dx, dy)));
+            const dz = Convert.toComplexDisplace(dx, dy);
+            setCenter(center.sub(dz));
+            Buffer.draw();
         }
         
         coordinateDisplay(e);
@@ -375,7 +410,7 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
         timeout = setTimeout(() => {
             // wheel end
             graph();
-            releaseBuffer();
+            Buffer.release();
             started = false;
         }, 500);
     }, false);
@@ -460,42 +495,79 @@ async function waitPageUpdate() {
     })
 }
 
-/**
- * Converts xy canvas pixels to values in the complex plane
- * @param x x coord
- * @param y y coord
- * @returns Complex value
- */
-function convPlanes(x: number, y: number) {
-    // center point:
-    const [canvasCenterX, canvasCenterY] = [
-        (canvas.width  - 1) / 2,
-        (canvas.height - 1) / 2
-    ];
+namespace Convert {
+    /**
+     * Converts a canvas position to a complex position
+     * @param x x (in canvas pixels)
+     * @param y y (in canvas pixels)
+     * @returns the complex position
+     */
+    export function toComplex(x: number, y: number) {
+        const [canvasCenterX, canvasCenterY] = [
+            (canvas.width  - 1) / 2,
+            (canvas.height - 1) / 2
+        ];
 
-    return center.add(convDisplace(
-        x - canvasCenterX,
-        y - canvasCenterY
-    ));
-}
+        const dz = toComplexDisplace(
+            x - canvasCenterX,
+            y - canvasCenterY
+        );
+        return center.add(dz);
+    }
 
-/**
- * Scale a change in displacement in canvas
- * @param dx pixels moved in the x-direction
- * @param dy pixels moved in the y-direction
- * @returns complex displacement
- */
-function convDisplace(dx: number, dy: number) {
-    const { width, height } = canvas;
-    const [scaleX, scaleY] = xyScale();
+    /**
+     * Converts canvas displacement to complex displacement
+     * @param dx change in x (in canvas pixels)
+     * @param dy change in y (in canvas pixels)
+     * @returns complex displacement
+     */
+    export function toComplexDisplace(dx: number, dy: number) {
+        const { width, height } = canvas;
+        const [scaleX, scaleY] = xyScale();
+    
+        // 1 unit of scale
+        const [unitX, unitY] = [
+             (width  - 1) / 2,
+            -(height - 1) / 2
+        ];
+    
+        return Complex(dx * scaleX / unitX, dy * scaleY / unitY);
+    }
 
-    // 1 unit of scale
-    const [unitX, unitY] = [
-         (width  - 1) / 2,
-        -(height - 1) / 2
-    ];
+    /**
+     * Converts a complex position to a canvas position
+     * @param z the complex position
+     * @returns the canvas position
+     */
+    export function toCanvas(z: Complex): [x: number, y: number] {
+        const [canvasCenterX, canvasCenterY] = [
+            (canvas.width  - 1) / 2,
+            (canvas.height - 1) / 2
+        ];
 
-    return Complex(dx * scaleX / unitX, dy * scaleY / unitY);
+        const dz = z.sub(center);
+        const [dx, dy] = toCanvasDisplace(dz);
+
+        return [canvasCenterX + dx, canvasCenterY + dy];
+    }
+
+    /**
+     * Converts complex displacement to canvas displacement
+     * @param dz complex displacement
+     * @returns canvas displacement
+     */
+    export function toCanvasDisplace(dz: Complex): [dx: number, dy: number] {
+        const { width, height } = canvas;
+        const [scaleX, scaleY] = xyScale();
+    
+        // 1 unit of scale
+        const [unitX, unitY] = [
+             (width  - 1) / 2,
+            -(height - 1) / 2
+        ];
+
+        return [dz.re * unitX / scaleX, dz.im * unitY / scaleY];
+    }
 }
 
 /**
