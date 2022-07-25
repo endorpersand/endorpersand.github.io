@@ -1241,93 +1241,140 @@ exports.export = function(dest, destName, get) {
 },{}],"l21Rx":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "compile", ()=>compile);
+/**
+ * Compile a function string into a usable function
+ * @param fstr string to compile
+ * @returns the function
+ */ parcelHelpers.export(exports, "compile", ()=>compile);
 var _mathjs = require("mathjs");
 var _types = require("./types");
 const math = (0, _mathjs.create)((0, _mathjs.all));
-const constants = {
-    "pi": (0, _types.Complex).PI,
-    "e": (0, _types.Complex).E,
-    "i": (0, _types.Complex).I,
-    "inf": (0, _types.Complex).INFINITY,
-    "infinity": (0, _types.Complex).INFINITY,
-    "epsilon": (0, _types.Complex).EPSILON,
-    "nan": (0, _types.Complex).NAN
+/**
+ * A mapping of names to constants which they represent:
+ */ const constants = {
+    pi: (0, _types.Complex).PI,
+    e: (0, _types.Complex).E,
+    i: (0, _types.Complex).I,
+    inf: (0, _types.Complex).INFINITY,
+    infinity: (0, _types.Complex).INFINITY,
+    epsilon: (0, _types.Complex).EPSILON,
+    nan: (0, _types.Complex).NAN
 };
-function isComplexMethod(n) {
-    return n in (0, _types.Complex).I;
-}
-function getFrom(o, k) {
+/**
+ * A mapping of names to functions (C -> C) which they represent.
+ */ const functions = {
+    gamma () {
+        return math.gamma(this);
+    },
+    ln: (0, _types.Complex).prototype.log
+};
+/**
+ * A mapping of operators to their respective functions.
+ */ const operators = {
+    add: (0, _types.Complex).prototype.add,
+    unaryPlus () {
+        return this;
+    },
+    subtract: (0, _types.Complex).prototype.sub,
+    unaryMinus: (0, _types.Complex).prototype.neg,
+    multiply: (0, _types.Complex).prototype.mul,
+    divide: (0, _types.Complex).prototype.div,
+    pow: (0, _types.Complex).prototype.pow,
+    factorial () {
+        return math.gamma(this.add(1));
+    }
+};
+let ComplexMethod;
+(function(ComplexMethod1) {
+    function isMethod(k) {
+        return k in (0, _types.Complex).prototype;
+    }
+    ComplexMethod1.isMethod = isMethod;
+    function get(k) {
+        const m = (0, _types.Complex).prototype[k];
+        if (m instanceof Function) return m;
+        return function() {
+            return this[k];
+        };
+    }
+    ComplexMethod1.get = get;
+    function wrap(f) {
+        return function() {
+            return f(this);
+        };
+    }
+    ComplexMethod1.wrap = wrap;
+})(ComplexMethod || (ComplexMethod = {}));
+/**
+ * Get a value from a specified object or `undefined` if the key is not present.
+ * @param o object
+ * @param k key to get
+ * @returns value (or `undefined` if not present)
+ */ function getFrom(o, k) {
     if (k in o) return o[k];
 }
-function lookup(n) {
+/**
+ * Check if the symbol is in one of the symbol mappings
+ * @param n Symbol node to look up
+ * @returns the lookup result or an error if not present
+ */ function lookup(n) {
     let { name  } = n;
     name = name.toLowerCase();
     if (name === "z") return {
         type: "z"
     };
-    if (isComplexMethod(name)) return {
+    if (ComplexMethod.isMethod(name)) return {
         type: "method",
-        name
+        f: ComplexMethod.get(name)
     };
     if (name in constants) return {
         type: "constant",
         value: constants[name]
     };
-    // if (name in functions) return {
-    //     type: "function",
-    //     f: functions[name]
-    // }
+    if (name in functions) return {
+        type: "method",
+        f: functions[name]
+    };
     throw new Error(`Unrecognized symbol [${name}]`);
 }
-const operatorMapping = {
-    "add": (a)=>a.add.bind(a),
-    "unaryPlus": (a)=>()=>a,
-    "subtract": (a)=>a.sub.bind(a),
-    "unaryMinus": (a)=>a.neg.bind(a),
-    "multiply": (a)=>a.mul.bind(a),
-    "divide": (a)=>a.div.bind(a),
-    "pow": (a)=>a.pow.bind(a),
-    "factorial": (a)=>()=>math.gamma(a.add(1))
-};
-function unwrap(val, z) {
+/**
+ * Take a `FoldResult` object and evaluate it with the specified z-value
+ * @param val the `FoldResult`
+ * @param z value z should be set to
+ * @returns the resulting value
+ */ function unwrap(val, z) {
     if (val.type === "constant") return val.value;
     if (val.type === "function") return val.f(z);
     if (val.type === "z") return z;
     let _ = val;
     throw new Error(`Unrecognized fold result ${val.type}`);
 }
-function makeFunction(f, args, allowFunctions) {
-    // can only accept z OR number | Complex
-    // functions should not be allowed.
+function createFunction(f, args) {
     let fargs = args.map((node)=>fold(node));
     // if all constants, this can be computed as a constant
     if (fargs.every((a)=>a.type === "constant")) {
         const [self, ...rest] = fargs.map((c)=>c.value);
         const cself = (0, _types.Complex)(self);
-        const met = f(cself);
-        if (typeof met === "number") return {
-            type: "constant",
-            value: met
-        };
         return {
             type: "constant",
-            value: met.bind(cself)(...rest)
+            value: f.apply(cself, rest)
         };
     }
     const [self, ...rest] = fargs;
-    if (allowFunctions) return {
+    return {
         type: "function",
         f: (z)=>{
             let a = (0, _types.Complex)(unwrap(self, z));
             let b = rest.map((arg)=>unwrap(arg, z));
-            const met = f(a);
-            if (typeof met === "number" /* re, im */ ) return met;
-            return met.bind(a)(...b);
+            return f.apply(a, b);
         }
     };
 }
-function fold(n, allowFunctions = true) {
+/**
+ * Fold a node into a usable function
+ * @param n Node to fold
+ * @returns Function representing the tree
+ */ function fold(n) {
     switch(n.type){
         case "ConstantNode":
             return {
@@ -1337,19 +1384,16 @@ function fold(n, allowFunctions = true) {
         case "FunctionNode":
             {
                 const lk = lookup(n.fn);
-                if (lk.type === "method") {
-                    const f = makeFunction((a)=>a[lk.name], n.args, allowFunctions);
-                    if (typeof f === "undefined") throw new Error(`Unexpected function [${lk.name}]`);
-                    return f;
-                } else if (lk.type === "constant") throw new Error(`Expected function, got constant [${n.fn.name} = ${lk.value}]`);
+                if (lk.type === "method") return createFunction(lk.f, n.args);
+                else if (lk.type === "constant") throw new Error(`Expected function, got constant [${n.fn.name} = ${lk.value}]`);
                 else if (lk.type === "z") throw new Error(`Expected function, got [z]`);
                 let _ = lk;
                 throw new Error(`Expected function, got [${lk.type}]`);
             }
         case "OperatorNode":
             {
-                const op = getFrom(operatorMapping, n.fn);
-                const f = op ? makeFunction(op, n.args, allowFunctions) : undefined;
+                const op = getFrom(operators, n.fn);
+                const f = op ? createFunction(op, n.args) : undefined;
                 if (typeof f === "undefined") throw new Error(`Unexpected operator [${n.op}]`);
                 return f;
             }
@@ -1358,6 +1402,7 @@ function fold(n, allowFunctions = true) {
         case "SymbolNode":
             {
                 const lk = lookup(n);
+                // bare symbols cannot evaluate to methods.
                 if (lk.type === "method") throw new Error(`Unexpected function [${n.name}]`);
                 return lk;
             }

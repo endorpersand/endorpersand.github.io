@@ -1,4 +1,5 @@
 body {
+  touch-action: none;
   margin: 0;
   position: relative;
 }
@@ -112,13 +113,28 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
     align-self: center;
   }
 
+  .desktop {
+    display: none;
+  }
+
   #zoom-controls {
-    flex-direction: column;
+    flex-flow: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    padding-bottom: 8px;
     display: flex;
   }
 
-  #zoom-button-controls {
-    padding-bottom: 8px;
+  #zc-buttons {
+    flex: 100%;
+    order: 2;
+    justify-content: center;
+    display: flex;
+  }
+
+  #zc-input-text {
+    order: 1;
   }
 
   #func-controls {
@@ -133,13 +149,29 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
     align-self: center;
   }
 
+  #center-controls {
+    flex-flow: wrap;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+  }
+
+  #center-form-controls {
+    text-align: center;
+    flex: 100%;
+  }
+
+  #center-controls .hidden {
+    display: unset;
+  }
+
   #graph-status.hidden {
     visibility: hidden;
     display: unset;
   }
 
   * {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .numeric-value {
@@ -159,6 +191,19 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
     z-index: unset;
     min-height: 0;
     position: static;
+  }
+
+  @media (hover: none) {
+    :root {
+      --limit-domain: 1;
+    }
+
+    #domain-info {
+      vertical-align: middle;
+      text-align: center;
+      height: 2.2em;
+      line-height: 1.1;
+    }
   }
 }
 

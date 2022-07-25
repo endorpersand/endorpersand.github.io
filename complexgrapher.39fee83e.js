@@ -166,141 +166,163 @@ const bufCanvas = document.createElement("canvas");
 const bctx = bufCanvas.getContext("2d", {
     alpha: false
 });
-const bufProps = {
-    refs: 0,
-    mat: math.identity(3)
-};
-function copyToBuffer() {
-    if (!bufProps.refs) {
-        bufCanvas.width = canvas.width;
-        bufCanvas.height = canvas.height;
-        bctx.globalCompositeOperation = "copy";
-        bctx.imageSmoothingEnabled = false;
-        bctx.drawImage(canvas, 0, 0);
+let Buffer;
+(function(Buffer1) {
+    const bufProps = {
+        refs: 0,
+        mat: math.identity(3)
+    };
+    function prepare() {
+        if (!bufProps.refs) {
+            bufCanvas.width = canvas.width;
+            bufCanvas.height = canvas.height;
+            bctx.globalCompositeOperation = "copy";
+            bctx.imageSmoothingEnabled = false;
+            bctx.drawImage(canvas, 0, 0);
+            bufProps.mat = math.identity(3);
+        }
         bufProps.refs++;
-        bufProps.mat = math.identity(3);
     }
-}
-function drawBuffer() {
-    if (bufProps.refs) {
-        const { mat  } = bufProps;
-        ctx.setTransform(mat.get([
-            0,
-            0
-        ]), mat.get([
-            1,
-            0
-        ]), mat.get([
-            0,
-            1
-        ]), mat.get([
-            1,
-            1
-        ]), mat.get([
-            0,
-            2
-        ]), mat.get([
-            1,
-            2
-        ]));
-        ctx.drawImage(bufCanvas, 0, 0);
-        ctx.resetTransform();
+    Buffer1.prepare = prepare;
+    function release() {
+        bufProps.refs = Math.max(bufProps.refs - 1, 0);
     }
-}
-function translateBuffer(dx, dy) {
-    bufProps.mat = math.multiply(math.matrix([
-        [
-            1,
-            0,
-            dx
-        ],
-        [
-            0,
-            1,
-            dy
-        ],
-        [
-            0,
-            0,
-            1
-        ], 
-    ]), bufProps.mat);
-}
-function scaleBufferAround(scale1, center1) {
-    const [dx, dy] = center1 ?? [
-        (canvas.width - 1) / 2,
-        (canvas.height - 1) / 2
-    ];
-    bufProps.mat = math.chain(math.matrix([
-        [
-            1,
-            0,
-            dx
-        ],
-        [
-            0,
-            1,
-            dy
-        ],
-        [
-            0,
-            0,
-            1
-        ], 
-    ])).multiply(math.matrix([
-        [
-            1 / scale1,
-            0,
-            0
-        ],
-        [
-            0,
-            1 / scale1,
-            0
-        ],
-        [
-            0,
-            0,
-            1
-        ], 
-    ])).multiply(math.matrix([
-        [
-            1,
-            0,
-            -dx
-        ],
-        [
-            0,
-            1,
-            -dy
-        ],
-        [
-            0,
-            0,
-            1
-        ], 
-    ])).multiply(bufProps.mat).done();
-}
-function releaseBuffer() {
-    bufProps.refs = Math.max(bufProps.refs - 1, 0);
-}
-function clearBuffer() {
-    bufProps.refs = 0;
-}
+    Buffer1.release = release;
+    function borrow(f, drawIfOwner = true) {
+        const owner = bufProps.refs === 0;
+        prepare();
+        f(owner);
+        if (drawIfOwner && owner) draw();
+        release();
+    }
+    Buffer1.borrow = borrow;
+    function draw() {
+        if (bufProps.refs) {
+            const { mat  } = bufProps;
+            abortGraph();
+            ctx.setTransform(mat.get([
+                0,
+                0
+            ]), mat.get([
+                1,
+                0
+            ]), mat.get([
+                0,
+                1
+            ]), mat.get([
+                1,
+                1
+            ]), mat.get([
+                0,
+                2
+            ]), mat.get([
+                1,
+                2
+            ]));
+            ctx.drawImage(bufCanvas, 0, 0);
+            ctx.resetTransform();
+        }
+    }
+    Buffer1.draw = draw;
+    function translate(dx, dy) {
+        bufProps.mat = math.multiply(math.matrix([
+            [
+                1,
+                0,
+                dx
+            ],
+            [
+                0,
+                1,
+                dy
+            ],
+            [
+                0,
+                0,
+                1
+            ], 
+        ]), bufProps.mat);
+    }
+    Buffer1.translate = translate;
+    function scaleAround(scale1, center1) {
+        const [dx, dy] = center1 ?? [
+            (canvas.width - 1) / 2,
+            (canvas.height - 1) / 2
+        ];
+        bufProps.mat = math.chain(math.matrix([
+            [
+                1,
+                0,
+                dx
+            ],
+            [
+                0,
+                1,
+                dy
+            ],
+            [
+                0,
+                0,
+                1
+            ], 
+        ])).multiply(math.matrix([
+            [
+                1 / scale1,
+                0,
+                0
+            ],
+            [
+                0,
+                1 / scale1,
+                0
+            ],
+            [
+                0,
+                0,
+                1
+            ], 
+        ])).multiply(math.matrix([
+            [
+                1,
+                0,
+                -dx
+            ],
+            [
+                0,
+                1,
+                -dy
+            ],
+            [
+                0,
+                0,
+                1
+            ], 
+        ])).multiply(bufProps.mat).done();
+    }
+    Buffer1.scaleAround = scaleAround;
+})(Buffer || (Buffer = {}));
 let center = (0, _types.Complex).ZERO;
-function setCenter(c) {
+function setCenter(c, bufSettings) {
+    if (bufSettings?.updateBuffer ?? true) Buffer.borrow(()=>{
+        // If the center moves from (a + bi) to (0, 0), the image shifted right.
+        // So, actually you need to translate the buffer (a + bi).
+        const dz = center.sub(c);
+        const displace = Convert.toCanvasDisplace(dz);
+        Buffer.translate(...displace);
+    });
     center = c;
     centerInputs[0].value = `${c.re}`;
     centerInputs[1].value = `${c.im}`;
-    recenterButton.classList.toggle("hidden", c.equals(0, 0));
-    homeButton.classList.toggle("hidden", c.equals(0, 0) && scale === 2);
+    setHiddenState(recenterButton, c.equals(0, 0));
+    setHiddenState(homeButton, c.equals(0, 0) && scale === 2);
     updateDomain();
 }
 document.querySelectorAll("#center-controls form").forEach((f)=>{
     f.addEventListener("submit", (e)=>{
         const re = +centerInputs[0].value;
         const im = +centerInputs[1].value;
-        setCenter((0, _types.Complex)(re, im));
+        const z = (0, _types.Complex)(re, im);
+        setCenter(z);
     });
 });
 recenterButton.addEventListener("click", (e)=>{
@@ -314,38 +336,32 @@ recenterButton.addEventListener("click", (e)=>{
  * The scale of the graph represents the distance (in complex units) 
  * from the center of the screen to the top.
  */ let scale = 2;
-function setScale(n, render = true) {
-    abortGraph();
-    n = Math.max(n, 0);
-    const scaleRatio = n / scale;
+function setScale(n, bufSettings) {
+    n = Math.max(n, Number.EPSILON);
+    console.log(n);
+    if (bufSettings?.updateBuffer ?? true) Buffer.borrow(()=>{
+        const scaleRatio = n / scale;
+        Buffer.scaleAround(scaleRatio);
+    });
     scale = n;
-    // dirty zoom
-    if (render) {
-        copyToBuffer();
-        scaleBufferAround(scaleRatio);
-        drawBuffer();
-        releaseBuffer();
-    }
     zoomInput.value = `${2 / scale}`;
     zoomInput.style.width = `${zoomInput.value.length}ch`;
     zoomButtons[1].disabled = scale === 2;
-    homeButton.classList.toggle("hidden", center.equals(0, 0) && scale === 2);
+    setHiddenState(homeButton, center.equals(0, 0) && scale === 2);
     updateDomain();
 }
 function addZoom(mouseX, mouseY, deltaY) {
     // negative = zoom out
     // positive = zoom in
     const factor = 2 ** (deltaY * 0.005);
-    const mousePos = convPlanes(mouseX, mouseY);
-    // keep the mousePos stable, but the distance from the original center needs to scale
+    const mousePos = Convert.toComplex(mouseX, mouseY);
+    // in the scaling, the mousePos stays in the same position, 
+    // but the distance from the center scales
     const disp = mousePos.sub(center);
-    setCenter(mousePos.sub(disp.mul(factor)));
-    setScale(scale * factor, false);
-    scaleBufferAround(factor, [
-        mouseX,
-        mouseY
-    ]);
-    drawBuffer();
+    Buffer.borrow(()=>{
+        setCenter(mousePos.sub(disp.mul(factor)));
+        setScale(scale * factor);
+    });
 }
 {
     const [zoomIn, zoomReset, zoomOut] = zoomButtons;
@@ -353,23 +369,10 @@ function addZoom(mouseX, mouseY, deltaY) {
     zoomReset.addEventListener("click", ()=>setScale(2));
     zoomOut.addEventListener("click", ()=>setScale(scale * 2));
 }homeButton.addEventListener("click", ()=>{
-    const { width , height  } = canvas;
-    const [scaleX, scaleY] = xyScale();
-    // 1 unit of scale
-    const [unitX, unitY] = [
-        (width - 1) / 2,
-        -(height - 1) / 2
-    ];
-    const [dx, dy] = [
-        center.re * unitX / scaleX,
-        center.im * unitY / scaleY
-    ];
-    copyToBuffer();
-    translateBuffer(dx, dy);
-    drawBuffer();
-    releaseBuffer();
-    setCenter((0, _types.Complex).ZERO);
-    setScale(2);
+    Buffer.borrow(()=>{
+        setCenter((0, _types.Complex).ZERO);
+        setScale(2);
+    });
 });
 function xyScale() {
     return [
@@ -378,13 +381,32 @@ function xyScale() {
     ];
 }
 function updateDomain() {
+    const limitDomain = !!+getComputedStyle(document.documentElement).getPropertyValue("--limit-domain");
     const [scaleX, scaleY] = xyScale();
     const range = (0, _types.Complex)(scaleX, scaleY);
     const cmL = center.sub(range);
     const cmR = center.add(range);
-    // update domain display
-    domain[0].textContent = `${cmL}`;
-    domain[1].textContent = `${cmR}`;
+    if (!limitDomain) {
+        domain[0].textContent = `${cmL}`;
+        domain[1].textContent = `${cmR}`;
+    } else {
+        let { re: lre , im: lim  } = cmL;
+        let { re: rre , im: rim  } = cmR;
+        const lsign = Math.sign(lim) === -1 ? "-" : "+";
+        const rsign = Math.sign(lim) === -1 ? "-" : "+";
+        const lreStr = reduceNumber(lre);
+        const rreStr = reduceNumber(rre);
+        const limStr = reduceNumber(Math.abs(lim));
+        const rimStr = reduceNumber(Math.abs(rim));
+        domain[0].textContent = `${lreStr} ${lsign} ${limStr}i`;
+        domain[1].textContent = `${rreStr} ${rsign} ${rimStr}i`;
+    }
+}
+function reduceNumber(n) {
+    const s1 = n.toPrecision();
+    const s2 = n.toPrecision(5);
+    if (s1.length <= s2.length) return s1;
+    return s2;
 }
 /**
  * Function that takes the input complex value to the output one.
@@ -428,41 +450,85 @@ webkitTest.onmessage = async function(e1) {
     const { width , height  } = canvas.getBoundingClientRect();
     if (x < 0 || x >= width) return;
     if (y < 0 || y >= height) return;
-    return convPlanes(x, y);
+    return Convert.toComplex(x, y);
 }
 {
-    let hold = false;
-    let initX = 0, initY = 0;
-    let lastX = 0, lastY = 0;
-    canvas.addEventListener("mousedown", (e)=>{
-        hold = true;
+    let holds = new Map();
+    canvas.addEventListener("pointerdown", (e)=>{
+        console.log("pointerdown", e.pointerId);
+        let initX, initY, lastX, lastY;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
-        copyToBuffer();
+        holds.set(e.pointerId, {
+            initX,
+            initY,
+            lastX,
+            lastY
+        });
+        Buffer.prepare();
     });
-    document.addEventListener("mouseup", (e)=>{
-        if (hold) {
-            hold = false;
+    function pointerup(e) {
+        const pos = holds.get(e.pointerId);
+        if (holds.delete(e.pointerId)) Buffer.release();
+        if (holds.size === 0 && pos) {
             // if any displacement occurred, then redraw
             const [dx, dy] = [
-                e.clientX - initX,
-                e.clientY - initY
+                e.clientX - pos.initX,
+                e.clientY - pos.initY
             ];
             if (dx !== 0 || dy !== 0) graph();
         }
-    });
-    document.addEventListener("mousemove", (e)=>{
-        if (hold) {
-            abortGraph();
-            const [dx, dy] = [
-                e.clientX - lastX,
-                e.clientY - lastY
-            ];
-            translateBuffer(dx, dy);
-            drawBuffer();
-            setCenter(center.sub(convDisplace(dx, dy)));
-            lastX = e.clientX;
-            lastY = e.clientY;
+    }
+    document.addEventListener("pointerup", pointerup);
+    document.addEventListener("pointercancel", pointerup);
+    function distance(pts) {
+        const length = pts.length;
+        const [scx, scy] = pts.reduce(([ax, ay], [cx, cy])=>[
+                ax + cx,
+                ay + cy
+            ]);
+        const center2 = [
+            scx / length,
+            scy / length
+        ];
+        const [cx1, cy1] = center2;
+        const distances = pts.map(([x, y])=>Math.hypot(x - cx1, y - cy1));
+        const totalDistance = distances.reduce((acc, cv)=>acc + cv);
+        return [
+            center2,
+            totalDistance
+        ];
+    }
+    document.addEventListener("pointermove", (e)=>{
+        console.log("pointermove", e.pointerId);
+        const pos = holds.get(e.pointerId);
+        if (pos) {
+            if (holds.size === 1) {
+                const [dx, dy] = [
+                    e.clientX - pos.lastX,
+                    e.clientY - pos.lastY
+                ];
+                const dz = Convert.toComplexDisplace(dx, dy);
+                setCenter(center.sub(dz));
+                Buffer.draw();
+                pos.lastX = e.clientX;
+                pos.lastY = e.clientY;
+            } else {
+                let positions = Array.from(holds.values(), ({ lastX , lastY  })=>[
+                        lastX,
+                        lastY
+                    ]);
+                const [_, d1] = distance(positions);
+                pos.lastX = e.clientX;
+                pos.lastY = e.clientY;
+                positions = Array.from(holds.values(), ({ lastX , lastY  })=>[
+                        lastX,
+                        lastY
+                    ]);
+                const [c, d2] = distance(positions);
+                addZoom(...c, d1 - d2);
+                Buffer.draw();
+            }
         }
     });
 }{
@@ -470,26 +536,28 @@ webkitTest.onmessage = async function(e1) {
     let started = false;
     canvas.addEventListener("wheel", (e)=>{
         e.preventDefault();
-        abortGraph();
         clearTimeout(timeout);
         if (!started) {
             started = true;
             // wheel start
-            copyToBuffer();
+            Buffer.prepare();
         }
         // wheel move
-        if (e.ctrlKey) addZoom(e.clientX, e.clientY, e.deltaY);
-        else {
+        if (e.ctrlKey) {
+            addZoom(e.clientX, e.clientY, e.deltaY);
+            Buffer.draw();
+        } else {
             const dx = e.deltaX * .5;
             const dy = e.deltaY * .5;
-            translateBuffer(dx, dy);
-            drawBuffer();
-            setCenter(center.sub(convDisplace(dx, dy)));
+            const dz = Convert.toComplexDisplace(dx, dy);
+            setCenter(center.sub(dz));
+            Buffer.draw();
         }
         coordinateDisplay(e);
         timeout = setTimeout(()=>{
             // wheel end
             graph();
+            Buffer.release();
             started = false;
         }, 500);
     }, false);
@@ -537,8 +605,6 @@ async function graph() {
     graphStatus.textContent = "Graphing...";
     await updateCanvasDims();
     await waitPageUpdate();
-    clearBuffer();
-    abortGraph();
     let fstr = funcInput.value;
     try {
         const eva = _evaluator.compile(fstr);
@@ -559,34 +625,56 @@ async function graph() {
         });
     });
 }
-/**
- * Converts xy canvas pixels to values in the complex plane
- * @param x x coord
- * @param y y coord
- * @returns Complex value
- */ function convPlanes(x, y) {
-    // center point:
-    const [canvasCenterX, canvasCenterY] = [
-        (canvas.width - 1) / 2,
-        (canvas.height - 1) / 2
-    ];
-    return center.add(convDisplace(x - canvasCenterX, y - canvasCenterY));
-}
-/**
- * Scale a change in displacement in canvas
- * @param dx pixels moved in the x-direction
- * @param dy pixels moved in the y-direction
- * @returns complex displacement
- */ function convDisplace(dx, dy) {
-    const { width , height  } = canvas;
-    const [scaleX, scaleY] = xyScale();
-    // 1 unit of scale
-    const [unitX, unitY] = [
-        (width - 1) / 2,
-        -(height - 1) / 2
-    ];
-    return (0, _types.Complex)(dx * scaleX / unitX, dy * scaleY / unitY);
-}
+let Convert;
+(function(Convert1) {
+    function toComplex(x, y) {
+        const [canvasCenterX, canvasCenterY] = [
+            (canvas.width - 1) / 2,
+            (canvas.height - 1) / 2
+        ];
+        const dz = toComplexDisplace(x - canvasCenterX, y - canvasCenterY);
+        return center.add(dz);
+    }
+    Convert1.toComplex = toComplex;
+    function toComplexDisplace(dx, dy) {
+        const { width , height  } = canvas;
+        const [scaleX, scaleY] = xyScale();
+        // 1 unit of scale
+        const [unitX, unitY] = [
+            (width - 1) / 2,
+            -(height - 1) / 2
+        ];
+        return (0, _types.Complex)(dx * scaleX / unitX, dy * scaleY / unitY);
+    }
+    Convert1.toComplexDisplace = toComplexDisplace;
+    function toCanvas(z) {
+        const [canvasCenterX, canvasCenterY] = [
+            (canvas.width - 1) / 2,
+            (canvas.height - 1) / 2
+        ];
+        const dz = z.sub(center);
+        const [dx, dy] = toCanvasDisplace(dz);
+        return [
+            canvasCenterX + dx,
+            canvasCenterY + dy
+        ];
+    }
+    Convert1.toCanvas = toCanvas;
+    function toCanvasDisplace(dz) {
+        const { width , height  } = canvas;
+        const [scaleX, scaleY] = xyScale();
+        // 1 unit of scale
+        const [unitX, unitY] = [
+            (width - 1) / 2,
+            -(height - 1) / 2
+        ];
+        return [
+            dz.re * unitX / scaleX,
+            dz.im * unitY / scaleY
+        ];
+    }
+    Convert1.toCanvasDisplace = toCanvasDisplace;
+})(Convert || (Convert = {}));
 /**
  * Call an "init" action on a worker to prepare it for work.
  * @param w Worker to initialize.
@@ -685,6 +773,10 @@ function abortGraph() {
 }
 function setProperty(o, p, v) {
     if (o[p] !== v) o[p] = v;
+}
+function setHiddenState(b, status) {
+    b.classList.toggle("hidden", status);
+    if (b instanceof HTMLButtonElement) b.disabled = status;
 }
 
 },{"mathjs":"dfqcH","./types":"3KtCW","./evaluator":"xQ2Cc","45db8707b388c948":"kfAty","4e4d4c47c4f40590":"93Mr8","86d16f4b6fb500f0":"6SEbi"}],"dfqcH":[function(require,module,exports) {
@@ -71446,93 +71538,140 @@ var _complexJs = require("complex.js");
 },{"complex.js":"c3NNR","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"xQ2Cc":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "compile", ()=>compile);
+/**
+ * Compile a function string into a usable function
+ * @param fstr string to compile
+ * @returns the function
+ */ parcelHelpers.export(exports, "compile", ()=>compile);
 var _mathjs = require("mathjs");
 var _types = require("./types");
 const math = (0, _mathjs.create)((0, _mathjs.all));
-const constants = {
-    "pi": (0, _types.Complex).PI,
-    "e": (0, _types.Complex).E,
-    "i": (0, _types.Complex).I,
-    "inf": (0, _types.Complex).INFINITY,
-    "infinity": (0, _types.Complex).INFINITY,
-    "epsilon": (0, _types.Complex).EPSILON,
-    "nan": (0, _types.Complex).NAN
+/**
+ * A mapping of names to constants which they represent:
+ */ const constants = {
+    pi: (0, _types.Complex).PI,
+    e: (0, _types.Complex).E,
+    i: (0, _types.Complex).I,
+    inf: (0, _types.Complex).INFINITY,
+    infinity: (0, _types.Complex).INFINITY,
+    epsilon: (0, _types.Complex).EPSILON,
+    nan: (0, _types.Complex).NAN
 };
-function isComplexMethod(n) {
-    return n in (0, _types.Complex).I;
-}
-function getFrom(o, k) {
+/**
+ * A mapping of names to functions (C -> C) which they represent.
+ */ const functions = {
+    gamma () {
+        return math.gamma(this);
+    },
+    ln: (0, _types.Complex).prototype.log
+};
+/**
+ * A mapping of operators to their respective functions.
+ */ const operators = {
+    add: (0, _types.Complex).prototype.add,
+    unaryPlus () {
+        return this;
+    },
+    subtract: (0, _types.Complex).prototype.sub,
+    unaryMinus: (0, _types.Complex).prototype.neg,
+    multiply: (0, _types.Complex).prototype.mul,
+    divide: (0, _types.Complex).prototype.div,
+    pow: (0, _types.Complex).prototype.pow,
+    factorial () {
+        return math.gamma(this.add(1));
+    }
+};
+let ComplexMethod;
+(function(ComplexMethod1) {
+    function isMethod(k) {
+        return k in (0, _types.Complex).prototype;
+    }
+    ComplexMethod1.isMethod = isMethod;
+    function get(k) {
+        const m = (0, _types.Complex).prototype[k];
+        if (m instanceof Function) return m;
+        return function() {
+            return this[k];
+        };
+    }
+    ComplexMethod1.get = get;
+    function wrap(f) {
+        return function() {
+            return f(this);
+        };
+    }
+    ComplexMethod1.wrap = wrap;
+})(ComplexMethod || (ComplexMethod = {}));
+/**
+ * Get a value from a specified object or `undefined` if the key is not present.
+ * @param o object
+ * @param k key to get
+ * @returns value (or `undefined` if not present)
+ */ function getFrom(o, k) {
     if (k in o) return o[k];
 }
-function lookup(n) {
+/**
+ * Check if the symbol is in one of the symbol mappings
+ * @param n Symbol node to look up
+ * @returns the lookup result or an error if not present
+ */ function lookup(n) {
     let { name  } = n;
     name = name.toLowerCase();
     if (name === "z") return {
         type: "z"
     };
-    if (isComplexMethod(name)) return {
+    if (ComplexMethod.isMethod(name)) return {
         type: "method",
-        name
+        f: ComplexMethod.get(name)
     };
     if (name in constants) return {
         type: "constant",
         value: constants[name]
     };
-    // if (name in functions) return {
-    //     type: "function",
-    //     f: functions[name]
-    // }
+    if (name in functions) return {
+        type: "method",
+        f: functions[name]
+    };
     throw new Error(`Unrecognized symbol [${name}]`);
 }
-const operatorMapping = {
-    "add": (a)=>a.add.bind(a),
-    "unaryPlus": (a)=>()=>a,
-    "subtract": (a)=>a.sub.bind(a),
-    "unaryMinus": (a)=>a.neg.bind(a),
-    "multiply": (a)=>a.mul.bind(a),
-    "divide": (a)=>a.div.bind(a),
-    "pow": (a)=>a.pow.bind(a),
-    "factorial": (a)=>()=>math.gamma(a.add(1))
-};
-function unwrap(val, z) {
+/**
+ * Take a `FoldResult` object and evaluate it with the specified z-value
+ * @param val the `FoldResult`
+ * @param z value z should be set to
+ * @returns the resulting value
+ */ function unwrap(val, z) {
     if (val.type === "constant") return val.value;
     if (val.type === "function") return val.f(z);
     if (val.type === "z") return z;
     let _ = val;
     throw new Error(`Unrecognized fold result ${val.type}`);
 }
-function makeFunction(f, args, allowFunctions) {
-    // can only accept z OR number | Complex
-    // functions should not be allowed.
+function createFunction(f, args) {
     let fargs = args.map((node)=>fold(node));
     // if all constants, this can be computed as a constant
     if (fargs.every((a)=>a.type === "constant")) {
         const [self, ...rest] = fargs.map((c)=>c.value);
         const cself = (0, _types.Complex)(self);
-        const met = f(cself);
-        if (typeof met === "number") return {
-            type: "constant",
-            value: met
-        };
         return {
             type: "constant",
-            value: met.bind(cself)(...rest)
+            value: f.apply(cself, rest)
         };
     }
     const [self, ...rest] = fargs;
-    if (allowFunctions) return {
+    return {
         type: "function",
         f: (z)=>{
             let a = (0, _types.Complex)(unwrap(self, z));
             let b = rest.map((arg)=>unwrap(arg, z));
-            const met = f(a);
-            if (typeof met === "number" /* re, im */ ) return met;
-            return met.bind(a)(...b);
+            return f.apply(a, b);
         }
     };
 }
-function fold(n, allowFunctions = true) {
+/**
+ * Fold a node into a usable function
+ * @param n Node to fold
+ * @returns Function representing the tree
+ */ function fold(n) {
     switch(n.type){
         case "ConstantNode":
             return {
@@ -71542,19 +71681,16 @@ function fold(n, allowFunctions = true) {
         case "FunctionNode":
             {
                 const lk = lookup(n.fn);
-                if (lk.type === "method") {
-                    const f = makeFunction((a)=>a[lk.name], n.args, allowFunctions);
-                    if (typeof f === "undefined") throw new Error(`Unexpected function [${lk.name}]`);
-                    return f;
-                } else if (lk.type === "constant") throw new Error(`Expected function, got constant [${n.fn.name} = ${lk.value}]`);
+                if (lk.type === "method") return createFunction(lk.f, n.args);
+                else if (lk.type === "constant") throw new Error(`Expected function, got constant [${n.fn.name} = ${lk.value}]`);
                 else if (lk.type === "z") throw new Error(`Expected function, got [z]`);
                 let _ = lk;
                 throw new Error(`Expected function, got [${lk.type}]`);
             }
         case "OperatorNode":
             {
-                const op = getFrom(operatorMapping, n.fn);
-                const f = op ? makeFunction(op, n.args, allowFunctions) : undefined;
+                const op = getFrom(operators, n.fn);
+                const f = op ? createFunction(op, n.args) : undefined;
                 if (typeof f === "undefined") throw new Error(`Unexpected operator [${n.op}]`);
                 return f;
             }
@@ -71563,6 +71699,7 @@ function fold(n, allowFunctions = true) {
         case "SymbolNode":
             {
                 const lk = lookup(n);
+                // bare symbols cannot evaluate to methods.
                 if (lk.type === "method") throw new Error(`Unexpected function [${n.name}]`);
                 return lk;
             }

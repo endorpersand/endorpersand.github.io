@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
         <link href="/index.91e221aa.css" rel="stylesheet">
         <link href="/complexgrapher.8621e7ea.css" rel="stylesheet">
     </head>
@@ -19,35 +19,38 @@
                     </div>
                 </div>
                 <div class="flimsy-box">
-                    <div id="zoom-controls">
-                        <div id="zoom-input-controls" class="subcontrols">
-                            Zoom: 
+                    <div id="zoom-controls" class="subcontrols">
+                        <span><b>Zoom</b>: </span>
+                        <span id="zc-buttons">
+                            <button class="zoom graph-submit">+</button>
+                            <button class="zoom graph-submit" disabled="">&#x25CB;</button>
+                            <button class="zoom graph-submit">-</button>
+                        </span>
+                        <span class="desktop"> ~ </span>
+                        <span id="zc-input-text">
                             <form id="zoom-form" class="graph-submit">
                                 <input id="zoom-input" type="number" min="0" value="1" step="any">
                             </form>x
-                        </div>
-                        <div id="zoom-button-controls" class="subcontrols">
-                            <button class="zoom graph-submit">Zoom in</button>
-                            <button class="zoom graph-submit" disabled="">Reset zoom</button>
-                            <button class="zoom graph-submit">Zoom out</button>
-                        </div>
+                        </span>
                     </div>
                     <div id="center-controls" class="subcontrols">
-                        Center: 
-                        <form class="graph-submit">
-                            <input class="center-input" type="number" value="0" step="any"> +
-                        </form>
-                        <form class="graph-submit">
-                            <input class="center-input" type="number" value="0" step="any">i
-                        </form>
-                        <button id="recenter-button" class="hidden graph-submit">Recenter</button>
-                        <button id="home-button" class="hidden graph-submit">Home</button>
+                        <span id="center-form-controls">
+                            <b>Center</b>: 
+                            <form class="graph-submit">
+                                <input class="center-input" type="number" value="0" step="any"> +
+                            </form>
+                            <form class="graph-submit">
+                                <input class="center-input" type="number" value="0" step="any">i
+                            </form>
+                        </span>
+                        <button id="recenter-button" class="hidden graph-submit" disabled="">Recenter</button>
+                        <button id="home-button" class="hidden graph-submit" disabled="">Home</button>
                     </div>
                     <div id="domain-info">
-                        Domain: <code class="domain numeric-value">-2 - 2i</code> to <code class="domain numeric-value">2 + 2i</code>
+                        <b>Domain</b>: <code class="domain numeric-value">-2 - 2i</code> to <code class="domain numeric-value">2 + 2i</code>
                     </div>
                 </div>
-                <a href="https://mathjs.org/docs/reference/functions.html">Functions</a>
+                <a href="https://github.com/infusion/Complex.js/">Functions</a>
             </div>
             <div id="wgs">
                 <div id="z-wrapper" class="numeric-value overlay">
