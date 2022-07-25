@@ -199,7 +199,8 @@ let graphID = 0;
 let scale = 2;
 
 function setScale(n: number, bufSettings?: { updateBuffer: boolean }) {
-    n = Math.max(n, 0);
+    n = Math.max(n, Number.EPSILON);
+    console.log(n);
     if (bufSettings?.updateBuffer ?? true) Buffer.borrow(() => {
         const scaleRatio = n / scale;
         Buffer.scaleAround(scaleRatio);

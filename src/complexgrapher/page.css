@@ -115,13 +115,28 @@ input[type=number]::-webkit-outer-spin-button {
         align-self: center;
     }
     
-    #zoom-controls {
-        display: flex;
-        flex-direction: column;
+    .desktop {
+        display: none;
     }
 
-    #zoom-button-controls {
+    #zoom-controls {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+        justify-content: center;
         padding-bottom: 8px;
+
+        gap: 3px;
+    }
+    #zc-buttons {
+        order: 2;
+
+        display: flex;
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+    #zc-input-text {
+        order: 1;
     }
 
     #func-controls {
