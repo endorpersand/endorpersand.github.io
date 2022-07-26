@@ -25,6 +25,9 @@ code {
 textarea {
     font-family: 'Fira Mono', sans-serif;
 }
+form {
+    display: inline;
+}
 
 a {
     color: lightblue;

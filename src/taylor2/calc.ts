@@ -5,16 +5,26 @@ const math = create(all);
 const X = math.parse("x") as math.SymbolNode;
 const Y = math.parse("y") as math.SymbolNode;
 
+/**
+ * Input into this worker.
+ * @param expr The expression
+ * @param n Degree of approximation
+ * @param a center x
+ * @param b center y
+ */
+type TaylorMessage = [expr: string, n: number, a: number, b: number];
 type TaylorTerm = [boolean, math.MathNode, number, number]; // coeff sign: true if +, abs coeff, x exp, y exp
-type TaylorMessage = [string, number, number, number]; // expr, n, a, b
 
-onmessage = function(e) {
-    let dat = e.data as TaylorMessage;
-    postMessage(taylor(...dat));
+onmessage = function(e: MessageEvent<TaylorMessage>) {
+    postMessage(taylor(...e.data));
 }
 
-function pascal_row(n: number) {
-    // calculate the coefficients of (x + y)^n
+/**
+ * Calculate the coefficients of (x + y)^n
+ * @param n 
+ * @returns the coefficients
+ */
+function pascalRow(n: number) {
     return Array.from({length: n + 1}, (_, i) => math.combinations(n, i))
 }
 
@@ -35,7 +45,7 @@ function taylorTerms(expr: string, n = 2, a = 0, b = 0): TaylorTerm[] {
             ];
         }
 
-        let pascal = pascal_row(i);
+        let pascal = pascalRow(i);
         for (var j = 0; j <= i; j++) {
             let p = pascal[j];
             let e = math.simplify(order[j], 

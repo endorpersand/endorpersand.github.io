@@ -12,24 +12,28 @@ type MaybeTex = {
     tex: string
 };
 
-let centerDiv = document.querySelector("#centerDiv")!    as HTMLDivElement,
+let centerDiv          = document.querySelector<HTMLDivElement>("#center-div")!,
     [centerX, centerY] = centerDiv.querySelectorAll("input"),
-    funcInput = document.querySelector("#funcInput")!    as HTMLInputElement,
-    funcTex = document.querySelector("#funcTex")!        as HTMLDivElement,
-    resultTex = document.querySelector("#resultTex")!    as HTMLDivElement,
-    approxNRadio = document.querySelector("#appn")!      as HTMLInputElement,
-    approxNInput = document.querySelector("#appninput")! as HTMLInputElement,
-    computeButton = document.querySelector("#compute")!  as HTMLButtonElement;
+    funcInput          = document.querySelector<HTMLInputElement>("#func-input")!,
+    funcTex            = document.querySelector<HTMLDivElement>("#func-tex")!,
+    resultTex          = document.querySelector<HTMLDivElement>("#result-tex")!,
+    approxNRadio       = document.querySelector<HTMLInputElement>("#appn")!,
+    approxNInput       = document.querySelector<HTMLInputElement>("#appninput")!,
+    computeButton      = document.querySelector<HTMLButtonElement>("#compute")!;
 
 let tex: MaybeTex = {valid: false, expr: ""};
 let swiftie = new Worker(new URL("./calc", import.meta.url), {type: "module"});
 
-centerX.addEventListener("input", grayResult);
-centerY.addEventListener("input", grayResult);
+document.querySelectorAll("input").forEach(el => el.addEventListener("input", grayResult));
 funcInput.addEventListener("input", updateFuncTex);
+
 document.querySelectorAll("input[name=approx]").forEach(i => i.addEventListener("change", radioUpdate));
 computeButton.addEventListener("click", updateResultTex);
 
+document.querySelectorAll("form").forEach(el => el.addEventListener("submit", e => {
+    e.preventDefault();
+    updateResultTex();
+}));
 katex.render(`f(x, y) = `, document.querySelector("#lhs")!, {
     throwOnError: false
 });
@@ -37,14 +41,24 @@ katex.render(`f(x, y) = `, document.querySelector("#lhs")!, {
 updateFuncTex();
 updateResultTex();
 
-function texHandler(node: math.MathNode, options?: object) {
+/**
+ * math.js `toTex` handler that makes multiplication implicit
+ */
+function mulAsImplicit(node: math.MathNode, options?: object) {
     if (node.type === "OperatorNode" && node.op === "*") {
         let [x, y] = node.args;
         return `${x.toTex(options)}${y.toTex(options)}`;
     }
 }
-function verifyExpression(expr: string, replEq = "=", explicitMul = true): MaybeTex {
-    let options = explicitMul ? {} : {handler: texHandler};
+
+/**
+ * Check if the expression is parseable with `math.parse`.
+ * @param expr the expression to verify
+ * @param explicitMul whether multiplication should be explicitly marked with \cdot
+ * @returns whether the expression is parseable
+ */
+function verifyExpression(expr: string, explicitMul = true): MaybeTex {
+    let options = explicitMul ? {} : {handler: mulAsImplicit};
 
     try {
         let tex = "f(x, y) = " + math.parse(expr).toTex(options);
@@ -54,20 +68,29 @@ function verifyExpression(expr: string, replEq = "=", explicitMul = true): Maybe
     }
 }
 
+/**
+ * @returns the value of `n` given by the approximation inputs
+ */
 function findN() {
-    let rads = [...document.querySelectorAll("input[name=approx]")];
-    let v = (rads as HTMLInputElement[])
+    let [v] = Array.from<HTMLInputElement>(document.querySelectorAll("input[name=approx]"))
         .filter(e => e.checked)
-        .map(e => e.value)[0];
+        .map(e => +e.value);
     
-    if (+v != 0) return +v;
+    if (v !== 0) return v;
+    // 0 is assigned to input#appninput
     return +approxNInput.value;
 }
 
+/**
+ * Mark the result tex as gray, indicating that the result has not been computed yet.
+ */
 function grayResult() {
-    resultTex.classList.add("notCurrentFunc");
+    resultTex.classList.add("not-current");
 }
 
+/**
+ * Update the function input tex.
+ */
 function updateFuncTex() {
     tex = verifyExpression(funcInput.value);
 
@@ -78,30 +101,45 @@ function updateFuncTex() {
     grayResult();
 }
 
+/**
+ * Send a request to compute and update the result tex.
+ */
 function updateResultTex() {
     if (tex.valid) {
         let dat: TaylorMessage = [tex.expr, findN(), +centerX.value, +centerY.value];
         swiftie.postMessage(dat);
-        resultTex.classList.remove("notCurrentFunc");
+        resultTex.classList.remove("not-current");
         resultTex.innerHTML = "Working...";
     } else {
         invalidResult();
     }
 }
 
+/**
+ * Mark the result as invalid.
+ */
 function invalidResult() {
     katex.render(String.raw`\color{red}{?}`, resultTex, {
         throwOnError: false
     });
 }
 
-swiftie.onmessage = function(e) {
+/**
+ * Update the arbitrary n input if the option is checked.
+ */
+function radioUpdate() {
+    approxNInput.disabled = !approxNRadio.checked;
+    updateResultTex();
+}
+
+swiftie.onmessage = function(e: MessageEvent<string>) {
     resultTex.classList.remove("err");
 
-    katex.render(`f(x,y) \\approx ${(e.data as string).replaceAll("~", "")}`, resultTex, {
+    katex.render(`f(x,y) \\approx ${e.data.replaceAll("~", "")}`, resultTex, {
         throwOnError: false
     });
 }
+
 swiftie.onerror = function(e) {
     let msg = e.message;
     let index = msg.indexOf("Undefined ");
@@ -111,8 +149,4 @@ swiftie.onerror = function(e) {
     }
     resultTex.textContent = msg;
     resultTex.classList.add("err");
-}
-function radioUpdate() {
-    approxNInput.disabled = !approxNRadio.checked;
-    grayResult();
 }

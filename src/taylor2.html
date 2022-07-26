@@ -15,14 +15,22 @@
             <div class="vert-center">
                 <div>
                     <span id="lhs">f(x, y) = </span>
-                    <input id="funcInput" value="x * sin(y)">
+                    <form>
+                        <input id="func-input" value="x * sin(y)">
+                    </form>
                 </div>
-                <div id="centerDiv">Center:
-                    (<input size="2" placeholder="a" value="0" type="number">,
-                    <input size="2" placeholder="b" value="0" type="number">)
+                <div id="center-div">Center:
+                    (
+                    <form>
+                        <input type="number" placeholder="x" value="0" step="any">
+                    </form>,
+                    <form>
+                        <input type="number" placeholder="y" value="0" step="any">
+                    </form>
+                    )
                 </div>
             </div>
-            <div class="vert-center tex" id="funcTex"></div>
+            <div class="vert-center tex" id="func-tex"></div>
         </div>
         <div class="box">
             <div class="vert-center">
@@ -30,25 +38,35 @@
                     <b>Type of approximation:</b>
                 </div>
                 <div>
-                    <input type='radio' name='approx' id='app1' value='1'>
-                    <label for='app1'>Linearization (n = 1)</label>
+                    <label>
+                        <input type='radio' name='approx' value='1'>
+                        Linearization (n = 1)
+                    </label>
                 </div>
                 <div>
-                    <input type='radio' name='approx' id='app2' value='2' checked>
-                    <label for='app2'>Quadratic (n = 2)</label>
+                    <label>
+                        <input type='radio' name='approx' value='2' checked>
+                        Quadratic (n = 2)
+                    </label>
                 </div>
                 <div>
-                    <input type='radio' name='approx' id='app3' value='3'>
-                    <label for='app3'>Cubic (n = 3)</label>
+                    <label>
+                        <input type='radio' name='approx' id='app3' value='3'>
+                        Cubic (n = 3)
+                    </label>
                 </div>
                 <div>
-                    <input type='radio' name='approx' id='appn' value='0'>
-                    <label for='appn'>n = </label>
-                    <input size="2" value='4' id="appninput" type="number" disabled>
+                    <label for='appn'>
+                        <input type='radio' name='approx' id='appn' value='0'>
+                        n = 
+                        <form>
+                            <input size="2" value='4' step="1" id="appninput" type="number" disabled>
+                        </form>
+                    </label>
                 </div>
-                <button class="bigbutton pad" id="compute">Compute</button>
+                <button class="big-button pad" id="compute">Compute</button>
             </div>
-            <div class="vert-center tex" id="resultTex"></div>
+            <div class="vert-center tex" id="result-tex"></div>
         </div>
         <script type="module" src='taylor2/display.ts'></script>
     </body>
