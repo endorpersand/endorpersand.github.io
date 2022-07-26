@@ -2,7 +2,7 @@ type Coord = [number, number]; // each cell is 1 unit
 type NormCoord = [number, number]; // the entire wrapper 1 unit
 type RGB = [number, number, number];
 
-let wrapper = document.querySelector('.wrapper')!;
+const boxGridEl = document.querySelector('.box-grid')!;
 
 class SquareTracker {
     private static _MIN_ROWS = 3;
@@ -19,11 +19,18 @@ class SquareTracker {
     constructor() {
         this._cols = +getComputedStyle(document.documentElement).getPropertyValue('--cols');
 
-        this.projectSquares = [...wrapper.querySelectorAll('a')];
+        this.projectSquares = [...boxGridEl.querySelectorAll('a')];
         for (let s of this.projectSquares) {
-            let span = document.createElement('span');
-            span.classList.add('colhex');
-            s.appendChild(span);
+            let colhex = document.createElement('span');
+            colhex.classList.add('colhex');
+
+            // allow ppl to copy if they want
+            colhex.addEventListener("click", e => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            s.appendChild(colhex);
 
             s.classList.add('box');
         }
@@ -65,8 +72,11 @@ class SquareTracker {
         box.classList.add('box');
         box.append(title, desc, colhex);
         box.addEventListener("click", this.regenColors.bind(this, false));
+
+        // allow ppl to copy if they want
+        colhex.addEventListener("click", e => e.stopPropagation());
     
-        wrapper.appendChild(box);
+        boxGridEl.appendChild(box);
         this.placeholderSquares.push(box);
     }
 
@@ -143,7 +153,7 @@ let squares = new SquareTracker();
 squares.regenColors();
 
 window.addEventListener("resize", e => {
-    squares.cols = +getComputedStyle(wrapper).getPropertyValue('--cols');
+    squares.cols = +getComputedStyle(boxGridEl).getPropertyValue('--cols');
 })
 function asCoord(i: number): Coord {
     // takes an index in the array, maps it to its [row, col] value
