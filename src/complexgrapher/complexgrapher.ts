@@ -200,7 +200,6 @@ let scale = 2;
 
 function setScale(n: number, bufSettings?: { updateBuffer: boolean }) {
     n = Math.max(n, Number.EPSILON);
-    console.log(n);
     if (bufSettings?.updateBuffer ?? true) Buffer.borrow(() => {
         const scaleRatio = n / scale;
         Buffer.scaleAround(scaleRatio);
@@ -367,8 +366,6 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     }>();
     
     canvas.addEventListener('pointerdown', e => {
-        console.log("pointerdown", e.pointerId);
-
         let initX, initY, lastX, lastY;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
@@ -412,8 +409,6 @@ function fromMousePosition({pageX, pageY}: {pageX: number, pageY: number}) {
     }
 
     document.addEventListener('pointermove', e => {
-        console.log("pointermove", e.pointerId);
-        
         const pos = holds.get(e.pointerId);
         if (pos) {
             if (holds.size === 1) {
