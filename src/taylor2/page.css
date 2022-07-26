@@ -6,13 +6,13 @@
     margin-left: 20px;
 }
 
-.notCurrentFunc {
+.not-current {
     color: #AAA;
 }
 .err {
     color: #F88;
 }
-.bigbutton {
+.big-button {
     margin-top: 10px;
 }
 
@@ -36,11 +36,8 @@
     min-height: 60px;
 }
 
-#funcInput {
-    width: 30%;
-}
 input[type="number"] {
-    width: 3ch;
+    width: 4ch;
 }
 
 @media (max-width: 300px) {

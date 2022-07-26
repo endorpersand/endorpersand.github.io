@@ -70,9 +70,6 @@ canvas {
 
     grid-area: canvas;
 }
-form {
-    display: inline;
-}
 
 .hidden {
     display: none;
