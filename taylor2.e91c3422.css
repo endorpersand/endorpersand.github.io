@@ -6,7 +6,7 @@
   overflow-y: hidden;
 }
 
-.notCurrentFunc {
+.not-current {
   color: #aaa;
 }
 
@@ -14,7 +14,8 @@
   color: #f88;
 }
 
-.bigbutton {
+.big-button {
+  height: 40px;
   margin-top: 10px;
 }
 
@@ -37,12 +38,8 @@
   min-height: 60px;
 }
 
-#funcInput {
-  width: 30%;
-}
-
 input[type="number"] {
-  width: 3ch;
+  width: 4ch;
 }
 
 @media (max-width: 300px) {

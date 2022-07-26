@@ -1,16 +1,20 @@
 body {
+  --body-margin: .5em;
+  margin: var(--body-margin) var(--body-margin);
+  flex-direction: column;
   align-items: stretch;
   display: flex;
 }
 
-body > div {
+#top {
   text-align: center;
+  height: calc(100vh - 2 * var(--body-margin) );
   flex-flow: column wrap;
   align-items: center;
   display: flex;
 }
 
-.wrapper {
+.box-grid {
   grid-template-columns: repeat(var(--cols), 1fr);
   flex: 1;
   grid-auto-rows: minmax(0, 1fr);
@@ -18,13 +22,13 @@ body > div {
   display: grid;
 }
 
-.wrapper .box {
+.box-grid .box {
   text-align: center;
   filter: none;
   background-color: #777;
 }
 
-.wrapper .box:hover {
+.box-grid .box:hover {
   cursor: pointer;
   filter: brightness(150%);
 }
@@ -48,6 +52,15 @@ a.box:visited {
 
 .box > div {
   margin: .25em;
+}
+
+.header {
+  margin-bottom: .25em;
+}
+
+.dev-period {
+  font-size: .9em;
+  font-weight: bold;
 }
 
 .colhex {

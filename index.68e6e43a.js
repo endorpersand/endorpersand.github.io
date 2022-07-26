@@ -145,7 +145,7 @@
 })({"feclo":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-let wrapper = document.querySelector(".wrapper");
+const boxGridEl = document.querySelector(".box-grid");
 class SquareTracker {
     static _MIN_ROWS = 3;
     corners = [
@@ -173,12 +173,17 @@ class SquareTracker {
     constructor(){
         this._cols = +getComputedStyle(document.documentElement).getPropertyValue("--cols");
         this.projectSquares = [
-            ...wrapper.querySelectorAll("a")
+            ...boxGridEl.querySelectorAll("a")
         ];
         for (let s of this.projectSquares){
-            let span = document.createElement("span");
-            span.classList.add("colhex");
-            s.appendChild(span);
+            let colhex = document.createElement("span");
+            colhex.classList.add("colhex");
+            // allow ppl to copy if they want
+            colhex.addEventListener("click", (e)=>{
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            s.appendChild(colhex);
             s.classList.add("box");
         }
         this.placeholderSquares = [];
@@ -210,7 +215,9 @@ class SquareTracker {
         box.classList.add("box");
         box.append(title, desc, colhex);
         box.addEventListener("click", this.regenColors.bind(this, false));
-        wrapper.appendChild(box);
+        // allow ppl to copy if they want
+        colhex.addEventListener("click", (e)=>e.stopPropagation());
+        boxGridEl.appendChild(box);
         this.placeholderSquares.push(box);
     }
     _removeSquare() {
@@ -268,7 +275,7 @@ class SquareTracker {
 let squares = new SquareTracker();
 squares.regenColors();
 window.addEventListener("resize", (e)=>{
-    squares.cols = +getComputedStyle(wrapper).getPropertyValue("--cols");
+    squares.cols = +getComputedStyle(boxGridEl).getPropertyValue("--cols");
 });
 function asCoord(i) {
     // takes an index in the array, maps it to its [row, col] value

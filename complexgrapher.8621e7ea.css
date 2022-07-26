@@ -73,10 +73,6 @@ canvas {
   left: 0;
 }
 
-form {
-  display: inline;
-}
-
 .hidden {
   display: none;
 }

@@ -338,7 +338,6 @@ recenterButton.addEventListener("click", (e)=>{
  */ let scale = 2;
 function setScale(n, bufSettings) {
     n = Math.max(n, Number.EPSILON);
-    console.log(n);
     if (bufSettings?.updateBuffer ?? true) Buffer.borrow(()=>{
         const scaleRatio = n / scale;
         Buffer.scaleAround(scaleRatio);
@@ -455,7 +454,6 @@ webkitTest.onmessage = async function(e1) {
 {
     let holds = new Map();
     canvas.addEventListener("pointerdown", (e)=>{
-        console.log("pointerdown", e.pointerId);
         let initX, initY, lastX, lastY;
         lastX = initX = e.clientX;
         lastY = initY = e.clientY;
@@ -500,7 +498,6 @@ webkitTest.onmessage = async function(e1) {
         ];
     }
     document.addEventListener("pointermove", (e)=>{
-        console.log("pointermove", e.pointerId);
         const pos = holds.get(e.pointerId);
         if (pos) {
             if (holds.size === 1) {
@@ -779,7 +776,7 @@ function setHiddenState(b, status) {
     if (b instanceof HTMLButtonElement) b.disabled = status;
 }
 
-},{"mathjs":"dfqcH","./types":"3KtCW","./evaluator":"xQ2Cc","45db8707b388c948":"kfAty","4e4d4c47c4f40590":"93Mr8","86d16f4b6fb500f0":"6SEbi"}],"dfqcH":[function(require,module,exports) {
+},{"mathjs":"dfqcH","45db8707b388c948":"kfAty","4e4d4c47c4f40590":"93Mr8","86d16f4b6fb500f0":"6SEbi","./types":"3KtCW","./evaluator":"xQ2Cc"}],"dfqcH":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _mainAnyJs = require("./entry/mainAny.js");
@@ -71529,7 +71526,76 @@ function importFactory(typed, load, math, importedFactories) {
     return mathImport;
 }
 
-},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"3KtCW":[function(require,module,exports) {
+},{"../../utils/is.js":"4gnrm","../../utils/factory.js":"9Gubs","../../utils/object.js":"aZPWH","../../utils/array.js":"4jeS6","../../error/ArgumentsError.js":"gY6sa","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"kfAty":[function(require,module,exports) {
+let workerURL = require("./helpers/get-worker-url");
+let bundleURL = require("./helpers/bundle-url");
+let url = bundleURL.getBundleURL("eMBKF") + "webkitTest.7cba1080.js";
+module.exports = workerURL(url, bundleURL.getOrigin(url), false);
+
+},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"cGRWL":[function(require,module,exports) {
+"use strict";
+module.exports = function(workerUrl, origin, isESM) {
+    if (origin === self.location.origin) // If the worker bundle's url is on the same origin as the document,
+    // use the worker bundle's own url.
+    return workerUrl;
+    else {
+        // Otherwise, create a blob URL which loads the worker bundle with `importScripts`.
+        var source = isESM ? "import " + JSON.stringify(workerUrl) + ";" : "importScripts(" + JSON.stringify(workerUrl) + ");";
+        return URL.createObjectURL(new Blob([
+            source
+        ], {
+            type: "application/javascript"
+        }));
+    }
+};
+
+},{}],"abFXz":[function(require,module,exports) {
+"use strict";
+var bundleURL = {};
+function getBundleURLCached(id) {
+    var value = bundleURL[id];
+    if (!value) {
+        value = getBundleURL();
+        bundleURL[id] = value;
+    }
+    return value;
+}
+function getBundleURL() {
+    try {
+        throw new Error();
+    } catch (err) {
+        var matches = ("" + err.stack).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^)\n]+/g);
+        if (matches) // The first two stack frames will be this function and getBundleURLCached.
+        // Use the 3rd one, which will be a runtime in the original bundle.
+        return getBaseURL(matches[2]);
+    }
+    return "/";
+}
+function getBaseURL(url) {
+    return ("" + url).replace(/^((?:https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/.+)\/[^/]+$/, "$1") + "/";
+} // TODO: Replace uses with `new URL(url).origin` when ie11 is no longer supported.
+function getOrigin(url) {
+    var matches = ("" + url).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^/]+/);
+    if (!matches) throw new Error("Origin not found");
+    return matches[0];
+}
+exports.getBundleURL = getBundleURLCached;
+exports.getBaseURL = getBaseURL;
+exports.getOrigin = getOrigin;
+
+},{}],"93Mr8":[function(require,module,exports) {
+let workerURL = require("./helpers/get-worker-url");
+let bundleURL = require("./helpers/bundle-url");
+let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js";
+module.exports = workerURL(url, bundleURL.getOrigin(url), false);
+
+},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"6SEbi":[function(require,module,exports) {
+let workerURL = require("./helpers/get-worker-url");
+let bundleURL = require("./helpers/bundle-url");
+let url = bundleURL.getBundleURL("eMBKF") + "chunkloader.966fd52a.js";
+module.exports = workerURL(url, bundleURL.getOrigin(url), false);
+
+},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"3KtCW":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "Complex", ()=>(0, _complexJs.Complex));
@@ -71728,75 +71794,6 @@ function compile(fstr) {
     }
 }
 
-},{"mathjs":"dfqcH","./types":"3KtCW","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"kfAty":[function(require,module,exports) {
-let workerURL = require("./helpers/get-worker-url");
-let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "webkitTest.7cba1080.js";
-module.exports = workerURL(url, bundleURL.getOrigin(url), false);
-
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"cGRWL":[function(require,module,exports) {
-"use strict";
-module.exports = function(workerUrl, origin, isESM) {
-    if (origin === self.location.origin) // If the worker bundle's url is on the same origin as the document,
-    // use the worker bundle's own url.
-    return workerUrl;
-    else {
-        // Otherwise, create a blob URL which loads the worker bundle with `importScripts`.
-        var source = isESM ? "import " + JSON.stringify(workerUrl) + ";" : "importScripts(" + JSON.stringify(workerUrl) + ");";
-        return URL.createObjectURL(new Blob([
-            source
-        ], {
-            type: "application/javascript"
-        }));
-    }
-};
-
-},{}],"abFXz":[function(require,module,exports) {
-"use strict";
-var bundleURL = {};
-function getBundleURLCached(id) {
-    var value = bundleURL[id];
-    if (!value) {
-        value = getBundleURL();
-        bundleURL[id] = value;
-    }
-    return value;
-}
-function getBundleURL() {
-    try {
-        throw new Error();
-    } catch (err) {
-        var matches = ("" + err.stack).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^)\n]+/g);
-        if (matches) // The first two stack frames will be this function and getBundleURLCached.
-        // Use the 3rd one, which will be a runtime in the original bundle.
-        return getBaseURL(matches[2]);
-    }
-    return "/";
-}
-function getBaseURL(url) {
-    return ("" + url).replace(/^((?:https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/.+)\/[^/]+$/, "$1") + "/";
-} // TODO: Replace uses with `new URL(url).origin` when ie11 is no longer supported.
-function getOrigin(url) {
-    var matches = ("" + url).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^/]+/);
-    if (!matches) throw new Error("Origin not found");
-    return matches[0];
-}
-exports.getBundleURL = getBundleURLCached;
-exports.getBaseURL = getBaseURL;
-exports.getOrigin = getOrigin;
-
-},{}],"93Mr8":[function(require,module,exports) {
-let workerURL = require("./helpers/get-worker-url");
-let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "main.45f4629f.js";
-module.exports = workerURL(url, bundleURL.getOrigin(url), false);
-
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}],"6SEbi":[function(require,module,exports) {
-let workerURL = require("./helpers/get-worker-url");
-let bundleURL = require("./helpers/bundle-url");
-let url = bundleURL.getBundleURL("eMBKF") + "chunkloader.966fd52a.js";
-module.exports = workerURL(url, bundleURL.getOrigin(url), false);
-
-},{"./helpers/get-worker-url":"cGRWL","./helpers/bundle-url":"abFXz"}]},["iXZ3z"], "iXZ3z", "parcelRequire94c2")
+},{"mathjs":"dfqcH","./types":"3KtCW","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}]},["iXZ3z"], "iXZ3z", "parcelRequire94c2")
 
 //# sourceMappingURL=complexgrapher.39fee83e.js.map

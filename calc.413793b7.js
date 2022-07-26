@@ -145,23 +145,106 @@
 })({"fG1pb":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "Verify", ()=>Verify);
 var _mathjs = require("mathjs");
 const math = (0, _mathjs.create)((0, _mathjs.all));
-const X = math.parse("x");
-const Y = math.parse("y");
+const VARS = [
+    "x",
+    "y"
+];
+const [X, Y] = VARS.map((s)=>new math.SymbolNode(s));
+let Verify;
+(function(Verify1) {
+    const VALID_FUNCTIONS = new Set([
+        "cbrt",
+        "sqrt",
+        "nthRoot",
+        "log10",
+        "log",
+        "pow",
+        "exp",
+        "abs",
+        "sin",
+        "cos",
+        "tan",
+        "sec",
+        "csc",
+        "cot",
+        "asin",
+        "acos",
+        "atan",
+        "asec",
+        "acsc",
+        "acot",
+        "sinh",
+        "cosh",
+        "tanh",
+        "sech",
+        "csch",
+        "coth",
+        "asinh",
+        "acosh",
+        "atanh",
+        "asech",
+        "acsch",
+        "acoth", 
+    ]);
+    function isConstant(n) {
+        const { name  } = n;
+        return VARS.includes(name) || name in math && !(math[name] instanceof Function);
+    }
+    Verify1.isConstant = isConstant;
+    function isFunction(n) {
+        return VALID_FUNCTIONS.has(n.name);
+    }
+    Verify1.isFunction = isFunction;
+    function validateTreeSymbols(n) {
+        return n.forEach((node, _, parent)=>{
+            if (node.type === "SymbolNode") {
+                if (parent.type === "FunctionNode" && parent.fn === node) {
+                    if (!Verify.isFunction(node)) throw new Error(`Undefined function ${node.name}`);
+                } else {
+                    if (!Verify.isConstant(node)) throw new Error(`Undefined symbol ${node.name}`);
+                }
+            }
+        });
+    }
+    Verify1.validateTreeSymbols = validateTreeSymbols;
+})(Verify || (Verify = {}));
 onmessage = function(e) {
-    let dat = e.data;
-    postMessage(taylor(...dat));
+    postMessage(taylor(...e.data));
 };
-function pascal_row(n) {
-    // calculate the coefficients of (x + y)^n
+/**
+ * Create a string representing the taylor polynomial expansion
+ * @param expr The expression
+ * @param n Degree of approximation
+ * @param a center x
+ * @param b center y
+ * @returns the string
+ */ function taylor(expr, n = 2, a = 0, b = 0) {
+    return displayTaylor(a, b, taylorTerms(expr, n, a, b)).toTex();
+}
+/**
+ * Calculate the coefficients of (x + y)^n
+ * @param n 
+ * @returns the coefficients
+ */ function pascalRow(n) {
     return Array.from({
         length: n + 1
     }, (_, i)=>math.combinations(n, i));
 }
-function taylorTerms(expr, n1 = 2, a = 0, b = 0) {
+/**
+ * Calculate a list of each term of the taylor polynomial
+ * Each term consists of (pascal) * (coeff) * x^n * y^n / (factorial)
+ * @param expr The expression
+ * @param n Degree of approximation
+ * @param a center x
+ * @param b center y
+ * @returns a list of terms
+ */ function taylorTerms(expr, n1 = 2, a = 0, b = 0) {
     // compute taylor
     let exprNode = math.simplify(expr);
+    Verify.validateTreeSymbols(exprNode);
     let approxComponents = [];
     let order = [] // partials. for n = 3: fxxx, fxxy, fxyy, fyyy
     ;
@@ -169,11 +252,14 @@ function taylorTerms(expr, n1 = 2, a = 0, b = 0) {
         if (order.length == 0) order = [
             exprNode
         ];
-        else order = [
-            math.derivative(order[0], X),
-            ...order.map((e)=>math.derivative(e, Y))
-        ];
-        let pascal = pascal_row(i);
+        else {
+            if (order.every((n)=>n.type === "ConstantNode")) break;
+            order = [
+                math.derivative(order[0], X),
+                ...order.map((e)=>math.derivative(e, Y))
+            ];
+        }
+        let pascal = pascalRow(i);
         for(var j = 0; j <= i; j++){
             let p = pascal[j];
             let e = math.simplify(order[j], [
@@ -211,6 +297,9 @@ const op = {
     imul (args) {
         return new math.OperatorNode("*", "multiply", args, true);
     },
+    emul (args) {
+        return new math.OperatorNode("*", "multiply", args, false);
+    },
     neg (arg) {
         return new math.OperatorNode("-", "unaryMinus", [
             arg
@@ -221,9 +310,18 @@ const op = {
     },
     sub (args) {
         return new math.OperatorNode("-", "subtract", args);
+    },
+    pow (args) {
+        return new math.OperatorNode("^", "pow", args);
     }
 };
-function coeff(pascal, deriv, fact) {
+/**
+ * Utility function to create a node representing the coefficient.
+ * @param pascal Pascal component
+ * @param deriv The derivative
+ * @param fact The factorial component
+ * @returns the sign and node of the coefficient
+ */ function coeff(pascal, deriv, fact) {
     // coeff = (pascal) * (derivative) / factorial
     let sign = Math.sign(pascal) * Math.sign(fact) >= 0;
     pascal = Math.abs(pascal);
@@ -251,44 +349,75 @@ function coeff(pascal, deriv, fact) {
         math.simplify(prod)
     ];
 }
-function signed(s, n) {
+/**
+ * Take the sign boolean and a node and combine it into a new node.
+ * @param s sign boolean
+ * @param n node
+ * @returns the new node
+ */ function signed(s, n) {
     return s ? n : op.neg(n);
 }
-function displayTaylor(a, b, tc) {
-    let taylorStringComponents = tc.map(([s, c, xe, ye])=>{
-        c = math.simplify(c);
-        if (c.type == "ConstantNode" && c.value == 0) return;
+/**
+ * (x - a)^b
+ * @param varNode x
+ * @param exp b
+ * @param shift a
+ * @returns the node
+ */ function variableExpNode(varNode, exp, shift) {
+    let node = varNode;
+    const shiftNode = new math.ConstantNode(Math.abs(shift));
+    if (shift < 0) node = new math.ParenthesisNode(op.add([
+        node,
+        shiftNode
+    ]));
+    else if (shift > 0) node = new math.ParenthesisNode(op.sub([
+        node,
+        shiftNode
+    ]));
+    if (exp !== 1) node = op.pow([
+        node,
+        new math.ConstantNode(exp)
+    ]);
+    return node;
+}
+/**
+ * Convert a list of taylor terms & the center position into a node representing the entire Taylor polynomial
+ * @param a center x
+ * @param b center y
+ * @param tc the taylor terms
+ * @returns the tree representing the entire Taylor polynomial
+ */ function displayTaylor(a, b, tc) {
+    let taylorTermNodes = tc.map(([sign, coeff1, xe, ye])=>{
+        coeff1 = math.simplify(coeff1);
+        if (coeff1.type == "ConstantNode" && coeff1.value == 0) return;
         let args = [];
-        if (xe != 0) args.push(math.simplify(`(x - ${a}) ^ ${xe}`));
-        if (ye != 0) args.push(math.simplify(`(y - ${b}) ^ ${ye}`));
+        if (xe != 0) args.push(variableExpNode(X, xe, a));
+        if (ye != 0) args.push(variableExpNode(Y, ye, b));
         let expr;
         if (args.length == 0) return [
-            s,
-            c
+            sign,
+            coeff1
         ];
-        else if (args.length == 1) expr = args[0];
-        else expr = math.simplify(op.imul(args));
-        if (c.type != "ConstantNode" || c.value != 1) expr = op.imul([
-            c,
+        else if (args.length == 1) [expr] = args;
+        else expr = op.imul(args);
+        if (coeff1.type !== "ConstantNode" || coeff1.value !== 1) expr = op.imul([
+            coeff1,
             expr
         ]);
         return [
-            s,
+            sign,
             expr
         ];
     }).filter((x)=>typeof x !== "undefined");
-    if (taylorStringComponents.length == 0) return new math.ConstantNode(0);
-    let first = taylorStringComponents[0];
-    return taylorStringComponents.slice(1).reduce((acc, [s, n])=>s ? op.add([
+    if (taylorTermNodes.length == 0) return new math.ConstantNode(0);
+    let [first, ...rest] = taylorTermNodes;
+    return rest.reduce((acc, [s, n])=>s ? op.add([
             acc,
             n
         ]) : op.sub([
             acc,
             n
         ]), signed(...first));
-}
-function taylor(expr, n = 2, a = 0, b = 0) {
-    return displayTaylor(a, b, taylorTerms(expr, n, a, b)).toTex();
 }
 exports.default = taylor;
 

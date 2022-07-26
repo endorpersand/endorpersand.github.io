@@ -199,7 +199,7 @@ function enableDebug() {
     window.Levels = (0, _levels.ProvidedLevels);
 }
 
-},{"pixi.js":"eykev","../../static/*":"eKo5Y","./logic":"3vT9s","./values":"bqD2l","./dom":"bUk7d","./levels":"e0FkS","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eykev":[function(require,module,exports) {
+},{"pixi.js":"eykev","../../static/*":"e6twT","./logic":"3vT9s","./values":"bqD2l","./dom":"bUk7d","./levels":"e0FkS","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eykev":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "utils", ()=>_utils);
@@ -38150,16 +38150,18 @@ function __extends(d, b) {
     return AnimatedSprite1;
 }((0, _sprite.Sprite));
 
-},{"@pixi/core":"fJgId","@pixi/sprite":"hPZ17","@pixi/ticker":"1vt9N","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"eKo5Y":[function(require,module,exports) {
-const _temp0 = require("./trainyard.atlas.json");
-const _temp1 = require("./trainyard.png");
+},{"@pixi/core":"fJgId","@pixi/sprite":"hPZ17","@pixi/ticker":"1vt9N","@parcel/transformer-js/src/esmodule-helpers.js":"7TKJq"}],"e6twT":[function(require,module,exports) {
+const _temp0 = require("./favicon.ico");
+const _temp1 = require("./trainyard.atlas.json");
+const _temp2 = require("./trainyard.png");
 module.exports = {
-    "trainyard.atlas.json": _temp0,
-    "trainyard.png": _temp1
+    "favicon.ico": _temp0,
+    "trainyard.atlas.json": _temp1,
+    "trainyard.png": _temp2
 };
 
-},{"./trainyard.atlas.json":"fACDp","./trainyard.png":"d2zuS"}],"fACDp":[function(require,module,exports) {
-module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.atlas.17d92baf.json";
+},{"./favicon.ico":"9YYRe","./trainyard.atlas.json":"fACDp","./trainyard.png":"d2zuS"}],"9YYRe":[function(require,module,exports) {
+module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "favicon.b171568a.ico";
 
 },{"./helpers/bundle-url":"abFXz"}],"abFXz":[function(require,module,exports) {
 "use strict";
@@ -38195,7 +38197,10 @@ exports.getBundleURL = getBundleURLCached;
 exports.getBaseURL = getBaseURL;
 exports.getOrigin = getOrigin;
 
-},{}],"d2zuS":[function(require,module,exports) {
+},{}],"fACDp":[function(require,module,exports) {
+module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.atlas.17d92baf.json";
+
+},{"./helpers/bundle-url":"abFXz"}],"d2zuS":[function(require,module,exports) {
 module.exports = require("./helpers/bundle-url").getBundleURL("mgHJ1") + "trainyard.0dad5fb9.png";
 
 },{"./helpers/bundle-url":"abFXz"}],"3vT9s":[function(require,module,exports) {

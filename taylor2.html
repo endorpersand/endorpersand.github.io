@@ -1,24 +1,53 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
         <link href="/index.91e221aa.css" rel="stylesheet">
         <link href="/taylor2.e91c3422.css" rel="stylesheet">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css" integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">
+
+        <!-- Primary Meta Tags -->
+        <title>Two-Variable Taylor Polynomial Calculator</title>
+        <meta name="title" content="Two-Variable Taylor Polynomial Calculator">
+        <meta name="description" content="Calculates Taylor polynomials for expressions with two-variables (such as those in multivariable calculus).">
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://endorpersand.github.io/taylor2/">
+        <meta property="og:title" content="Two-Variable Taylor Polynomial Calculator">
+        <meta property="og:description" content="Calculates Taylor polynomials for expressions with two-variables (such as those in multivariable calculus).">
+        <meta property="og:image" content="https://endorpersand.github.io/thumbnails/taylor2.png">
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:url" content="https://endorpersand.github.io/taylor2/">
+        <meta property="twitter:title" content="Two-Variable Taylor Polynomial Calculator">
+        <meta property="twitter:description" content="Calculates Taylor polynomials for expressions with two-variables (such as those in multivariable calculus).">
+        <meta property="twitter:image" content="https://endorpersand.github.io/thumbnails/taylor2.png">
     </head>
     <body>
         <div class="box" id="input-wrapper">
             <div class="vert-center">
                 <div>
                     <span id="lhs">f(x, y) = </span>
-                    <input id="funcInput" value="x * sin(y)">
+                    <form>
+                        <input id="func-input" value="x * sin(y)">
+                    </form>
                 </div>
-                <div id="centerDiv">Center:
-                    (<input size="2" placeholder="a" value="0" type="number">,
-                    <input size="2" placeholder="b" value="0" type="number">)
+                <div id="center-div">Center:
+                    (
+                    <form>
+                        <input type="number" placeholder="x" value="0" step="any">
+                    </form>,
+                    <form>
+                        <input type="number" placeholder="y" value="0" step="any">
+                    </form>
+                    )
                 </div>
             </div>
-            <div class="vert-center tex" id="funcTex"></div>
+            <div class="vert-center tex" id="func-tex"></div>
         </div>
         <div class="box">
             <div class="vert-center">
@@ -26,25 +55,35 @@
                     <b>Type of approximation:</b>
                 </div>
                 <div>
-                    <input type="radio" name="approx" id="app1" value="1">
-                    <label for="app1">Linearization (n = 1)</label>
+                    <label>
+                        <input type="radio" name="approx" value="1">
+                        Linearization (n = 1)
+                    </label>
                 </div>
                 <div>
-                    <input type="radio" name="approx" id="app2" value="2" checked="">
-                    <label for="app2">Quadratic (n = 2)</label>
+                    <label>
+                        <input type="radio" name="approx" value="2" checked="">
+                        Quadratic (n = 2)
+                    </label>
                 </div>
                 <div>
-                    <input type="radio" name="approx" id="app3" value="3">
-                    <label for="app3">Cubic (n = 3)</label>
+                    <label>
+                        <input type="radio" name="approx" id="app3" value="3">
+                        Cubic (n = 3)
+                    </label>
                 </div>
                 <div>
-                    <input type="radio" name="approx" id="appn" value="0">
-                    <label for="appn">n = </label>
-                    <input size="2" value="4" id="appninput" type="number" disabled="">
+                    <label for="appn">
+                        <input type="radio" name="approx" id="appn" value="0">
+                        n = 
+                        <form>
+                            <input size="2" value="4" step="1" id="appninput" type="number" disabled="">
+                        </form>
+                    </label>
                 </div>
-                <button class="bigbutton pad" id="compute">Compute</button>
+                <button class="big-button pad" id="compute">Compute</button>
             </div>
-            <div class="vert-center tex" id="resultTex"></div>
+            <div class="vert-center tex" id="result-tex"></div>
         </div>
         <script src="/taylor2.ff85d865.js" defer=""></script>
     </body>
