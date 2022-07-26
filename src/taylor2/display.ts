@@ -1,11 +1,25 @@
 import { create, all } from "mathjs";
-import { TaylorMessage } from "./calc";
+import { TaylorMessage, Verify } from "./calc";
 import katex from 'katex';
 
 const math = create(all);
+type Symbol = {
+    name: string,
+    type: "SymbolNode" | "FunctionNode"
+};
+
 type MaybeTex = {
     valid: false,
     expr: string,
+    errType: {
+        type: "not parseable"
+    } | {
+        type: "not initialized"
+    } | {
+        type: "invalid symbols",
+        tex: string,
+        symbols: Symbol[]
+    }
 } | {
     valid: true,
     expr: string,
@@ -21,7 +35,7 @@ let centerDiv          = document.querySelector<HTMLDivElement>("#center-div")!,
     approxNInput       = document.querySelector<HTMLInputElement>("#appninput")!,
     computeButton      = document.querySelector<HTMLButtonElement>("#compute")!;
 
-let tex: MaybeTex = {valid: false, expr: ""};
+let tex: MaybeTex = {valid: false, expr: "", errType: { type: "not initialized" }};
 let swiftie = new Worker(new URL("./calc", import.meta.url), {type: "module"});
 
 document.querySelectorAll("input").forEach(el => el.addEventListener("input", grayResult));
@@ -42,29 +56,45 @@ updateFuncTex();
 updateResultTex();
 
 /**
- * math.js `toTex` handler that makes multiplication implicit
+ * Mark invalid symbols as red.
+ * @param invalidSymbols Place to list symbols as invalid
  */
-function mulAsImplicit(node: math.MathNode, options?: object) {
-    if (node.type === "OperatorNode" && node.op === "*") {
-        let [x, y] = node.args;
-        return `${x.toTex(options)}${y.toTex(options)}`;
+function redInvalidSymbols(node: math.MathNode, invalidSymbols?: Symbol[], options?: {}) {
+    if (node.type === "SymbolNode" && !Verify.isConstant(node)) {
+        invalidSymbols?.push(node);
+        return String.raw`\textcolor{red}{${node.name}}`;
+    } else if (node.type === "FunctionNode" && !Verify.isFunction(node.fn)) {
+        const args = node.args.map(n => n.toTex(options)).join(",");
+
+        invalidSymbols?.push({name: node.fn.name, type: node.type});
+        return String.raw`\textcolor{red}{\mathrm{${node.fn.name}}}\left(${args}\right)`
     }
 }
 
 /**
  * Check if the expression is parseable with `math.parse`.
  * @param expr the expression to verify
- * @param explicitMul whether multiplication should be explicitly marked with \cdot
  * @returns whether the expression is parseable
  */
-function verifyExpression(expr: string, explicitMul = true): MaybeTex {
-    let options = explicitMul ? {} : {handler: mulAsImplicit};
+function verifyExpression(expr: string): MaybeTex {
+    const invalidSymbols: Symbol[] = [];
+    let options = {handler: (n: math.MathNode, o: {}) => redInvalidSymbols(n, invalidSymbols, o)};
 
     try {
         let tex = "f(x, y) = " + math.parse(expr).toTex(options);
-        return {valid: true, expr, tex};
-    } catch {
-        return {valid: false, expr};
+
+        const valid = invalidSymbols.length === 0;
+        if (valid) {
+            return { valid, expr, tex };
+        } else {
+            return { valid, expr, errType: {
+                type: "invalid symbols",
+                tex, 
+                symbols: invalidSymbols
+            }};
+        }
+    } catch (e) {
+        return {valid: false, expr, errType: { type: "not parseable" }};
     }
 }
 
@@ -94,10 +124,24 @@ function grayResult() {
 function updateFuncTex() {
     tex = verifyExpression(funcInput.value);
 
-    let display = tex.valid ? tex.tex : String.raw`\color{red}{?}`;
+    let display = String.raw`\textcolor{red}{?}`;
+    if (tex.valid) { display = tex.tex; }
+    else if (tex.errType.type === "invalid symbols") { display = tex.errType.tex; }
+
     katex.render(display, funcTex, {
         throwOnError: false
     });
+    if (!tex.valid && tex.errType.type === "invalid symbols") {
+        const div = document.createElement("div");
+        div.classList.add("err");
+
+        const [sym] = tex.errType.symbols;
+
+        const type = sym.type === "FunctionNode" ? "function" : "constant";
+        const hint = /[xy]/.test(sym.name) ? "(Try adding * here?)" : "";
+        div.textContent = `Undefined ${type} ${sym.name} ${hint}`.trim();
+        funcTex.append(div);
+    }
     grayResult();
 }
 
@@ -119,7 +163,7 @@ function updateResultTex() {
  * Mark the result as invalid.
  */
 function invalidResult() {
-    katex.render(String.raw`\color{red}{?}`, resultTex, {
+    katex.render(String.raw`\textcolor{red}{?}`, resultTex, {
         throwOnError: false
     });
 }
@@ -141,12 +185,6 @@ swiftie.onmessage = function(e: MessageEvent<string>) {
 }
 
 swiftie.onerror = function(e) {
-    let msg = e.message;
-    let index = msg.indexOf("Undefined ");
-    let sym = msg.slice(index + "Undefined symbol ".length); // can also be "Undefined function", but not that big of a deal
-    if (sym.includes("x") || sym.includes("y")) {
-        msg += " (try adding * here?)"
-    }
-    resultTex.textContent = msg;
+    resultTex.textContent = e.message;
     resultTex.classList.add("err");
 }
