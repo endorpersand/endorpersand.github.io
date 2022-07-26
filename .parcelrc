@@ -3,7 +3,8 @@
     "resolvers": ["@parcel/resolver-glob", "..."],
     "transformers": {
         "*.json": ["..."],
-        "*.atlas.json": ["@parcel/transformer-raw"]
+        "*.atlas.json": ["@parcel/transformer-raw"],
+        "*.ico": ["@parcel/transformer-raw"]
     },
     "reporters": ["parcel-reporter-static-files-copy", "..."]
 }
