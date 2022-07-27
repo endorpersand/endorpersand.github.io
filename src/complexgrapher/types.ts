@@ -7,7 +7,9 @@ export { Complex };
 export interface CanvasData {
     width: number,
     height: number,
-    zoom: number,
+
+    center: [number, number],
+    scale: number,
 }
 
 /**
@@ -30,12 +32,23 @@ export interface PartialEvaluator {
     inverse: boolean
 }
 
+type Numeric = Complex | number;
+
+interface FunctionEvaluator { 
+    type: "function",
+    f: ComplexFunction
+}
+interface ConstantEvaluator { 
+    type: "constant",
+    f: Numeric
+}
+
 /**
  * A fully evaluated function.
  * This has the sufficient knowledge to compute an output color from an input complex number.
  */
 export interface Evaluator {
-    f: ComplexFunction,
+    evaluator: FunctionEvaluator | ConstantEvaluator,
 
     /**
      * Signifies whether to use the reciprocal optimization: bfunc(1 / fz) = 1 - bfunc(fz)
@@ -46,58 +59,63 @@ export interface Evaluator {
 /**
  * A function that takes a complex number to another complex number
  */
-export type ComplexFunction = (z: Complex) => Complex | number;
+export type ComplexFunction = (z: Complex) => Numeric;
 
 namespace Messages {
     /**
      * A request to compute the function across an entire canvas
      */
-    export type MainRequest = {
+    export interface MainRequest {
         action: "mainRequest",
         pev: PartialEvaluator,
-        cd: CanvasData
+        cd: CanvasData,
+        graphID: number
     };
     
     /**
      * Designation that the canvas is fully computed
      */
-    export type GraphDone = {
+    export interface GraphDone {
         action: "done",
-        time: number
+        time: number,
+        graphID: number
     };
 
     /**
      * A request to compute the function across a chunk
      */
-    export type ChunkRequest = {
+    export interface ChunkRequest {
         action: "chunkRequest",
-        pev: PartialEvaluator
+        pev: PartialEvaluator,
         cd: CanvasData,
         chunk: ChunkData,
+        graphID: number
     };
 
     /**
      * Designation that the chunk is fully computed (with the computed data from the chunk)
      */
-    export type ChunkDone = {
+    export interface ChunkDone {
         action: "chunkDone",
         chunk: ChunkData,
-        buf: ArrayBuffer
+        buf: ArrayBuffer,
+        graphID: number
     };
 
     /**
      * Call to initialize
      */
-    export type Init = {
+    export interface Init {
         action: "init"
     };
 
     /**
      * Return call to designate initialization completed
      */
-    export type Ready = {
+    export interface Ready {
         action: "ready"
     }
+
 }
 export type InitIn = Messages.Init;
 export type InitOut = Messages.Ready;
