@@ -1,5 +1,7 @@
 body {
     margin: 0px;
+    position: relative;
+    touch-action: none;
 }
 
 #wrapper {
@@ -9,66 +11,201 @@ body {
     align-items: flex-start;
     gap: 8px;
     padding: 16px;
+    
+}
+.overlay {
+    background-color: #1c2527;
+    z-index: 3;
+}
+#wgs {
+    z-index: 3;
+    width: 33vw;
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+#wgs > div {
+    padding: 8px;
+}
+#graph-status {
+    align-self: flex-end;
 }
 
 #controls {
-    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 33vw;
+    padding: 10px;
+    
+    grid-area: controls;
+    
+    background-color: #1c2527;
+    transition: ease-in-out opacity .2s;
+}
+#controls:not(.initializing):not(:hover):not(.error) {
+    opacity: 0.1;
+}
+#graph-status.error {
+    color: red;
+}
+#graph-status.hidden.error {
+    display: unset;
+}
+
+.flimsy-box {
     display: flex;
     flex-direction: column;
     gap: 5px;
 }
 
-.smallgap {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
 canvas {
     cursor: crosshair;
-}
-.error {
-    color: red;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+
+    grid-area: canvas;
 }
 
-@media (width <= 815px) {
+.hidden {
+    display: none;
+}
+
+input[type=number] {
+    width: 5ch;
+}
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0; 
+}
+
+@media (width <= 700px) {
     #wrapper {
-        flex-direction: column-reverse;
-        padding: 8px;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        grid-template-areas:
+            "canvas  "
+            "controls";
+        grid-auto-columns: minmax(0, 1fr);
+        padding: 0px;
+        gap: 0px;
+
+        justify-items: stretch;
+        align-items: stretch;
+        height: 100vh;
     }
 
     #controls {
+        opacity: unset !important;
+        max-width: unset;
         align-self: stretch;
     }
 
-    /* nice to have, 
-        but formatting is weird when width is small
-    */
-    #scaleControls {
-        display: none;
-    }
-
-    #funcControls, #zoomButtonControls {
+    .subcontrols {
         align-self: center;
     }
     
-    #zoomButtonControls {
-        padding-bottom: 8px;
+    .desktop {
+        display: none;
     }
 
-    #funcControls {
+    #zoom-controls {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+        justify-content: center;
+        padding-bottom: 8px;
+
+        gap: 3px;
+    }
+    #zc-buttons {
+        order: 2;
+
+        display: flex;
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+    #zc-input-text {
+        order: 1;
+    }
+
+    #func-controls {
         padding-top: 8px;
     }
 
-    * {
-        font-size: 18px;
+    #wgs {
+        width: unset;
     }
 
-    #zcoord {
+    #graph-status {
+        align-self: center;
+    }
+
+    #center-controls {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+        justify-content: center;
+    }
+    #center-form-controls {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    #center-controls .hidden {
+        display: unset;
+    }
+    #graph-status.hidden {
+        visibility: hidden;
+        display: unset;
+    }
+
+    * {
+        font-size: 17px;
+    }
+
+    .numeric-value {
+        align-self: center;
         font-size: 16px;
     }
 
-    #zcoord * {
+    .numeric-value * {
         font-size: inherit;
+    }
+
+    canvas {
+        position: static;
+        top: unset;
+        left: unset;
+        width: unset;
+        height: unset;
+        z-index: unset;
+        min-height: 0;
+    }
+
+    @media (hover: none) {
+        :root {
+            --limit-domain: 1;
+        }
+
+        #domain-info {
+            vertical-align: middle;
+            text-align: center;
+            line-height: 1.1;
+            height: 2.2em
+        }
+    }
+}
+
+@media (hover: none) {
+    #z-wrapper {
+        display: none;
     }
 }
